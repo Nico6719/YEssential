@@ -1,6 +1,5 @@
-求求给个好评罢（​
-[介绍]​
-这是一个基于LegacyScriptEngine写的基础插件，支持导入TMEssential的home数据和warp数据，包含了服务器优化功能的基础插件​
+​这是一个基于LegacyScriptEngine写的基础插件，支持导入TMEssential的home数据和warp数据，包含了服务器优化功能的基础插件​
+
 [功能一览]
 ​
 
