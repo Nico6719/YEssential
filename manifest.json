@@ -1,0 +1,14 @@
+{
+    "entry": "YEssential.js",
+    "name": "YEssential",
+    "type": "lse-quickjs",
+    "version": "2.0.0",
+    "author": "Yeji",
+    "description": "Yes基础插件",
+    "extraInfo": {},
+    "dependencies": [
+        {
+            "name": "legacy-script-engine-quickjs"
+        }
+    ]
+}
