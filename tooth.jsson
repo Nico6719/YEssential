@@ -1,0 +1,23 @@
+{
+  "dependencies": {},
+  "format_version": 1,
+  "information": {
+    "author": "Nico6719",
+    "description": "一款基础功能插件",
+    "homepage": "https://github.com/Nico6719/YEssential/blob/main/README.md",
+    "name": "YEssential",
+    "tags": [
+      "plugin",
+      "llse"
+    ]
+  },
+  "placement": [
+    {
+      "source": "YEssential.js",
+      "destination": "plugins/YEssential.js"
+    }
+  ],
+  "possession": [],
+  "tooth": "github.com/Nico6719/YEssential",
+  "version": "2.0.0"
+}
