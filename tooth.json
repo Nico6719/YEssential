@@ -6,7 +6,7 @@
     "name": "YEssential",
     "author": "Nico6719",
     "description": "一款基础功能插件",
-    "asset_url": "https://github.com/Nico6719/YEssential/releases/download/v$(version)/YEssential.zip",
+    "asset_url": "https://github.com/Nico6719/YEssential/releases/download/v{{version}}/YEssential.zip",
     "prerequisites": {
         "github.com/Nico6719/YEssential/": "2.0.0"
     },
