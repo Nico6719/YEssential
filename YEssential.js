@@ -140,6 +140,7 @@ const lang = new JsonConfigFile(path + "lang.json", JSON.stringify({
     "stop.msg":"服务器关闭\n请稍后再来",
     "pls.input.notice":"请输入公告内容，（换行用 \\n）",
     "gamerule.KeepInventory.true":"死亡不掉落已启用",
+    "cannot.create.newfile":"无法创建数据存储对象",
     "choose":"选择",
     "success":"成功",
     "one":"一个",
@@ -193,7 +194,7 @@ if (!File.exists(dataPath)) {
         dataPath = "./moneyranking_temp/";
         if (!File.exists(dataPath)) {
             if (!File.createDir(dataPath)) {
-                logger.error("[YEssential] 无法创建数据存储");
+                logger.error(lang.get+("cannot.create.newfile"));
             }
         }
     }
