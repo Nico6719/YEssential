@@ -2,11 +2,19 @@
     "entry": "YEssential.js",
     "name": "YEssential",
     "type": "lse-quickjs",
-    "version": "2.0.0",
-    "author": "Yeji",
-    "description": "Yes基础插件",
-    "extraInfo": {},
+    "version": "2.2.3",
+    "author": "Nico6719",
+    "description": "YEssential多功能基础插件--",
+    "extraInfo": {
+        "License": "GPL-3.0"
+    },
     "dependencies": [
+        {
+            "name": "GMLIB"
+        },
+        {
+            "name": "GMLIB-LegacyRemoteCallApi"
+        },
         {
             "name": "legacy-script-engine-quickjs"
         }
