@@ -3,11 +3,11 @@
 const path = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version =[2,2,4];
+const version =[2,2,5];
 const info = "§l§b[YEST] §r";
 const lang = new JsonConfigFile(path + "lang.json", JSON.stringify({
     "Version.Chinese":"版本:",
-    "version": "2.2.4",
+    "version": "2.2.5",
     "notice.editor":"§l§e公告编辑器",
     "notice.no.change": "§e公告内容未更改！",
     "notice.exit.edit":"已取消编辑",
