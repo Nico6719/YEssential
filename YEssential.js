@@ -3,11 +3,11 @@
 const path = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version =[2,2,5];
+const version =[2,2,6];
 const info = "§l§b[YEST] §r";
 const lang = new JsonConfigFile(path + "lang.json", JSON.stringify({
     "Version.Chinese":"版本:",
-    "version": "2.2.5",
+    "version": "2.2.6",
     "notice.editor":"§l§e公告编辑器",
     "notice.no.change": "§e公告内容未更改！",
     "notice.exit.edit":"已取消编辑",
@@ -363,21 +363,6 @@ const loadTickDistance = () => {
     }
 };
 const { PAPI } = require('./GMLIB-LegacyRemoteCallApi/lib/BEPlaceholderAPI-JS');
-// 初始化有效检测范围（区块单位）
-const effectiveRadius = loadTickDistance();
-
-// 漏斗物品检测事件监听
-mc.listen("onHopperSearchItem",  (hopperPos, isMinecart) => {
-    return mc.getOnlinePlayers().some(player  => {
-        // 维度一致性验证
-        const sameDimension = player.pos.dimid  === hopperPos.dimid; 
-        // 距离换算：1区块=16格，转换为区块距离比较
-        const chunkDistance = player.distanceTo(hopperPos)  / 16;
-        
-        return sameDimension && (chunkDistance < effectiveRadius);
-    });
-});
-
 // 跨服传送命令模块
 let Sercmd = mc.newCommand("servers", "§l§a跨服传送", PermType.Any);
 Sercmd.overload([]);
