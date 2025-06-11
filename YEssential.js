@@ -184,7 +184,23 @@ let noticeconf = new JsonConfigFile(
     JSON.stringify({})
   );
 
-let moneyranking = new KVDatabase("./plugins/YEssential/data/moneyranking/")
+let dataPath = "./plugins/YEssential/data/moneyranking/";
+
+
+if (!File.exists(dataPath)) {
+    if (!File.createDir(dataPath)) {
+        // 创建失败，使用备用路径
+        dataPath = "./moneyranking_temp/";
+        if (!File.exists(dataPath)) {
+            if (!File.createDir(dataPath)) {
+                logger.error("[YEssential] 无法创建数据存储");
+            }
+        }
+    }
+}
+
+let moneyranking = new KVDatabase(dataPath);
+
 var c_y = JSON.stringify({
     servers: [
       { server_name: "生存服", server_ip: "127.0.0.1", server_port: 19132 }
