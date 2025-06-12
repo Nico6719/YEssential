@@ -188,19 +188,19 @@ let noticeconf = new JsonConfigFile(
 let dataPath = "./plugins/YEssential/data/moneyranking/";
 
 
-if (!File.exists(dataPath)) {
-    if (!File.createDir(dataPath)) {
-        // 创建失败，使用备用路径
-        dataPath = "./moneyranking_temp/";
-        if (!File.exists(dataPath)) {
-            if (!File.createDir(dataPath)) {
-                logger.error(lang.get+("cannot.create.newfile"));
-            }
-        }
-    }
-}
+// if (!File.exists(dataPath)) {
+//     if (!File.createDir(dataPath)) {
+//         // 创建失败，使用备用路径
+//         dataPath = "./moneyranking_temp/";
+//         if (!File.exists(dataPath)) {
+//             if (!File.createDir(dataPath)) {
+//                 logger.error(lang.get+("cannot.create.newfile"));
+//             }
+//         }
+//     }
+// }
 
-let moneyranking = new KVDatabase(dataPath);
+let moneyranking = new JsonConfigFile(dataPath)
 
 var c_y = JSON.stringify({
     servers: [
@@ -227,7 +227,14 @@ function ranking(plname) {
     if (!pl) return;
 
     // 获取并处理数据
-    let lst = moneyranking.listKey().map(v => ({ name: v, money: moneyranking.get(v) }));
+    //let lst = moneyranking.listKey().map(v => ({ name: v, money: moneyranking.get(v) }));
+
+    let datas = JSON.parse(moneyranking.read());
+    let lst = Object.keys(datas).map(name => ({
+      name: name,
+      money: datas[name]
+    }));
+    
     if (lst.length === 0) {
         pl.tell(info + lang.get("no.ranking.data"));
         return;
