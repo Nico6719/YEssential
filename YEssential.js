@@ -357,6 +357,7 @@ conf.init("suicide",0)
 conf.init("OptimizeXporb",0)
 conf.init("join_notice",0)
 conf.init("lastServerShutdown", 0);        // 记录服务器关闭时间
+conf.init("UniteBanCheck",0)
 
 // 配置文件解析模块 - 提取漏斗检测范围参数
 const loadTickDistance = () => {
@@ -2365,3 +2366,83 @@ function ValueCheck(plname,value){
         return true
     }
 }
+
+
+//对接联合封禁
+function CheckUniteBan(realname, xuid, uuid, clientid, ip) { //检查函数
+    const postdata = {
+        ...(realname != null && { name: realname }),
+        ...(xuid != null && { xuid: xuid }),
+        ...(uuid != null && { uuid: uuid }),
+        ...(clientid != null && { clientid: clientid }),
+        ...(ip != null && { ip: ip })
+    };
+    
+	const jsonData = JSON.stringify(postdata);
+    const url = "http://pheyeji.vip:19132/api.php";
+
+    network.httpPost(
+        url,
+        jsonData,
+        "application/json",
+        (status, result) => {
+            try {
+                if (status === 200) {
+                    const response = JSON.parse(result);
+                    if (response.exists === true) {
+                        logger.warn(`玩家 ${realname} 联合封禁检查不通过`);
+                        mc.runcmd("kick \"" + realname + "\" 联合封禁检查不通过");
+                        //updateinfo(realname, xuid, uuid, clientid, ip)
+                        //getMacAddress(realname, xuid, uuid, clientid, ip)
+                    } else {
+                        logger.log(`玩家 ${realname} 联合封禁检查通过`);
+                    }
+                } else {
+                    //  logger.error(`请求失败，状态码: ${status}`);
+                }
+            } catch (e) {
+                // logger.error(`响应解析失败: ${e.message}`);
+            }
+        }
+    );
+}
+
+mc.listen("onJoin",(pl)=>{
+    if(conf.get("UniteBanCheck") == false) return
+    if(pl.isSimulatedPlayer() || pl.isOP()) return logger.log("假人/OP 自动跳过联合封禁检查")
+    setTimeout(() => {
+        if(!pl) return
+
+        let rawIp = pl.getDevice().ip;
+        let ip;
+        
+        if (rawIp.includes('|')) {
+            ip = rawIp.split('|')[0];  // 处理 "ip|port" 格式
+        } else if (rawIp.startsWith('[')) {
+            // 处理IPv6的 "[ip]:port" 格式
+            const endBracket = rawIp.indexOf(']');
+            if (endBracket !== -1) {
+                ip = rawIp.substring(1, endBracket); // 提取方括号内的IPv6地址
+            } else {
+                ip = rawIp; // 无效格式，保留原始值
+            }
+        } else {
+            // 处理 "ip:port" 格式（兼容IPv4和IPv6）
+            const lastColon = rawIp.lastIndexOf(':');
+            if (lastColon !== -1) {
+                const afterColon = rawIp.substring(lastColon + 1);
+                // 检查冒号后是否为端口号（纯数字）
+                if (/^\d+$/.test(afterColon)) {
+                    ip = rawIp.substring(0, lastColon); // 提取端口前的部分
+                } else {
+                    ip = rawIp; // 不是端口格式，保留原始值
+                }
+            } else {
+                ip = rawIp; // 无冒号，直接使用
+            }
+        }
+        
+        CheckUniteBan(pl.realName,pl.xuid,pl.uuid,pl.getDevice().clientId,ip)
+        
+    }, 1000);
+})
