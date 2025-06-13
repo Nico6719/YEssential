@@ -1,13 +1,14 @@
 // LiteLoader-AIDS automatic generated
 //<reference path="c:\Users\11025\Documents/dts/HelperLib-master/src/index.d.ts"/> 
+const rtpSimulatedPlayers = new Map();
 const path = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version =[2,2,6];
+const version =[2,2,8];
 const info = "§l§b[YEST] §r";
 const lang = new JsonConfigFile(path + "lang.json", JSON.stringify({
     "Version.Chinese":"版本:",
-    "version": "2.2.6",
+    "version": "2.2.8",
     "notice.editor":"§l§e公告编辑器",
     "notice.no.change": "§e公告内容未更改！",
     "notice.exit.edit":"已取消编辑",
@@ -187,19 +188,6 @@ let noticeconf = new JsonConfigFile(
 
 let dataPath = "./plugins/YEssential/data/moneyranking/";
 
-
-// if (!File.exists(dataPath)) {
-//     if (!File.createDir(dataPath)) {
-//         // 创建失败，使用备用路径
-//         dataPath = "./moneyranking_temp/";
-//         if (!File.exists(dataPath)) {
-//             if (!File.createDir(dataPath)) {
-//                 logger.error(lang.get+("cannot.create.newfile"));
-//             }
-//         }
-//     }
-// }
-
 let moneyranking = new JsonConfigFile(dataPath)
 
 var c_y = JSON.stringify({
@@ -225,10 +213,6 @@ setInterval(() => {
 function ranking(plname) {
     let pl = mc.getPlayer(plname);
     if (!pl) return;
-
-    // 获取并处理数据
-    //let lst = moneyranking.listKey().map(v => ({ name: v, money: moneyranking.get(v) }));
-
     let datas = JSON.parse(moneyranking.read());
     let lst = Object.keys(datas).map(name => ({
       name: name,
@@ -358,18 +342,6 @@ conf.init("OptimizeXporb",0)
 conf.init("join_notice",0)
 conf.init("lastServerShutdown", 0);        // 记录服务器关闭时间
 conf.init("UniteBanCheck",0)
-
-// 配置文件解析模块 - 提取漏斗检测范围参数
-const loadTickDistance = () => {
-    try {
-        const configData = File.readFrom('./server.properties')  || '';
-        const [, value] = configData.match(/\ntick-distance=(\d+)/)  || [];
-        return value ? parseInt(value) : 4; // 默认值4当配置缺失时生效
-    } catch (e) {
-        logger.error(' 配置文件读取异常:', e);
-        return 4;
-    }
-};
 const { PAPI } = require('./GMLIB-LegacyRemoteCallApi/lib/BEPlaceholderAPI-JS');
 // 跨服传送命令模块
 let Sercmd = mc.newCommand("servers", "§l§a跨服传送", PermType.Any);
@@ -453,7 +425,7 @@ noticeSetCmd.setCallback((_cmd, ori, output) => {
 
     // 构建表单（显示现有内容）
     const form = mc.newCustomForm()
-        .setTitle(info+""+lang.get("notice.editor"))
+        .setTitle(info+lang.get("notice.editor"))
         .addInput(lang.get("pls.input.notice"), currentNotice.replace(/\n/g, "\\n"));
 
     pl.sendForm(form, (player, data) => {
@@ -660,7 +632,7 @@ mc.listen("onJoin",(pl)=>{
     if(!score) pl.setScore(conf.get("Scoreboard"),0)
 })
 mc.listen("onConsoleCmd", (cmd) => {
-    if (cmd === "ll reload YHubInfo") { // 确保与控制台输入一致
+    if (cmd === "ll reload YEssential") { // 确保与控制台输入一致
         config.reload();
         floatingCache.forEach((value, xuid) => {
             value.floatingText.removeFromClients();
@@ -826,7 +798,7 @@ moneycmd.setCallback((cmd,ori,out,res)=>{
             moneyhisdata[String(system.getTimeStr())+"§"+getRandomLetter()] = lang.get("CoinName")+"设置为"+res.amount
             MoneyHistory.set(pl.realName,moneyhisdata)
 
-            out.success(""+lang.get("money.success")+lang.get("to")+lang.get("player")+res.player+"的"+lang.get("CoinName")+"设置为"+res.amount)
+            out.success(lang.get("money.success")+lang.get("to")+lang.get("player")+res.player+"的"+lang.get("CoinName")+"设置为"+res.amount)
             break
         case "add":
             pl.addScore(conf.get("Scoreboard"),res.amount)
@@ -834,7 +806,7 @@ moneycmd.setCallback((cmd,ori,out,res)=>{
             moneyhisdata[String(system.getTimeStr())+"§"+getRandomLetter()] = lang.get("CoinName")+"增加"+res.amount
             MoneyHistory.set(pl.realName,moneyhisdata)
 
-            out.success(""+lang.get("money.success")+lang.get("to")+lang.get("player")+res.player+"的"+lang.get("CoinName")+"增加"+res.amount)
+            out.success(lang.get("money.success")+lang.get("to")+lang.get("player")+res.player+"的"+lang.get("CoinName")+"增加"+res.amount)
             break
         case "reduce":
             pl.reduceScore(conf.get("Scoreboard"),res.amount)
@@ -842,16 +814,16 @@ moneycmd.setCallback((cmd,ori,out,res)=>{
             moneyhisdata[String(system.getTimeStr())+"§"+getRandomLetter()] = lang.get("CoinName")+"减少"+res.amount
             MoneyHistory.set(pl.realName,moneyhisdata)
 
-            out.success(""+lang.get("money.success")+lang.get("to")+lang.get("player")+res.player+"的"+lang.get("CoinName")+"减少"+res.amount)
+            out.success(lang.get("money.success")+lang.get("to")+lang.get("player")+res.player+"的"+lang.get("CoinName")+"减少"+res.amount)
             break
         case "get":
             pl.getScore(conf.get("Scoreboard"))
-            out.success(""+lang.get("player")+res.player+"的"+lang.get("CoinName")+"为"+pl.getScore(conf.get("Scoreboard")))
+            out.success(lang.get("player")+res.player+"的"+lang.get("CoinName")+"为"+pl.getScore(conf.get("Scoreboard")))
             break
         case "history":
             let jsonStr = JSON.stringify(moneyhisdata);
             let items = jsonStr.slice(1, jsonStr.length - 1).split(',');
-            out.success(""+lang.get("player")+res.player+"的"+lang.get("CoinName")+lang.get("money.history"))
+            out.success(lang.get("player")+res.player+"的"+lang.get("CoinName")+lang.get("money.history"))
             let count = 0
             for (let item of items) {
                 if (count >= 50) {
@@ -964,9 +936,9 @@ function MoneyTransferGui(plname){
     mc.getOnlinePlayers().forEach((pl)=>{
         lst.push(pl.realName)
     })
-    fm.addDropdown(""+lang.get("choose")+lang.get("one")+lang.get("player"),lst)
-    fm.addInput(""+lang.get("money.tr.amount"))
-    fm.addInput(""+lang.get("money.tr.beizhu"))
+    fm.addDropdown(lang.get("choose")+lang.get("one")+lang.get("player"),lst)
+    fm.addInput(lang.get("money.tr.amount"))
+    fm.addInput(lang.get("money.tr.beizhu"))
     pl.sendForm(fm,(pl,data)=>{
         if(data == null) return pl.runcmd("moneygui")
         let target = mc.getPlayer(lst[data[1]])
@@ -993,7 +965,7 @@ function MoneyTransferGui(plname){
         pl.setScore(conf.get("Scoreboard"), plBalance - amount);
         target.setScore(conf.get("Scoreboard"), targetBalance + realamount);
         let moneyhisdata = MoneyHistory.get(pl.realName)
-        moneyhisdata[String(system.getTimeStr())+"§"+getRandomLetter()] = ""+lang.get("money.transfer")+lang.get("CoinName")+"给"+target.realName+"，数量："+amount+"，实际到账："+realamount+"，手续费："+tax
+        moneyhisdata[String(system.getTimeStr())+"§"+getRandomLetter()] = lang.get("money.transfer")+lang.get("CoinName")+"给"+target.realName+"，数量："+amount+"，实际到账："+realamount+"，手续费："+tax
         MoneyHistory.set(pl.realName,moneyhisdata)
         moneyhisdata = MoneyHistory.get(target.realName)
         moneyhisdata[String(system.getTimeStr())+"§"+getRandomLetter()] = "收到"+pl.realName+"转账"+lang.get("CoinName")+"，数量："+amount+"，实际到账："+realamount+"，手续费："+tax
@@ -1089,7 +1061,7 @@ function MoneyHistoryGui(plname){
     mc.getOnlinePlayers().forEach((pl)=>{
         lst.push(pl.realName)
     })
-    fm.addDropdown(""+lang.get("choose")+lang.get("player"),lst)
+    fm.addDropdown(lang.get("choose")+lang.get("player"),lst)
     pl.sendForm(fm,(pl,data)=>{
         if(data == null) return pl.runcmd("moneygui")
         let target = mc.getPlayer(lst[data[0]])
@@ -1117,7 +1089,7 @@ function MoneyGetGui(plname){
     mc.getOnlinePlayers().forEach((pl)=>{
         lst.push(pl.realName)
     })
-    fm.addDropdown(""+lang.get("choose")+lang.get("player"),lst)
+    fm.addDropdown(lang.get("choose")+lang.get("player"),lst)
     pl.sendForm(fm,(pl,data)=>{
         if(data == null) return pl.runcmd("moneygui")
         let target = mc.getPlayer(lst[data[0]])
@@ -1135,9 +1107,9 @@ function MoneySetGui(plname){
     mc.getOnlinePlayers().forEach((pl)=>{
         lst.push(pl.realName)
     })
-    fm.addDropdown(""+lang.get("choose")+lang.get("player"),lst)
+    fm.addDropdown(lang.get("choose")+lang.get("player"),lst)
     //
-    fm.addInput(""+lang.get("moeny.set.number")+lang.get("CoinName"),lang.get("moeny.set.number")+lang.get("CoinName"))
+    fm.addInput(lang.get("moeny.set.number")+lang.get("CoinName"),lang.get("moeny.set.number")+lang.get("CoinName"))
     pl.sendForm(fm,(pl,data)=>{
         if(data == null) return pl.runcmd("moneygui")
         if(data[1] == '' || !data[1]) return pl.tell(info + lang.get("moeny.setting.number"));
@@ -1164,7 +1136,7 @@ function MoneyReduceGui(plname){
     mc.getOnlinePlayers().forEach((pl)=>{
         lst.push(pl.realName)
     })
-    fm.addDropdown(""+lang.get("choose")+lang.get("player"),lst)
+    fm.addDropdown(lang.get("choose")+lang.get("player"),lst)
     fm.addInput(lang.get("money.decrease.number")+lang.get("CoinName"),lang.get("money.decrease.number")+lang.get("CoinName"))
     pl.sendForm(fm,(pl,data)=>{
         if(data == null) return pl.runcmd("moneygui")
@@ -1191,7 +1163,7 @@ function MoneyAddGui(plname){
     mc.getOnlinePlayers().forEach((pl)=>{
         lst.push(pl.realName)
     })
-    fm.addDropdown(""+lang.get("choose")+lang.get("player"),lst)
+    fm.addDropdown(lang.get("choose")+lang.get("player"),lst)
     //fm.addInput("请输入增加的"+lang.get("CoinName"),"请输入增加的"+lang.get("CoinName"))
     fm.addInput(lang.get("money.add.number")+lang.get("CoinName"),lang.get("money.add.number")+lang.get("CoinName"))
     pl.sendForm(fm,(pl,data)=>{
@@ -1315,7 +1287,7 @@ function WarpAddGui(plname){
     fm.setTitle(lang.get("warp.add.point"))
     fm.addLabel(lang.get("warp.add.point.xyz"))
     fm.addLabel("坐标："+pl.pos.x.toFixed(1)+","+pl.pos.y.toFixed(1)+","+pl.pos.z.toFixed(1)+" "+transdimid[pl.pos.dimid])
-    fm.addInput(""+lang.get("warp.input.name"),""+lang.get("warp.name"))
+    fm.addInput(lang.get("warp.input.name"),lang.get("warp.name"))
     pl.sendForm(fm,(pl,data)=>{
         if(data == null) return pl.runcmd("warp")
         if(data[2] == "" || !data[2]) return pl.tell(info + lang.get("warp.noinput.name"));
@@ -1798,10 +1770,10 @@ function showTpaMenu(player) {
     }
     
     let form = mc.newCustomForm();
-    form.setTitle(""+lang.get("tpa.name.ls"));
+    form.setTitle(lang.get("tpa.name.ls"));
     let nameList = onlinePlayers.map(p => p.name);
-    form.addDropdown(""+lang.get("tpa.choose.player"), nameList);
-    form.addDropdown(""+lang.get("tpa.choose.fs"), [lang.get("tpa.to.he.she"), lang.get("tpa.to.here")]);
+    form.addDropdown(lang.get("tpa.choose.player"), nameList);
+    form.addDropdown(lang.get("tpa.choose.fs"), [lang.get("tpa.to.he.she"), lang.get("tpa.to.here")]);
     const tpaConfig = conf.get("tpa") || {}; // 获取tpa配置节
     let isDelayEnabled = tpaConfig.isDelayEnabled !== false;
     let maxD = Number(tpaConfig.maxDelay) || 20;
@@ -1852,16 +1824,16 @@ function showTpaManageForm(player) {
     const tpaConfig = conf.get("tpa") || {}; // <-- 添加这行
 
     let form = mc.newCustomForm();
-    form.setTitle(""+lang.get("tpa.op.menu"));
-    form.addInput(""+lang.get("tpa.send.time"),""+lang.get("number"), "" + tpaConfig.requestTimeout);
-    form.addDropdown(""+lang.get("tpa.send.way"), [""+lang.get("tpa.send.form"), ""+lang.get("tpa.send.bossbar")], (tpaConfig.promptType === "bossbar" ? 1 : 0));
+    form.setTitle(lang.get("tpa.op.menu"));
+    form.addInput(lang.get("tpa.send.time"),lang.get("number"), "" + tpaConfig.requestTimeout);
+    form.addDropdown(lang.get("tpa.send.way"), [lang.get("tpa.send.form"), lang.get("tpa.send.bossbar")], (tpaConfig.promptType === "bossbar" ? 1 : 0));
     let isDelayOn = (tpaConfig.isDelayEnabled !== false);
-    form.addSwitch(""+lang.get("tpa.Enabled.lag"), isDelayOn);
-    form.addInput(""+lang.get("tpa.max.lagnumber"), ""+lang.get("number"), "" + (tpaConfig.maxDelay || 20));
+    form.addSwitch(lang.get("tpa.Enabled.lag"), isDelayOn);
+    form.addInput(lang.get("tpa.max.lagnumber"), lang.get("number"), "" + (tpaConfig.maxDelay || 20));
     
     player.sendForm(form, (pl, data) => {
         if (!data) {
-            pl.tell(""+lang.get("tpa.exit"));
+            pl.tell(lang.get("tpa.exit"));
             return;
         }
         
@@ -1941,17 +1913,17 @@ function sendTpaRequest(fromPlayer, toPlayerName, direction, delaySec,pl) {
 function showTpaConfirmForm(req, timeoutSec) {
     let toPlayer = req.to;
     let fromName = req.fromName;
-    let dirText = (req.direction === "to" ? ""+lang.get("tpa.to.here"): ""+lang.get("tpa.to.here"));
+    let dirText = (req.direction === "to" ? lang.get("tpa.to.here"): lang.get("tpa.to.here"));
     let delayStr = (req.delay > 0 ? `(延迟${req.delay}秒)\n` : "");
     
     let form = mc.newSimpleForm();
-    form.setTitle(""+lang.get("tpa.request"));
+    form.setTitle(lang.get("tpa.request"));
     form.setContent(`${info}§b[${fromName}] 请求${dirText}\n` +
                    `${delayStr}` +
                    `${lang.get("tpa.a.and.d")}n` +
                    `§e剩余时间: ${timeoutSec}s`);
-    form.addButton(""+lang.get("tpa.a"));
-    form.addButton(""+lang.get("tpa.d"));
+    form.addButton(lang.get("tpa.a"));
+    form.addButton(lang.get("tpa.d"));
     
     toPlayer.sendForm(form, (pl, id) => {
         if (id == null) return; 
@@ -1965,7 +1937,7 @@ function showTpaConfirmForm(req, timeoutSec) {
 function showTpaBossbarPrompt(req, timeoutSec) {
     let toPlayer = req.to;
     let fromName = req.fromName;
-    let dirText = (req.direction === "to" ? ""+lang.get("tpa.to.here"): ""+lang.get("tpa.to.he.she"));
+    let dirText = (req.direction === "to" ? lang.get("tpa.to.here"): lang.get("tpa.to.he.she"));
     let delayStr = (req.delay > 0 ? `(延迟${req.delay}秒)` : "");
     let barId = req.bossbarId;
     
@@ -1988,13 +1960,13 @@ function startTpaRequestCountdown(req, timeoutSec, bossbarMode) {
         
         if (!mc.getPlayer(to.name) || !mc.getPlayer(from.name)) {
             clearInterval(timerId);
-            cancelTpaRequest(to.name,""+lang.get("tpa.player.offline") );
+            cancelTpaRequest(to.name,lang.get("tpa.player.offline") );
             return;
         }
         
         if (bossbarMode) {
             let percent = Math.floor((remain / timeoutSec) * 100);
-            let dirText = (req.direction === "to" ? ""+lang.get("tpa.to.here"): ""+lang.get("tpa.to.he.she"));
+            let dirText = (req.direction === "to" ? lang.get("tpa.to.here"): lang.get("tpa.to.he.she"));
             let delayStr = (req.delay > 0 ? `(延迟${req.delay}秒)` : "");
             to.setBossBar(barId,
                 `§a${from.name}请求${dirText}§f${delayStr}§s(/tpy同意 /tpn拒绝),剩余${remain}s`,
@@ -2080,7 +2052,7 @@ function acceptTpaRequest(targetName) {
                 clearInterval(secondTid);
                 from.removeBossBar(secondBarId);
                 to.removeBossBar(secondBarId);
-                from.tell(""+info +lang.get("tpa.request.cut"));
+                from.tell(info +lang.get("tpa.request.cut"));
                 return;
             }
             
@@ -2096,7 +2068,7 @@ function acceptTpaRequest(targetName) {
                 if (dir === "to") {
                     let targetPlayer = mc.getPlayer(to.name);
                     if (!targetPlayer) {
-                        from.tell(""+info +lang.get("tpa.tp.fail.noonline"));
+                        from.tell(info +lang.get("tpa.tp.fail.noonline"));
                         return;
                     }
                     let footPos = new FloatPos(
@@ -2109,7 +2081,7 @@ function acceptTpaRequest(targetName) {
                 } else {
                     let targetPlayer = mc.getPlayer(from.name);
                     if (!targetPlayer) {
-                        to.tell(""+info +lang.get("tpa.tp.fail.noonline"));
+                        to.tell(info +lang.get("tpa.tp.fail.noonline"));
                         return;
                     }
                     let footPos = new FloatPos(
@@ -2121,20 +2093,20 @@ function acceptTpaRequest(targetName) {
                     to.teleport(footPos);
                 }
                 
-                from.tell(""+info +lang.get("tpa.tp.okey"));
-                to.tell(""+info +lang.get("tpa.tp.okey"));
+                from.tell(info +lang.get("tpa.tp.okey"));
+                to.tell(info +lang.get("tpa.tp.okey"));
             }
         }, 1000);
     } else {
         if (!mc.getPlayer(from.name) || !mc.getPlayer(to.name)) {
-            from.tell(""+info +lang.get("tpa.tp.fail.noonline"));
+            from.tell(info +lang.get("tpa.tp.fail.noonline"));
             return;
         }
         
         if (dir === "to") {
             let targetPlayer = mc.getPlayer(to.name);
             if (!targetPlayer) {
-                from.tell(""+info +lang.get("tpa.player.offline"));
+                from.tell(info +lang.get("tpa.player.offline"));
                 return;
             }
             let footPos = new FloatPos(
@@ -2147,7 +2119,7 @@ function acceptTpaRequest(targetName) {
         } else {
             let targetPlayer = mc.getPlayer(from.name);
             if (!targetPlayer) {
-                to.tell(""+info +lang.get("tpa.tp.fail.noonline"));
+                to.tell(info +lang.get("tpa.tp.fail.noonline"));
                 return;
             }
             let footPos = new FloatPos(
@@ -2159,8 +2131,8 @@ function acceptTpaRequest(targetName) {
             to.teleport(footPos);
         }
         
-        from.tell(""+lang.get("tpa.tp.okey"));
-        to.tell(""+lang.get("tpa.tp.okey"));
+        from.tell(lang.get("tpa.tp.okey"));
+        to.tell(lang.get("tpa.tp.okey"));
     }
     
     delete pendingTpaRequests[targetName];
@@ -2170,13 +2142,13 @@ function denyTpaRequest(targetName) {
     let req = pendingTpaRequests[targetName];
     if (!req) {
         let p = mc.getPlayer(targetName);
-        if (p) p.tell(""+info +lang.get("tpa.no.request"));
+        if (p) p.tell(info +lang.get("tpa.no.request"));
         return;
     }
     
     clearTpaRequest(req);
-    req.from.tell(""+info +lang.get("tpa.d.request"));
-    req.to.tell(""+info +lang.get("tpa.d.request.you"));
+    req.from.tell(info +lang.get("tpa.d.request"));
+    req.to.tell(info +lang.get("tpa.d.request.you"));
     delete pendingTpaRequests[targetName];
 }
 
@@ -2208,11 +2180,11 @@ mc.listen("onLeft", (pl) => {
         
         if (request.toName === pname) {
             clearTpaRequest(request);
-            request.from.tell(""+info +lang.get("tpa.player.offline"));
+            request.from.tell(info +lang.get("tpa.player.offline"));
             delete pendingTpaRequests[key];
         } else if (request.fromName === pname) {
             let rec = request.to;
-            if (rec) rec.tell(""+info +lang.get("tpa.player.offline"));
+            if (rec) rec.tell(info +lang.get("tpa.player.offline"));
             clearTpaRequest(request);
             delete pendingTpaRequests[key];
         }
@@ -2221,20 +2193,44 @@ mc.listen("onLeft", (pl) => {
 // ======================
 // RTP
 // ======================
+//冷却Map
+let cooltime = new Map()
+setInterval(() => {
+    cooltime.forEach((v,k)=>{
+        if(v > 0){
+            cooltime.set(k,v-1)
+        }else{
+            cooltime.delete(k)
+        }
+    })
+}, 1000);
+const rtpResetCmd = mc.newCommand("rtpreset", "重置传送冷却", PermType.GameMasters);
+rtpResetCmd.overload([]);
+rtpResetCmd.mandatory("player", ParamType.Player);
+rtpResetCmd.setCallback((cmd, ori, out, res) => {
+    const pl = ori.player;
+    const config = conf.get("RTP");
+    const cooldown = config.cooldown;
+    cooltime.set(pl.realName,0)
+    out.success(`已重置 ${pl.realName} 的传送冷却`);
+});
+rtpResetCmd.setup();
 const rtpCmd = mc.newCommand("rtp", "随机传送", PermType.Any);
 rtpCmd.overload([]);
-rtpCmd.setCallback((_, ori) => {
+rtpCmd.setCallback((cmd,ori,out,res) => {
     const pl = ori.player;
     const config = conf.get("RTP");
     const cost = config.cost;
     const cooldown = config.cooldown;
-    const dimension = 0;
+    const maxAttempts = config.maxAttempts || 10;
+    if(!pl) return out.error("仅限玩家执行")
     if (!conf.get("RTPEnabled")) {
         pl.tell(info + lang.get("module.no.Enabled"));
         return;
     }
-    // 检查维度
-    if (pl.pos.dimid !== dimension) {
+    // 检查维度是否允许
+    const allowedDims = config.allowDimensions || [0];
+    if (!allowedDims.includes(pl.pos.dimid)) {
         pl.tell(info + lang.get("rtp.onlycanusein.overworld"));
         return;
     }
@@ -2245,113 +2241,148 @@ rtpCmd.setCallback((_, ori) => {
         pl.sendText(`§c需要 ${cost}${lang.get("CoinName")} 才能传送！`);
         return;
     }
-
-    // 检查冷却
-    const lastUse = homedata.get(pl.realName)?.rtpCooldown || 0;
-    const remaining = Math.ceil((lastUse + cooldown*1000 - Date.now())/1000);
-    if (remaining > 0) {
-        pl.sendText(`§c传送冷却中，剩余时间：${remaining}秒`);
+    if(cooltime.has(pl.realName) && cooltime.get(pl.realName) > 0){
+        pl.sendText(`§c传送冷却中，剩余时间：${cooltime.get(pl.realName)}秒`);
         return;
     }
+    cooltime.set(pl.realName,cooldown)
 
-    // 生成坐标（主世界 ±30000）
-    const x = Math.floor(Math.random() * 60000 - 30000);
-    const z = Math.floor(Math.random() * 60000 - 30000);
-    const y = 320;
+    let plpos = pl.pos
 
-    // 执行传送
-    pl.teleport(x, y, z, dimension);
-    pl.reduceScore(conf.get("Scoreboard"), cost);
+    const { x,z } = generateRandomCoordinate()
+    if(!x || !z) return out.error("XZ 生成失败")
 
-    // 更新冷却时间
-    rtpdata.set(pl.realName, {
-        ...rtpdata.get(pl.realName),
-        rtpCooldown: Date.now()
-    });
+    // 提示玩家
+    const camera = setInterval(() => {
+    mc.runcmd("camera \"" + pl.realName +"\" fade time 0.25 2 2  color 0 0 0") //视觉效果 
+    //mc.runcmd("camera \"" + pl.realnNme +"\" set minecraft:free pos ~ ~20 ~ facing " + pl.realnNme)   
+    },1000)
+    pl.sendText("§a正在寻找安全的传送位置，请稍候...");
+    pl.sendText(`§7随机坐标：§fX: ${x}, Z: ${z}`);
+    mc.runcmd("effect \"" + pl.realName +"\" resistance 10 255 true")
+    pl.teleport(x,500,z,pl.pos.dimid)
+    let tpsuccess = false
 
-    // 提示信息
-    pl.sendText([
-        `§a传送成功！花费 §e${cost}${lang.get("CoinName")}`,
-        `§7坐标：§f${x}, ${z}`,
-        `§7下次可传送时间：§f${new Date(Date.now() + cooldown*1000).toLocaleTimeString()}`
-    ].join("\n"));
+    let task = setInterval(() => {
+        pl.sendText("§7正在加载区块...",5)
+        if(pl.pos.y < 499){
+            clearInterval(task);
+            tpsuccess = true
+             
+            const safeLocation = findSafeLocation(x,z,pl.pos.dimid, maxAttempts);
+            logger.log(safeLocation)
+                    // 生成安全坐标
+            if (!safeLocation) {
+                pl.sendText("§c无法找到安全的传送位置，请稍后再试");
+                pl.teleport(plpos)
+                clearInterval(camera);
+                return;
+            }
 
-    // 保护特效（使用 runcmdEx）
-    const cmd = `effect "${pl.realName}" resistance 30 255`;
-    const cmdResult = mc.runcmdEx(cmd); // 使用控制台执行命令
-    if (!cmdResult.success) {
-        logger.error("效果命令执行失败:", cmdResult.output);
-    }
-});
-rtpCmd.setup();
-
-// ======================
-// 扩展功能：信息查询命令
-// ======================
-const rtpInfoCmd = mc.newCommand("rtpinfo", "传送信息", PermType.Any);
-rtpInfoCmd.overload([]);
-rtpInfoCmd.setCallback((_, ori) => {
-    const pl = ori.player;
-    if (!pl) return;
-
-    const config = conf.get("RTP");
-    const lastUsed = homedata.get(pl.realName)?.rtpCooldown || 0;
-    const remain = config.cooldown - (Date.now() - lastUsed) / 1000;
-
-    const form = mc.newSimpleForm()
-        .setTitle("§l§a传送系统信息")
-        .addButton("查看基本信息", "", "textures/ui/icon_recipe_item")
-        .addButton("查看统计信息", "", "textures/ui/icon_recipe_equipment");
-
-    pl.sendForm(form, (_, id) => {
-        if (id === 0) {
-            showBasicInfo(pl, remain);
-        } else if (id === 1) {
-            showStatsInfo(pl);
+            pl.teleport(safeLocation.x,safeLocation.y,safeLocation.z,safeLocation.dimid)
+            pl.sendText("§a传送成功！")
+            mc.runcmd("camera \"" + pl.realnNme +"\" clear")
+            clearInterval(camera)
+            pl.setScore(conf.get("Scoreboard"), balance - cost)
         }
-    });
-});
+    }, 1000);
 
-function showBasicInfo(player, remain) {
+    setTimeout(() => { 
+        if(tpsuccess == true) return
+        clearInterval(task);
+        clearInterval(camera);
+        pl.sendText("§c目标区块加载超时")
+        pl.teleport(plpos)
+    }, 10000);
+
+   
+});
+rtpCmd.setup()
+
+function generateRandomCoordinate() {
     const config = conf.get("RTP");
-    const form = mc.newSimpleForm()
-        .setTitle("§l§a基础信息")
-        .setContent(
-            `▸ 冷却时间: §e${config.cooldown}秒\n` +
-            `▸ 剩余冷却: §e${Math.max(0, remain).toFixed(1)}秒\n` +
-            `▸ 传送费用: §e${config.cost}${lang.get("CoinName")}\n` +
-            `▸ 当前范围: §e${config.minRadius}-${config.maxRadius}米`
-        );
-    player.sendForm(form);
+    const minRadius = config.minRadius || 100;
+    const maxRadius = config.maxRadius || 5000;
+
+    const angle = Math.random() * Math.PI * 2;
+    const radius = minRadius + Math.random() * (maxRadius - minRadius);
+    const x = Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius;
+    return { x, z };
 }
 
-//统计信息功能
-function showStatsInfo(player) {
-    const logPath = "./plugins/YEssential/logs/rtp.log";
-    let count = 0;
-    
-    if (file.exists(logPath)) {
-        const logs = file.readFrom(logPath).split("\n");
-        count = logs.filter(line => line.includes(player.realName)).length;
+function findSafeLocation(x,z,dimension, maxAttempts) {
+    const config = conf.get("RTP");
+    const minRadius = config.minRadius || 100;
+    const maxRadius = config.maxRadius || 5000;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+
+       
+        // 获取地表高度
+        const y = getSurfaceHeight(x, z, dimension);
+        //logger.log(2)
+        //if(y == null) logger.log(3)
+        if (y === null) continue;
+
+        // 检查位置安全性
+        if (isLocationSafe(x, y, z, dimension)) {
+            return { x, y: y + 1, z, dimid: dimension }; // 返回脚部位置上方1格
+        } 
     }
 
-    const form = mc.newSimpleForm()
-        .setTitle("§l§a统计信息")
-        .setContent(
-            `▸ 总传送次数: §e${count}\n` +
-            `▸ 累计消耗: §e${count * conf.get("RTP").cost}${lang.get("CoinName")}`
-        );
-    player.sendForm(form);
+    return null;
 }
-const rtpResetCmd = mc.newCommand("rtpreset", "重置传送冷却", PermType.GameMasters);
-rtpResetCmd.mandatory("player", ParamType.Player);
-rtpResetCmd.setCallback((_, ori, out, res) => {
-    const data = rtpdata.get(res.player.realName);
-    if (data) delete data.rtpCooldown;
-    rtpdata.set(res.player.realName, data);
-    out.success(`已重置 ${res.player.realName} 的传送冷却`);
-});
-rtpResetCmd.setup();
+
+// 获取地表高度
+function getSurfaceHeight(x, z, dimension) {
+    const worldHeight = dimension === 0 ? 320 : dimension === 1 ? 128 : 128;
+    const startY = dimension === 1 ? 0 : worldHeight; // 下界从底部开始搜索
+    
+    // 搜索方向：主世界从上到下，下界从下到上
+    const step = dimension === 1 ? 1 : -1;
+    
+    for (let y = startY; y >= 0 && y <= worldHeight; y += step) {
+        const block = mc.getBlock(x, y, z, dimension);
+        if (!block) continue;
+        
+        // 找到第一个非空气固体方块
+        if (!block.isAir) {
+            //logger.log("Debug getSurfaceH:" + y)
+            return y;
+        }
+    }
+    //logger.log(1)
+    return null;
+}
+
+// 检查位置是否安全
+function isLocationSafe(x, y, z, dimension) {
+
+    // 检查玩家位置（脚部+1）
+    const bodyBlock = mc.getBlock(x, y + 1, z,dimension);
+    if (!bodyBlock || !bodyBlock.isAir) {
+        return false;
+    }
+    
+    // 检查头部位置（脚部+2）
+    const headBlock = mc.getBlock(x, y + 2, z,dimension);
+    if (!headBlock || !headBlock.isAir) {
+        return false;
+    }
+    
+    // 检查周围是否有危险方块
+    const offsets = [[0, 0, 1], [0, 0, -1], [1, 0, 0], [-1, 0, 0]];
+    for (const [dx, dy, dz] of offsets) {
+        const block = mc.getBlock(x + dx, y + dy, z + dz,dimension);
+        if (block && (block.type.includes("lava") || block.type.includes("fire"))) {
+            //logger.log("Debug 1")
+            return false;
+        }
+    }
+    
+    return true;
+}
 
 function ValueCheck(plname,value){
     let score = mc.getPlayer(plname).getScore(conf.get("Scoreboard"))
