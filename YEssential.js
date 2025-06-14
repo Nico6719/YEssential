@@ -1,14 +1,33 @@
+/*--------------------------------
+
+    ██╗   ██╗███████╗███████╗███████╗███████╗███╗   ██╗████████╗██╗ █████╗ ██╗  
+    ╚██╗ ██╔╝██╔════╝██╔════╝██╔════╝██╔════╝████╗  ██║╚══██╔══╝██║██╔══██╗██║  
+    ╚ ████╔╝ █████╗  ███████╗███████╗█████╗  ██╔██╗ ██║   ██║   ██║███████║██║     
+     ╚ ██╔╝  ██╔══╝  ╚════██║╚════██║██╔══╝  ██║╚██╗██║   ██║   ██║██╔══██║██║     
+       ██║   ███████╗███████║███████║███████╗██║ ╚████║   ██║   ██║██║  ██║███████╗
+       ╚═╝   ╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚═╝  ╚═╝╚══════╝
+    
+                          Produced by Nico6719 and PHEyeji
+                 This plugin is distributed under the GPLv3 License
+
+该插件由ico6719,PHEyeji联合创作
+未经允许禁止擅自修改或者发售
+该插件仅在[github,MineBBS,KLPBBS]发布
+禁止二次发布插件
+----------------------------------*/
 // LiteLoader-AIDS automatic generated
 //<reference path="c:\Users\11025\Documents/dts/HelperLib-master/src/index.d.ts"/> 
-const rtpSimulatedPlayers = new Map();
-const path = "./plugins/YEssential/data/";
+//const rtpSimulatedPlayers = new Map();
+const YEST_LangDir = "./plugins/YEssential/lang/";
+const pluginpath = "./plugins/YEssential/";
+const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version =[2,2,8];
+const version =[2,2,9];
 const info = "§l§b[YEST] §r";
-const lang = new JsonConfigFile(path + "lang.json", JSON.stringify({
+const lang = new JsonConfigFile(YEST_LangDir + "zh_cn.json", JSON.stringify({
     "Version.Chinese":"版本:",
-    "version": "2.2.8",
+    "version": "2.2.9",
     "notice.editor":"§l§e公告编辑器",
     "notice.no.change": "§e公告内容未更改！",
     "notice.exit.edit":"已取消编辑",
@@ -142,6 +161,17 @@ const lang = new JsonConfigFile(path + "lang.json", JSON.stringify({
     "pls.input.notice":"请输入公告内容，（换行用 \\n）",
     "gamerule.KeepInventory.true":"死亡不掉落已启用",
     "cannot.create.newfile":"无法创建数据存储对象",
+    "rtp.search.chunks":"§a正在寻找安全的传送位置，请稍候...",
+    "rtp.loading.chunks3":"§7正在加载区块...",
+    "rtp.loading.chunks2":"§7正在加载区块..",
+    "rtp.loading.chunks1":"§7正在加载区块.",
+    "rtp.cannotfind.safexyz":"§c无法找到安全的传送位置，请稍后再试",
+    "rtp.tp.success":"§a传送成功！",
+    "rtp.loadchunks.timeout":"§c目标区块加载超时",
+    "pvp.is.on":"§6PVP 已开启。",
+    "pvp.is.off":"§6PVP 已关闭。",
+    "your.pvp.isoff":"§1你关闭了 PVP。",
+    "then.pvp.isoff":"§1对方关闭了 PVP。",
     "choose":"选择",
     "success":"成功",
     "one":"一个",
@@ -156,51 +186,32 @@ ll.registerPlugin(NAME, PluginInfo,version, {
     Author: "Nico6719",
     License: "GPL-3.0"
 });
-let conf = new JsonConfigFile(
-    "./plugins/YEssential/config.json",
-    JSON.stringify({})
-  );
+let conf = new JsonConfigFile(pluginpath +"/Config/Config.json",JSON.stringify({}));
   
-let homedata = new JsonConfigFile(
-    "./plugins/YEssential/data/homedata.json",
-    JSON.stringify({}) 
-);
+let homedata = new JsonConfigFile(datapath +"homedata.json",JSON.stringify({}));
   
-let rtpdata = new JsonConfigFile(
-    "./plugins/YEssential/data/rtpdata.json",
-    JSON.stringify({})
-)
+let rtpdata = new JsonConfigFile(datapath +"/RTPData/Rtpdata.json",JSON.stringify({}));
 
-let warpdata = new JsonConfigFile(
-    "./plugins/YEssential/data/warpdata.json",
-    JSON.stringify({})
-  );
+let warpdata = new JsonConfigFile(datapath +"warpdata.json",JSON.stringify({}));
   
-let MoneyHistory = new JsonConfigFile(
-    "./plugins/YEssential/data/MoneyHistory.json",
-    JSON.stringify({})
-  );
+let MoneyHistory = new JsonConfigFile(datapath +"/MonneyHistory/MoneyHistory.json",JSON.stringify({}));
   
-let noticeconf = new JsonConfigFile(
-    "./plugins/YEssential/data/notice.json",
-    JSON.stringify({})
-  );
+let noticeconf = new JsonConfigFile(datapath + "/NoticeSettingsData/notice.json",JSON.stringify({}));
 
-let dataPath = "./plugins/YEssential/data/moneyranking/";
+let pvpConfig = new JsonConfigFile(datapath +"/PVPSettingsData/pvp_data.json",JSON.stringify({}));
 
-let moneyranking = new JsonConfigFile(dataPath)
+let MdataPath = "./plugins/YEssential/data/Moneyranking/";
+
+let moneyranking = new JsonConfigFile(MdataPath)
 
 var c_y = JSON.stringify({
     servers: [
       { server_name: "生存服", server_ip: "127.0.0.1", server_port: 19132 }
     ]
   });
-let servertp = new JsonConfigFile("./plugins/YEssential/server.json", c_y);
+let servertp = new JsonConfigFile(datapath +"/TrSeverData/server.json", c_y);
 
-let tpacfg = new JsonConfigFile(
-    "./plugins/YEssential/data/tpaAutoRejectConfig.json",
-    JSON.stringify({})
-);
+let tpacfg = new JsonConfigFile(datapath +"/TpaSettingsData/tpaAutoRejectConfig.json",JSON.stringify({}));
 // 定时更新玩家金币排行榜
 setInterval(() => {
     mc.getOnlinePlayers().forEach((pl) => {
@@ -419,8 +430,8 @@ noticeSetCmd.setCallback((_cmd, ori, output) => {
 
     // 读取现有公告内容（安全处理空文件）
     let currentNotice = "";
-    if (file.exists("./plugins/YEssential/notice.txt")) {
-        currentNotice = file.readFrom("./plugins/YEssential/notice.txt") || "";
+    if (file.exists("./plugins/YEssential/data/NoticeSettingsData/notice.txt")) {
+        currentNotice = file.readFrom("./plugins/YEssential/data/NoticeSettingsData/notice.txt") || "";
     }
 
     // 构建表单（显示现有内容）
@@ -450,7 +461,7 @@ noticeSetCmd.setCallback((_cmd, ori, output) => {
         }
 
         // 保存更新
-        file.writeTo("./plugins/YEssential/notice.txt", newContent);
+        file.writeTo("./plugins/YEssential/data/NoticeSettingsData/notice.txt", newContent);
         noticeconf.set("lastNoticeUpdate", Date.now());
         player.tell(info + lang.get("save.notice.ok"));
     });
@@ -463,12 +474,12 @@ cmd.overload([])
 cmd.setCallback((cmd, ori, out, res) => {
     let pl = ori.player;
     if (!pl) return;
-    if(!file.exists("./plugins/YEssential/notice.txt")){
-        new JsonConfigFile("./plugins/YEssential/notice.txt")
-        file.writeTo("./plugins/YEssential/notice.txt"," 这是一个公告")
+    if(!file.exists("./plugins/YEssential/data/NoticeSettingsData/notice.txt")){
+        new JsonConfigFile("./plugins/YEssential/data/NoticeSettingsData/notice.txt")
+        file.writeTo("./plugins/YEssential/data/NoticeSettingsData/notice.txt"," 这是一个公告")
     }
     // 读取公告内容（支持换行）
-    let content = file.readFrom("./plugins/YEssential/notice.txt") || "暂无公告";
+    let content = file.readFrom("./plugins/YEssential/data/NoticeSettingsData/notice.txt") || "暂无公告";
     content = content.split("\n"); // 按换行分割
 
     let fm = mc.newCustomForm()
@@ -593,7 +604,7 @@ mc.listen("onServerStarted", () => {
     //logger.warn("这是一个测试版本，请勿用于生产环境！！！")
     logger.info("感谢PHEyeji提供技术支持")
     logger.info("感谢ender罗小黑提供在线网页支持")
-    logger.warn("lang.json文件需要删除重新生成！！！")
+    logger.warn("lang.json文件需要删除重新生成！！！,配置文件需要手动迁移至各个文件夹内！")
     logger.warn("如有疑问或bug请联系作者反馈！！！！")
     //调用示例： pl.tell(info + lang.get("1.1"));
     if(conf.get("KeepInventory")){
@@ -631,21 +642,9 @@ mc.listen("onJoin",(pl)=>{
     let score = pl.getScore(conf.get("Scoreboard"))
     if(!score) pl.setScore(conf.get("Scoreboard"),0)
 })
-mc.listen("onConsoleCmd", (cmd) => {
-    if (cmd === "ll reload YEssential") { // 确保与控制台输入一致
-        config.reload();
-        floatingCache.forEach((value, xuid) => {
-            value.floatingText.removeFromClients();
-            value.floatingText.destroy();
-        });
-        floatingCache.clear();
-        log("§a配置已重载!");
-    }
-});
-mc.listen("onConsoleCmd",(cmd)=>{
 
+mc.listen("onConsoleCmd",(cmd)=>{
     if(cmd.toLowerCase() != "stop" || lang.get("stop.msg") == 0 ) return
-    
     let msg = lang.get("stop.msg")
     mc.getOnlinePlayers().forEach((pl)=>{
         pl.disconnect(msg)
@@ -728,7 +727,71 @@ mc.listen("onServerStarted",()=>{
 
     Motd()
 })
+//PVP模块start
+mc.listen("onServerStarted", function() {
+    // 注册命令
+    const pvp = mc.newCommand("pvp", "设置是否 PVP。", PermType.Any);
+    pvp.optional("bool", ParamType.Bool);
+    pvp.overload(["bool"]);
+    pvp.setCallback(function(_cmd, ori, out, res) {
+        const player = ori.player;
+        const xuid = player.realName;
+        
+        // 获取当前状态（默认为false）
+        const currentState = pvpConfig.get(xuid, false);
+        
+        if (res.bool === undefined) {
+            // 切换状态
+            const newState = !currentState;
+            pvpConfig.set(xuid,newState);
+           // pvpConfig.save();
+            out.success(info + (newState ? lang.get("pvp.is.on") : lang.get("pvp.is.off")));
+        } else if (res.bool) {
+            pvpConfig.set(xuid,111);
+           // pvpConfig.save();
+            out.success(info + lang.get("pvp.is.on"));
+        } else {
+            pvpConfig.set(xuid,false);
+          //  pvpConfig.save();
+            out.success(info + lang.get("pvp.is.off"));
+        }
+    });
+    pvp.setup();
 
+    // 监听玩家加入事件 - 修复了此处的问题
+    mc.listen("onJoin", function(player) {
+       const xuid = player.realName;
+        // 检查玩家是否已有记录
+        if (pvpConfig.get(xuid) === undefined) {
+            // 初始化新玩家
+            pvpConfig.set(xuid, false);
+        //    pvpConfig.save();
+        }
+    });
+});
+
+mc.listen("onMobHurt", function(mob, source) {
+    if (!source || !source.isPlayer() || !mob.isPlayer()) return;
+    
+    const attacker = source.toPlayer();
+    const victim = mob.toPlayer();
+    
+    // 获取PVP状态（默认为false）
+    const attackerPVP = pvpConfig.get(attacker.xuid, false);
+    const victimPVP = pvpConfig.get(victim.xuid, false);
+    
+    if (!attackerPVP) {
+        attacker.tell(lang.get("your.pvp.isoff"), 4);
+    } else if (!victimPVP) {
+        attacker.tell(lang.get("then.pvp.isoff"), 4);
+    } else {
+        return; // 双方开启PVP，允许伤害
+    }
+    
+    mob.stopFire();
+    return false;
+});
+//PVP模块end
 function Motd(){
     let motds = conf.get("Motd")
     if(motds == []) return
@@ -1503,8 +1566,8 @@ const shopDefaultConfig = JSON.stringify(
     2      // 缩进 2 空格
   );
   
-  let shopdata = new JsonConfigFile(
-    "./plugins/YEssential/shop.json",
+  let shopdata = new JsonConfigFile(datapath +
+    "/ShopData/shop.json",
     shopDefaultConfig // 正确：传递 JSON 字符串
   );
   if (!shopdata.get("sell")) {
@@ -2191,7 +2254,7 @@ mc.listen("onLeft", (pl) => {
     }
 });
 // ======================
-// RTP
+// RTP2252 2.2.9
 // ======================
 //冷却Map
 let cooltime = new Map()
@@ -2238,11 +2301,11 @@ rtpCmd.setCallback((cmd,ori,out,res) => {
     // 检查金币
     const balance = pl.getScore(conf.get("Scoreboard"));
     if (balance < cost) {
-        pl.sendText(`§c需要 ${cost}${lang.get("CoinName")} 才能传送！`);
+        pl.sendText(info+`§c需要 ${cost}${lang.get("CoinName")} 才能传送！`);
         return;
     }
     if(cooltime.has(pl.realName) && cooltime.get(pl.realName) > 0){
-        pl.sendText(`§c传送冷却中，剩余时间：${cooltime.get(pl.realName)}秒`);
+        pl.sendText(info+`§c传送冷却中，剩余时间：${cooltime.get(pl.realName)}秒`);
         return;
     }
     cooltime.set(pl.realName,cooldown)
@@ -2257,14 +2320,16 @@ rtpCmd.setCallback((cmd,ori,out,res) => {
     mc.runcmd("camera \"" + pl.realName +"\" fade time 0.25 2 2  color 0 0 0") //视觉效果 
     //mc.runcmd("camera \"" + pl.realnNme +"\" set minecraft:free pos ~ ~20 ~ facing " + pl.realnNme)   
     },1000)
-    pl.sendText("§a正在寻找安全的传送位置，请稍候...");
+    pl.sendText(info+lang.get("rtp.search.chunks"));
     pl.sendText(`§7随机坐标：§fX: ${x}, Z: ${z}`);
     mc.runcmd("effect \"" + pl.realName +"\" resistance 10 255 true")
     pl.teleport(x,500,z,pl.pos.dimid)
     let tpsuccess = false
 
     let task = setInterval(() => {
-        pl.sendText("§7正在加载区块...",5)
+        pl.sendText(info+lang.get("rtp.loading.chunks3"),5)
+        pl.sendText(info+lang.get("rtp.loading.chunks2"),5)
+        pl.sendText(info+lang.get("rtp.loading.chunks1"),5)
         if(pl.pos.y < 499){
             clearInterval(task);
             tpsuccess = true
@@ -2273,14 +2338,14 @@ rtpCmd.setCallback((cmd,ori,out,res) => {
             logger.log(safeLocation)
                     // 生成安全坐标
             if (!safeLocation) {
-                pl.sendText("§c无法找到安全的传送位置，请稍后再试");
+                pl.sendText(info+lang.get("rtp.cannotfind.safexyz"));
                 pl.teleport(plpos)
                 clearInterval(camera);
                 return;
             }
 
             pl.teleport(safeLocation.x,safeLocation.y,safeLocation.z,safeLocation.dimid)
-            pl.sendText("§a传送成功！")
+            pl.sendText(info+lang.get("rtp.tp.success"))
             mc.runcmd("camera \"" + pl.realnNme +"\" clear")
             clearInterval(camera)
             pl.setScore(conf.get("Scoreboard"), balance - cost)
@@ -2291,14 +2356,13 @@ rtpCmd.setCallback((cmd,ori,out,res) => {
         if(tpsuccess == true) return
         clearInterval(task);
         clearInterval(camera);
-        pl.sendText("§c目标区块加载超时")
+        pl.sendText(info+lang.get("rtp.loadchunks.timeout"))
         pl.teleport(plpos)
     }, 10000);
 
    
 });
 rtpCmd.setup()
-
 function generateRandomCoordinate() {
     const config = conf.get("RTP");
     const minRadius = config.minRadius || 100;

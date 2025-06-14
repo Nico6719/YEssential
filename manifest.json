@@ -2,9 +2,9 @@
     "entry": "YEssential.js",
     "name": "YEssential",
     "type": "lse-quickjs",
-    "version": "2.2.8",
+    "version": "2.2.9",
     "author": "Nico6719",
-    "description": "YEssential多功能基础插件--",
+    "description": "YEssential多功能基础插件 ",
     "extraInfo": {
         "License": "GPL-3.0"
     },
