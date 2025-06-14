@@ -199,7 +199,7 @@ let noticeconf = new JsonConfigFile(datapath + "/NoticeSettingsData/notice.json"
 
 let pvpConfig = new JsonConfigFile(datapath +"/PVPSettingsData/pvp_data.json",JSON.stringify({}));
 
-let noticetxt = new JsonConfigFile(datapath +"/NoticeSettingsData/notice.txt");
+let noticetxt = new IniConfigFile(datapath +"/NoticeSettingsData/notice.txt");
 
 let MdataPath = "./plugins/YEssential/data/Moneyranking/";
 
