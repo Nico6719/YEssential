@@ -286,6 +286,7 @@ function ranking(plname) {
         ][Math.min(3, rank - 1)] || "§7";
     }
 }
+conf.init("PVPModeEnabled",1)
 conf.init("CheckPluginUpdate", false);
 conf.init("DebugModeEnabled", false);
 conf.init("HubEnabled",0)
@@ -353,6 +354,7 @@ conf.init("OptimizeXporb",0)
 conf.init("join_notice",0)
 conf.init("lastServerShutdown", 0);        // 记录服务器关闭时间
 conf.init("UniteBanCheck",0)
+
 const { PAPI } = require('./GMLIB-LegacyRemoteCallApi/lib/BEPlaceholderAPI-JS');
 // 跨服传送命令模块
 let Sercmd = mc.newCommand("servers", "§l§a跨服传送", PermType.Any);
@@ -739,7 +741,10 @@ mc.listen("onServerStarted", function() {
         
         // 获取当前状态（默认为false）
         const currentState = pvpConfig.get(xuid, false);
-        
+        if (!conf.get("PVPModeEnabled")) {
+        pl.tell(info + lang.get("module.no.Enabled"));
+        return;
+        }
         if (res.bool === undefined) {
             // 切换状态
             const newState = !currentState;
@@ -2328,8 +2333,6 @@ rtpCmd.setCallback((cmd,ori,out,res) => {
 
     let task = setInterval(() => {
         pl.sendText(info+lang.get("rtp.loading.chunks3"),5)
-        pl.sendText(info+lang.get("rtp.loading.chunks2"),5)
-        pl.sendText(info+lang.get("rtp.loading.chunks1"),5)
         if(pl.pos.y < 499){
             clearInterval(task);
             tpsuccess = true
