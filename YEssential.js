@@ -170,8 +170,8 @@ const lang = new JsonConfigFile(YEST_LangDir + "zh_cn.json", JSON.stringify({
     "rtp.loadchunks.timeout":"§c目标区块加载超时",
     "pvp.is.on":"§6PVP 已开启。",
     "pvp.is.off":"§6PVP 已关闭。",
-    "your.pvp.isoff":"§1你关闭了 PVP。",
-    "then.pvp.isoff":"§1对方关闭了 PVP。",
+    "your.pvp.isoff":"§l§b你关闭了 PVP。",
+    "then.pvp.isoff":"§l§b对方关闭了 PVP。",
     "choose":"选择",
     "success":"成功",
     "one":"一个",
@@ -752,7 +752,7 @@ mc.listen("onServerStarted", function() {
            // pvpConfig.save();
             out.success(info + (newState ? lang.get("pvp.is.on") : lang.get("pvp.is.off")));
         } else if (res.bool) {
-            pvpConfig.set(xuid,111);
+            pvpConfig.set(xuid,true);
            // pvpConfig.save();
             out.success(info + lang.get("pvp.is.on"));
         } else {
@@ -782,9 +782,10 @@ mc.listen("onMobHurt", function(mob, source) {
     const victim = mob.toPlayer();
     
     // 获取PVP状态（默认为false）
-    const attackerPVP = pvpConfig.get(attacker.xuid, false);
-    const victimPVP = pvpConfig.get(victim.xuid, false);
-    
+    const attackerPVP = pvpConfig.get(attacker.name);
+    const victimPVP = pvpConfig.get(victim.name);
+    //logger.info(attacker.name,victim.name)
+    //logger.info(attackerPVP,victimPVP)
     if (!attackerPVP) {
         attacker.tell(lang.get("your.pvp.isoff"), 4);
     } else if (!victimPVP) {
