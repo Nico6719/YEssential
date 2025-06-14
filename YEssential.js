@@ -17,17 +17,16 @@
 ----------------------------------*/
 // LiteLoader-AIDS automatic generated
 //<reference path="c:\Users\11025\Documents/dts/HelperLib-master/src/index.d.ts"/> 
-//const rtpSimulatedPlayers = new Map();
-const YEST_LangDir = "./plugins/YEssential/lang/";
+const YEST_LangDir = "./plugins/YEssential/lang/<{1}>";
 const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version =[2,2,9];
+const version =[2,3,0];
 const info = "§l§b[YEST] §r";
 const lang = new JsonConfigFile(YEST_LangDir + "zh_cn.json", JSON.stringify({
     "Version.Chinese":"版本:",
-    "version": "2.2.9",
+    "version": "2.3.0",
     "notice.editor":"§l§e公告编辑器",
     "notice.no.change": "§e公告内容未更改！",
     "notice.exit.edit":"已取消编辑",
@@ -186,7 +185,7 @@ ll.registerPlugin(NAME, PluginInfo,version, {
     Author: "Nico6719",
     License: "GPL-3.0"
 });
-let conf = new JsonConfigFile(pluginpath +"/Config/Config.json",JSON.stringify({}));
+let conf = new JsonConfigFile(pluginpath +"/Config/config.json",JSON.stringify({}));
   
 let homedata = new JsonConfigFile(datapath +"homedata.json",JSON.stringify({}));
   
@@ -199,6 +198,8 @@ let MoneyHistory = new JsonConfigFile(datapath +"/MonneyHistory/MoneyHistory.jso
 let noticeconf = new JsonConfigFile(datapath + "/NoticeSettingsData/notice.json",JSON.stringify({}));
 
 let pvpConfig = new JsonConfigFile(datapath +"/PVPSettingsData/pvp_data.json",JSON.stringify({}));
+
+let noticetxt = new JsonConfigFile(datapath +"/NoticeSettingsData/notice.txt");
 
 let MdataPath = "./plugins/YEssential/data/Moneyranking/";
 
@@ -476,6 +477,7 @@ cmd.overload([])
 cmd.setCallback((cmd, ori, out, res) => {
     let pl = ori.player;
     if (!pl) return;
+    noticeconf.init(String(pl.realName),0)
     if(!file.exists("./plugins/YEssential/data/NoticeSettingsData/notice.txt")){
         new JsonConfigFile("./plugins/YEssential/data/NoticeSettingsData/notice.txt")
         file.writeTo("./plugins/YEssential/data/NoticeSettingsData/notice.txt"," 这是一个公告")
@@ -2325,7 +2327,7 @@ rtpCmd.setCallback((cmd,ori,out,res) => {
     const camera = setInterval(() => {
     mc.runcmd("camera \"" + pl.realName +"\" fade time 0.25 2 2  color 0 0 0") //视觉效果 
     //mc.runcmd("camera \"" + pl.realnNme +"\" set minecraft:free pos ~ ~20 ~ facing " + pl.realnNme)   
-    },1000)
+    },2000)
     pl.sendText(info+lang.get("rtp.search.chunks"));
     pl.sendText(`§7随机坐标：§fX: ${x}, Z: ${z}`);
     mc.runcmd("effect \"" + pl.realName +"\" resistance 10 255 true")
