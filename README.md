@@ -1,4 +1,4 @@
-# YEssential
+ # YEssential
  一个基于LegacyScriptEngine制作的lse基础插件，并且支持导入TMEssential的home数据和warp数据！并且兼容LL2和LL3！
 
 ## Eula
@@ -103,51 +103,82 @@ MoreLangSupport (插件支持多语言，配置文件：lang.json，您可以自
 ## 部分数据文件位置一览
 
 config.json （插件总配置）
+
 2.2.8及以前在插件根目录
+
 2.2.9之后在.\plugins\YEssential\Config\目录下
 
 server.json （跨服传送配置）
+
 2.2.8及以前在插件根目录
+
 2.2.9之后在.\plugins\YEssential\data\TrSeverData目录下
 
 zh_cn.json (语言文件，原lang.json)
+
 2.2.8及以前.\plugins\YEssential\data\目录下
+
 2.2.9之后在.\plugins\YEssential\lang\目录下
+
 stop指令和wh指令的提示可以在这自行修改
 
 tpaAutoRejectConfig.json
+
 2.2.8及以前.\plugins\YEssential\data\目录下
+
 2.2.9之后在.\plugins\YEssential\TpaSettingsData\目录下
+
 玩家可以使用/tpasettings设置
 
+
 RTPData.json
+
 2.2.8及以前.\plugins\YEssential\data\目录下
+
 2.2.9之后在.\plugins\YEssential\RTPData\目录下
+
 玩家可以使用/rtp随机传送，/rtpreset 重置时间（Only OP）
 
+
 pvp_data.json
+
 在.\plugins\YEssential\PVPSettingsData\目录下
+
 玩家可以使用/pvp指令切换PVP功能
 
+
 notice.json
+
 2.2.8及以前.\plugins\YEssential\data\目录下
+
 2.2.9之后在.\plugins\YEssential\NoticeSettingsData\目录下
 /notice内的不再提示的开关数据文件
 
+
 notice.txt
+
 2.2.8及以前.\plugins\YEssential\目录下
+
 2.2.9之后在.\plugins\YEssential\NoticeSettingsData\目录下
+
 这是输入/notice打开的GUI显示的东西
 
+
 MoneyHistory.json
+
 2.2.8及以前.\plugins\YEssential\data\目录下
+
 2.2.9之后在.\plugins\YEssential\MoneyHistory\目录下
+
 这是所有玩家的转账历史记录
+
 
 迁移配置文件教程：
 
 把 服务端目录\plugins\Timiya\data内的homelist.json和warplist.json
+
 移动到服务端目录\plugins\YEssential\data内并且分别重命名为homedata.json和warpdata.json即可
+
 
 ## 贡献
 
