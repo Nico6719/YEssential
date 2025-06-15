@@ -17,16 +17,18 @@
 ----------------------------------*/
 // LiteLoader-AIDS automatic generated
 //<reference path="c:\Users\11025\Documents/dts/HelperLib-master/src/index.d.ts"/> 
+const { PAPI } = require('./GMLIB-LegacyRemoteCallApi/lib/BEPlaceholderAPI-JS');
+const economy = ll.require("DataAPI")?.Economy;
 const YEST_LangDir = "./plugins/YEssential/lang/<{1}>";
 const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version =[2,3,0];
+const version =[2,3,1];
 const info = "§l§b[YEST] §r";
 const lang = new JsonConfigFile(YEST_LangDir + "zh_cn.json", JSON.stringify({
     "Version.Chinese":"版本:",
-    "version": "2.3.0",
+    "version": "2.3.1",
     "notice.editor":"§l§e公告编辑器",
     "notice.no.change": "§e公告内容未更改！",
     "notice.exit.edit":"已取消编辑",
@@ -164,6 +166,7 @@ const lang = new JsonConfigFile(YEST_LangDir + "zh_cn.json", JSON.stringify({
     "rtp.loading.chunks3":"§7正在加载区块...",
     "rtp.loading.chunks2":"§7正在加载区块..",
     "rtp.loading.chunks1":"§7正在加载区块.",
+    "moneys.help":"您的语法有误！\n/moneys <name> add \n /monneys <name> del \n /moneys <name> set",
     "rtp.cannotfind.safexyz":"§c无法找到安全的传送位置，请稍后再试",
     "rtp.tp.success":"§a传送成功！",
     "rtp.loadchunks.timeout":"§c目标区块加载超时",
@@ -183,7 +186,8 @@ const lang = new JsonConfigFile(YEST_LangDir + "zh_cn.json", JSON.stringify({
 }));
 ll.registerPlugin(NAME, PluginInfo,version, {
     Author: "Nico6719",
-    License: "GPL-3.0"
+    License: "GPL-3.0",
+    QQ : "1584573887",
 });
 let conf = new JsonConfigFile(pluginpath +"/Config/config.json",JSON.stringify({}));
   
@@ -295,7 +299,6 @@ conf.init("TpaEnabled",0)
 conf.init("NoticeEnabled",0)
 conf.init("CrastModuleEnabled",0)
 conf.init("TRServersEnabled", false);
-conf.init("ShopEnabled", false);
 conf.init("RTPEnabled", false);
 conf.init("NoticeEnabled",false);
 conf.init("RTP", {
@@ -343,6 +346,7 @@ conf.init("Home",{
     "tp":0,
     "MaxHome":10
 })
+conf.init("LLMoney",0) //2.3.1
 conf.init("Scoreboard","money")
 conf.init("PayTaxRate",0)
 conf.init("Back",0)
@@ -355,8 +359,6 @@ conf.init("OptimizeXporb",0)
 conf.init("join_notice",0)
 conf.init("lastServerShutdown", 0);        // 记录服务器关闭时间
 conf.init("UniteBanCheck",0)
-
-const { PAPI } = require('./GMLIB-LegacyRemoteCallApi/lib/BEPlaceholderAPI-JS');
 // 跨服传送命令模块
 let Sercmd = mc.newCommand("servers", "§l§a跨服传送", PermType.Any);
 Sercmd.overload([]);
@@ -595,6 +597,7 @@ function teleportPlayer(pl,player) {
 // ======================
 mc.listen("onServerStarted", () => { 
     PAPI.registerPlayerPlaceholder(getScoreMoney, "YEssential", "player_money");//玩家的金钱PAPI
+    PAPI.registerPlayerPlaceholder(getLLMoney, "YEssential", "player_LLmoney");//玩家的LLMoney金钱PAPI
     logger.info(PluginInfo+lang.get("Version.Chinese")+lang.get("version")+",作者：Nico6719") 
     logger.info("--------------------------------------------------------------------------------")
     logger.info(" ██╗   ██╗███████╗███████╗███████╗███████╗███╗   ██╗████████╗██╗ █████╗ ██╗  ")
@@ -605,9 +608,11 @@ mc.listen("onServerStarted", () => {
     logger.info("    ╚═╝   ╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚═╝  ╚═╝╚══════╝")
     logger.info("--------------------------------------------------------------------------------")
     logger.info("在线config编辑器：https://jzrxh.work/projects/yessential/config.html")
-    //logger.warn("这是一个测试版本，请勿用于生产环境！！！")
     logger.info("感谢PHEyeji提供技术支持")
     logger.info("感谢ender罗小黑提供在线网页支持")
+    logger.warn("这是一个测试版本，请勿用于生产环境！！！")
+    logger.warn("这是一个测试版本，请勿用于生产环境！！！")
+    logger.warn("这是一个测试版本，请勿用于生产环境！！！")
     logger.warn("lang.json文件需要删除重新生成！！！,配置文件需要手动迁移至各个文件夹内！")
     logger.warn("如有疑问或bug请联系作者反馈！！！！")
     //调用示例： pl.tell(info + lang.get("1.1"));
@@ -628,8 +633,13 @@ mc.listen("onServerStarted", () => {
     }
 });
 function getScoreMoney(pl) {
-    let LLMoney = pl.getScore(conf.get("Scoreboard"))
+    let ScoreMoney = pl.getScore(conf.get("Scoreboard"))
+    return  ScoreMoney.toString();
+}
+function getLLMoney(pl){
+    let LLMoney = pl.getMoney();
     return LLMoney.toString();
+
 }
 mc.listen("onJoin", (pl) => {
     if (conf.get("forceNotice")) {
@@ -665,8 +675,11 @@ let suicidecmd = mc.newCommand("suicide","自杀",PermType.Any)
 suicidecmd.overload([])
 suicidecmd.setCallback((cmd,ori,out,res)=>{
     let pl = ori.player
-
-    if(!ValueCheck(pl.realName,conf.get("suicide"))) return pl.tell(info + lang.get("money.no.enough"));
+    if(!conf.get("LLMoney")){
+            if(!ValueCheck(pl.realName,conf.get("suicide"))) return pl.tell(info + lang.get("money.no.enough"));
+    }else{
+            if(!LLValueCheck(pl.realName,conf.get("suicide"))) return pl.tell(info + lang.get("money.no.enough"));
+    }
     pl.tell(info + lang.get("suicide.kill.ok"));
     pl.kill()
 
@@ -700,6 +713,7 @@ if(conf.get("AutoCleanItem") > 0){
             if(second == 15) mc.broadcast(info+lang.get("clean.msg.15"))
             if(second == 10) mc.broadcast(info+lang.get("clean.msg.10"))
             if(second == 3) mc.broadcast(info+lang.get("clean.msg.3"))
+            if(second == 3) pl.sendToast(info,lang.get("clean.msg.3"))
             if(second == 2) mc.broadcast(info+lang.get("clean.msg.2"))
             if(second == 1) mc.broadcast(info+lang.get("clean.msg.1"))
             if(second <= 0) {
@@ -740,11 +754,10 @@ mc.listen("onServerStarted", function() {
     pvp.setCallback(function(_cmd, ori, out, res) {
         const player = ori.player;
         const xuid = player.realName;
-        
         // 获取当前状态（默认为false）
         const currentState = pvpConfig.get(xuid, false);
         if (!conf.get("PVPModeEnabled")) {
-        pl.tell(info + lang.get("module.no.Enabled"));
+        player.tell(info + lang.get("module.no.Enabled"));
         return;
         }
         if (res.bool === undefined) {
@@ -788,6 +801,9 @@ mc.listen("onMobHurt", function(mob, source) {
     const victimPVP = pvpConfig.get(victim.name);
     //logger.info(attacker.name,victim.name)
     //logger.info(attackerPVP,victimPVP)
+    if (!conf.get("PVPModeEnabled")) {
+        return;
+        }
     if (!attackerPVP) {
         attacker.tell(lang.get("your.pvp.isoff"), 4);
     } else if (!victimPVP) {
@@ -862,9 +878,12 @@ moneycmd.setCallback((cmd,ori,out,res)=>{
     if(!pl) return out.error(+lang.get("money.tr.noonline"))
     let moneyhisdata = MoneyHistory.get(pl.realName)
     switch(res.option){
-
         case "set":
+            if(!conf.get("LLMoney")){
             pl.setScore(conf.get("Scoreboard"),res.amount)
+            }else{
+            pl.setMoney(res.amount)
+            }
 
             moneyhisdata[String(system.getTimeStr())+"§"+getRandomLetter()] = lang.get("CoinName")+"设置为"+res.amount
             MoneyHistory.set(pl.realName,moneyhisdata)
@@ -872,15 +891,24 @@ moneycmd.setCallback((cmd,ori,out,res)=>{
             out.success(lang.get("money.success")+lang.get("to")+lang.get("player")+res.player+"的"+lang.get("CoinName")+"设置为"+res.amount)
             break
         case "add":
+            if(!conf.get("LLMoney")){
             pl.addScore(conf.get("Scoreboard"),res.amount)
+            }else{
+            pl.addMoney(res.amount)
+            }
 
             moneyhisdata[String(system.getTimeStr())+"§"+getRandomLetter()] = lang.get("CoinName")+"增加"+res.amount
             MoneyHistory.set(pl.realName,moneyhisdata)
 
             out.success(lang.get("money.success")+lang.get("to")+lang.get("player")+res.player+"的"+lang.get("CoinName")+"增加"+res.amount)
             break
-        case "reduce":
+        case "del":
             pl.reduceScore(conf.get("Scoreboard"),res.amount)
+            if(!conf.get("LLMoney")){
+            pl.reduceScore(conf.get("Scoreboard"),res.amount)
+            }else{
+            pl.reduceMoney(res.amount)
+            }
 
             moneyhisdata[String(system.getTimeStr())+"§"+getRandomLetter()] = lang.get("CoinName")+"减少"+res.amount
             MoneyHistory.set(pl.realName,moneyhisdata)
@@ -888,8 +916,13 @@ moneycmd.setCallback((cmd,ori,out,res)=>{
             out.success(lang.get("money.success")+lang.get("to")+lang.get("player")+res.player+"的"+lang.get("CoinName")+"减少"+res.amount)
             break
         case "get":
+            if(!conf.get("LLMoney")){
             pl.getScore(conf.get("Scoreboard"))
             out.success(lang.get("player")+res.player+"的"+lang.get("CoinName")+"为"+pl.getScore(conf.get("Scoreboard")))
+            }else{
+            pl.sendText(info +"玩家当前LLMoney金币为："+pl.getMoney()) 
+            }
+           
             break
         case "history":
             let jsonStr = JSON.stringify(moneyhisdata);
@@ -1033,8 +1066,13 @@ function MoneyTransferGui(plname){
         const plBalance = pl.getScore(conf.get("Scoreboard"));
         const targetBalance = target.getScore(conf.get("Scoreboard"));
         if (plBalance < amount) return pl.tell(info + lang.get("money.no.enough"));
+        if(conf.get("LLMoney") == 0){
         pl.setScore(conf.get("Scoreboard"), plBalance - amount);
         target.setScore(conf.get("Scoreboard"), targetBalance + realamount);
+        }else{
+            pl.setMoney(plBalance - amount)
+            target.setMoney(targetBalance + realamount)
+        }
         let moneyhisdata = MoneyHistory.get(pl.realName)
         moneyhisdata[String(system.getTimeStr())+"§"+getRandomLetter()] = lang.get("money.transfer")+lang.get("CoinName")+"给"+target.realName+"，数量："+amount+"，实际到账："+realamount+"，手续费："+tax
         MoneyHistory.set(pl.realName,moneyhisdata)
@@ -1165,7 +1203,11 @@ function MoneyGetGui(plname){
         if(data == null) return pl.runcmd("moneygui")
         let target = mc.getPlayer(lst[data[0]])
         if(!target) return pl.tell(info + lang.get("money.tr.noonline"));
-        pl.sendText("玩家"+target.realName+"的"+lang.get("CoinName")+"为："+target.getScore(conf.get("Scoreboard")))
+        if(!conf.get("LLMoney")){
+        pl.sendText(info +"玩家当前金币为："+target.getScore(conf.get("Scoreboard")))
+         }else{  
+        pl.sendText(info +"玩家当前LLMoney金币为："+target.getMoney())    
+         }
     })
 }
 
@@ -1186,19 +1228,27 @@ function MoneySetGui(plname){
         if(data[1] == '' || !data[1]) return pl.tell(info + lang.get("moeny.setting.number"));
         let target = mc.getPlayer(lst[data[0]])
         if(!target) return pl.tell(info + lang.get("money.tr.noonline"));
+        if(!conf.get("LLMoney")){
         target.setScore(conf.get("Scoreboard"),parseInt(data[1]))
-    
+        }else{
+            target.setMoney(Number(data[1]))
+        }
         let moneyhisdata = MoneyHistory.get(target.realName)
         moneyhisdata[String(system.getTimeStr())+"§"+getRandomLetter()] = lang.get("CoinName")+"设置"+data[1]
         MoneyHistory.set(pl.realName,moneyhisdata)
 
         pl.sendText(info +lang.get("success")+lang.get("to")+lang.get("player")+target.realName+"的"+lang.get("CoinName")+"设置为"+data[1])
+         if(!conf.get("LLMoney")){
         pl.sendText(info +"玩家当前金币为："+target.getScore(conf.get("Scoreboard")))
+         }else{
+        pl.sendText(info +"玩家当前金币为："+Number(data[1]))    
+         }
     })
 }
 
 
 function MoneyReduceGui(plname){
+    const amount = Number(data[1])
     let pl = mc.getPlayer(plname)
     if(!pl) return
     let fm = mc.newCustomForm()
@@ -1214,14 +1264,22 @@ function MoneyReduceGui(plname){
         if(data[1] == '' || !data[1]) return pl.tell(info + lang.get("money.del.number"));
         let target = mc.getPlayer(lst[data[0]])
         if(!target) return pl.tell(info + lang.get("money.tr.noonline"));
+        if(conf.get("LLMoney") == 0){
         target.reduceScore(conf.get("Scoreboard"),parseInt(data[1]))
-    
+        }else{
+            target.reduceMoney(Number(data[1]))
+        }
         let moneyhisdata = MoneyHistory.get(target.realName)
         moneyhisdata[String(system.getTimeStr())+"§"+getRandomLetter()] = lang.get("CoinName")+"减少"+data[1]
         MoneyHistory.set(pl.realName,moneyhisdata)
 
         pl.sendText(info +lang.get("success")+lang.get("to")+lang.get("player")+target.realName+"的"+lang.get("CoinName")+"减少"+data[1])
+        if(!conf.get("LLMoney")){
         pl.sendText(info +"玩家当前金币为："+target.getScore(conf.get("Scoreboard")))
+         }else{
+        pl.sendText(data[1])   
+        pl.sendText(info +"玩家当前金币为："+target.getMoney())    
+         }
     })
 }
 
@@ -1242,17 +1300,20 @@ function MoneyAddGui(plname){
         if(data[1] == '' || !data[1]) return pl.tell(info + lang.get("pls.input.number"));
         let target = mc.getPlayer(lst[data[0]])
         if(!target) return pl.tell(info + lang.get("money.tr.noonline"));
-        //    logger.log(123)
+        if(conf.get("LLMoney") == 0){
         target.addScore(conf.get("Scoreboard"),parseInt(data[1]))
-    
+        }else{
+           target.addMoney(Number(data[1]))
+        }
         let moneyhisdata = MoneyHistory.get(target.realName)
-        //logger.log(12323)
         moneyhisdata[String(system.getTimeStr())+"§"+getRandomLetter()] = lang.get("CoinName")+"增加"+data[1]
-        //logger.log(12313)
         MoneyHistory.set(pl.realName,moneyhisdata)
-
-        pl.sendText(info +lang.get("success")+lang.get("to")+lang.get("player")+target.realName+"的"+lang.get("CoinName")+"增加"+data[1])
+        if(!conf.get("LLMoney")){
         pl.sendText(info +"玩家当前金币为："+target.getScore(conf.get("Scoreboard")))
+         }else{
+        pl.sendText(data[1])   
+        pl.sendText(info +"玩家当前金币为："+target.getMoney())    
+         }
     })
 }
 
@@ -1323,8 +1384,11 @@ function WarpGui(plname){
         fm.addLabel("您的"+lang.get("CoinName")+"："+String(pl.getScore(conf.get("Scoreboard"))))
         pl.sendForm(fm,(pl,data)=>{
             if(data == null) return pl.tell(info + lang.get("gui.exit"));
-            
-            if(!ValueCheck(pl.realName,cost)) return pl.tell(info + lang.get("money.no.enough"));
+            if(!conf.get("LLMoney")){
+            if(!ValueCheck(pl.realName,conf.get("Warp"))) return pl.tell(info + lang.get("money.no.enough"));
+            }else{
+            if(!LLValueCheck(pl.realName,conf.get("Warp"))) return pl.tell(info + lang.get("money.no.enough"));
+            }
             
             pl.teleport(parseFloat(warpdata.get(lst[id]).x),parseFloat(warpdata.get(lst[id]).y),parseFloat(warpdata.get(lst[id]).z),parseInt(warpdata.get(lst[id]).dimid))
             pl.sendText("已前往传送点 "+lst[id])
@@ -1406,7 +1470,11 @@ function BackGUI(plname){
     fm.addLabel("返回死亡点需要花费"+cost+lang.get("CoinName"))
     pl.sendForm(fm,(pl,id)=>{
         if(id == null) return pl.tell(info + lang.get("gui.exit"));
-        if(!ValueCheck(pl.realName,cost)) return pl.sendText("返回失败！\n返回死亡点需要花费 "+conf.get("Back")+lang.get("CoinName"))
+        if(!conf.get("LLMoney")){
+            if(!ValueCheck(pl.realName,conf.get("Back"))) return pl.tell(info + lang.get("money.no.enough"));
+        }else{
+            if(!LLValueCheck(pl.realName,conf.get("Back"))) return pl.tell(info + lang.get("money.no.enough"));
+        }       
         pl.teleport(pl.lastDeathPos)
         pl.tell(info + lang.get("back.successful"));
     })
@@ -1468,8 +1536,12 @@ function TpHome(plname){
         fm.addLabel("坐标："+pldata[lst[id]].x+","+pldata[lst[id]].y+","+pldata[lst[id]].z+" "+transdimid[pldata[lst[id]].dimid])
         pl.sendForm(fm,(pl,data)=>{
             if(data == null) return pl.runcmd("home")
-            
+            if(!conf.get("LLMoney")){
             if(!ValueCheck(pl.realName,cost)) return pl.sendText("传送失败！\n传送家需要花费 "+conf.get("Home").tp+lang.get("CoinName"))
+    }else{
+            if(!LLValueCheck(pl.realName,cost)) return pl.sendText("传送失败！\n传送家需要花费 "+conf.get("Home").tp+lang.get("CoinName"))
+    }
+        //    if(!ValueCheck(pl.realName,cost)) return pl.sendText("传送失败！\n传送家需要花费 "+conf.get("Home").tp+lang.get("CoinName"))
             pl.teleport(parseFloat(pldata[lst[id]].x),parseFloat(pldata[lst[id]].y),parseFloat(pldata[lst[id]].z),parseInt(pldata[lst[id]].dimid))
             pl.sendText("传送家 "+lst[id]+" 成功！")
         })
@@ -1499,8 +1571,12 @@ function DelHome(plname){
         fm.addLabel("坐标："+pldata[lst[id]].x+","+pldata[lst[id]].y+","+pldata[lst[id]].z+" "+transdimid[pldata[lst[id]].dimid])
         pl.sendForm(fm,(pl,data)=>{
             if(data == null) return pl.tell(info + lang.get("gui.exit"));
-            
+            if(!conf.get("LLMoney")){
             if(!ValueCheck(pl.realName,cost)) return pl.sendText("删除失败！\n删除家需要花费 "+conf.get("Home").del+lang.get("CoinName"))
+    }else{
+            if(!LLValueCheck(pl.realName,cost)) return pl.sendText("删除失败！\n删除家需要花费 "+conf.get("Home").del+lang.get("CoinName"))
+    }
+            //if(!ValueCheck(pl.realName,cost)) return pl.sendText("删除失败！\n删除家需要花费 "+conf.get("Home").del+lang.get("CoinName"))
             delete pldata[lst[id]]
             homedata.set(pl.realName,pldata)
             pl.sendText("删除家 "+lst[id]+" 成功！")
@@ -1542,8 +1618,12 @@ function AddHome(plname){
             //logger.log(pldata)
             if(Object.keys(pldata).includes(data[3])) return pl.tell(info + lang.get("home.name.repetitive"));
             //logger.log(224)
-
+            if(!conf.get("LLMoney")){
             if(!ValueCheck(pl.realName,conf.get("Home").add)) return pl.sendText("添加失败！\n添加家需要花费 "+cost+lang.get("CoinName"))
+            }else{
+            if(!LLValueCheck(pl.realName,conf.get("Home").add)) return pl.sendText("添加失败！\n添加家需要花费 "+cost+lang.get("CoinName"))
+            }
+            //if(!ValueCheck(pl.realName,conf.get("Home").add)) return pl.sendText("添加失败！\n添加家需要花费 "+cost+lang.get("CoinName"))
             //logger.log(225)
 
             pldata[data[3]] = {
@@ -1573,229 +1653,6 @@ const shopDefaultConfig = JSON.stringify(
     null,  // 保留缩进
     2      // 缩进 2 空格
   );
-  
-  let shopdata = new JsonConfigFile(datapath +
-    "/ShopData/shop.json",
-    shopDefaultConfig // 正确：传递 JSON 字符串
-  );
-  if (!shopdata.get("sell")) {
-    shopdata.set("sell", [
-        { name: "§a应急石料", price: 1, item: "minecraft:cobblestone", meta: 0 }
-    ]);
-}
-
-
-// ======================
-// 商店命令注册
-// ======================
-let shopcmd = mc.newCommand("yshop", "商店系统", PermType.Any);
-shopcmd.overload([]);
-shopcmd.setCallback((cmd, ori, out, res) => {
-    let pl = ori.player;
-    if (!pl) return;
-
-    // 检查商店是否开启
-    if (!conf.get("ShopEnabled")) {
-        pl.tell(info + lang.get("shop.no.Eabled"));
-        return;
-    }
-
-    OpenShopMainMenu(pl.realName);
-});
-shopcmd.setup();
-
-// ======================
-// 购买功能函数定义（必须在 OpenShopMainMenu 之前）
-// ======================
-function OpenBuyMenu(plname) {
-    const pl = mc.getPlayer(plname);
-    if (!pl) return;
-
-    const buyItems = Array.isArray(shopdata.get("buy")) ? shopdata.get("buy") : [];
-    if (buyItems.length === 0) {
-        pl.tell(info + lang.get("shop.is.nothing"));
-        return;
-    }
-
-    const fm = mc.newSimpleForm();
-    fm.setTitle("§l§a购买物品");
-    fm.setContent(`您的余额: §e${pl.getScore(conf.get("Scoreboard"))} ${lang.get("CoinName")}`);
-
-    buyItems.forEach((item) => {
-        fm.addButton(`${item.name}\n§7价格: §c${item.price} ${lang.get("CoinName")}`, "", item.icon || "");
-    });
-
-    pl.sendForm(fm, (pl, id) => {
-        if (id === null) return OpenShopMainMenu(pl.realName);
-        OpenBuyAmountMenu(pl.realName, id);
-    });
-}
-// ======================
-// 商店主菜单
-// ======================
-function OpenShopMainMenu(plname) {
-    const pl = mc.getPlayer(plname);
-    if (!pl) return;
-
-    const fm = mc.newSimpleForm();
-    fm.setTitle("§l§a商店系统");
-    fm.setContent(`您的余额: §e${pl.getScore(conf.get("Scoreboard"))} ${lang.get("CoinName")}`);
-
-    //fm.addButton("§l§d出售物品", "", shopdata.get("sell")[0]?.icon || "");
-    fm.addButton("§l§b购买物品", "", shopdata.get("buy")[0]?.icon || "");
-    fm.addButton("§l§c返回");
-
-    pl.sendForm(fm, (pl, id) => {
-        if (id === null) return;
-        switch (id) {
-            //case 0: OpenSellMenu(pl.realName); break;
-            case 0: OpenBuyMenu(pl.realName); break;
-            case 1: MoneyGui(pl.realName); break;
-        }
-    });
-}
-// ======================
-// 购买物品界面
-// ======================
-function OpenBuyAmountMenu(plname, itemIndex) {
-    const pl = mc.getPlayer(plname);
-    if (!pl) return;
-
-    const buyItems = Array.isArray(shopdata.get("buy")) ? shopdata.get("buy") : [];
-    const item = buyItems[itemIndex];
-    if (!item || !item.item || typeof item.price !== "number") {
-        pl.tell(info + lang.get("shop.conf.error"));
-        return;
-    }
-
-    const balance = pl.getScore(conf.get("Scoreboard"));
-    const maxBuy = Math.floor(balance / item.price);
-    // 如果余额不足，提示并返回
-    if (maxBuy <= 0) {
-        pl.tell(info + lang.get("money.no.enough"));
-        return;
-    }
-    const fm = mc.newCustomForm();
-    fm.setTitle(`§l§a购买 ${item.name}`);
-    fm.addLabel(`单价: §e${item.price} ${lang.get("CoinName")}\n最大可购买: §a${maxBuy}`);
-    fm.addSlider("数量", 1, maxBuy, 1, 1);
-    pl.sendForm(fm, (pl, data) => {
-        if (data === null) return OpenBuyMenu(pl.realName);
-        const amount = data[1];
-        if (amount > 0) {
-            const totalCost = amount * item.price;
-
-            // 检查金币是否足够
-            if (balance < totalCost) {
-                pl.tell(info + lang.get("money.no.enough"));
-                return;
-            }
-
-            // 扣除金币
-            pl.reduceScore(conf.get("Scoreboard"), totalCost);
-
-            // 分多次给予物品（解决堆叠上限问题）
-            let remainingAmount = amount;
-            while (remainingAmount > 0) {
-                const stackSize = Math.min(remainingAmount, 64); // 每次最多给予 64 个
-                const itemStack = mc.newItem(item.item, stackSize, item.meta);
-                if (!pl.giveItem(itemStack)) {
-                    pl.tell(info + lang.get("bag.is.full"));
-                    // 返还金币
-                    pl.addScore(conf.get("Scoreboard"), totalCost);
-                    return;
-                }
-                remainingAmount -= stackSize;
-            }
-
-            pl.sendText(`§a成功购买 ${amount} 个 ${item.name}！`);
-        }
-    });
-}
-function OpenSellMenu(plname) {
-    const pl = mc.getPlayer(plname);
-    if (!pl) return;
-
-    // 1. 读取商店配置
-    const sellItems = shopdata.get("sell") || [];
-    if (sellItems.length === 0) {
-        pl.tell(info + lang.get("shop.is.nothing"));
-        return;
-    }
-
-    // 2. 第一步：选择商品（使用现代表单 API）
-    const fmStep1 = new SimpleForm()
-        .setTitle("§l§a出售商店")
-        .setContent("§7请选择要出售的物品：");
-
-    sellItems.forEach(item => {
-        fmStep1.addButton(`${item.name}\n§7单价: §a${item.price} ${lang.get("CoinName")}`);
-    });
-
-    pl.sendForm(fmStep1, (_, selectedIndex) => {
-        // 重新获取玩家对象（防止异步失效）
-        const player = mc.getPlayer(plname);
-        if (!player || selectedIndex === null) return;
-
-        const selectedItem = sellItems[selectedIndex];
-        if (!selectedItem) {
-            pl.tell(info + lang.get("shop.choose.errorthings"));
-            return;
-        }
-
-        // 3. 检测库存（使用 LeviLamina 的 getItem）
-        let totalCount = 0;
-        for (let slot = 0; slot < 36; slot++) {
-            const item = player.getItem(slot); // 新 API
-            if (item?.typeId === selectedItem.item && 
-                item.auxValue === (selectedItem.meta || 0)
-            ) {
-                totalCount += item.amount; // 新属性名：amount 替代 count
-            }
-        }
-
-        if (totalCount <= 0) {
-            player.sendText(`§c您没有可出售的 ${selectedItem.name}！`);
-            return;
-        }
-
-        // 4. 第二步：输入数量（动态表单）
-        const fmStep2 = new CustomForm()
-            .setTitle(`§l§a出售 ${selectedItem.name}`)
-            .addLabel(`§7单价: §a${selectedItem.price} ${lang.get("CoinName")}`)
-            .addLabel(`§7库存: §e${totalCount}`)
-            .addSlider("数量", 1, totalCount, 1, 1);
-
-        player.sendForm(fmStep2, (_, data) => {
-            const finalPlayer = mc.getPlayer(plname);
-            if (!finalPlayer || !data) return;
-
-            const amount = data[2]; // 第三个组件是滑块值
-
-            // 5. 扣除物品（现代 API 操作）
-            let remaining = amount;
-            for (let slot = 0; slot < 36; slot++) {
-                const item = finalPlayer.getItem(slot);
-                if (!item || 
-                    item.typeId !== selectedItem.item || 
-                    item.auxValue !== selectedItem.meta
-                ) continue;
-
-                // 创建新物品实例（直接修改 amount）
-                const take = Math.min(remaining, item.amount);
-                const newItem = new Item(item.typeId, item.auxValue, item.amount - take);
-                finalPlayer.setItem(slot, newItem); // 新 API
-                remaining -= take;
-                if (remaining <= 0) break;
-            }
-
-            // 6. 发放金币（使用现代计分板 API）
-            const scoreboard = mc.getScoreboard(conf.get("Scoreboard"));
-            scoreboard.addScore(finalPlayer.uid, amount * selectedItem.price);
-            finalPlayer.sendText(`§a成功出售 §e${amount} 个 ${selectedItem.name}`);
-        });
-    });
-}
 // ======================
 // //拒绝指令
 // ======================
@@ -2308,9 +2165,18 @@ rtpCmd.setCallback((cmd,ori,out,res) => {
 
     // 检查金币
     const balance = pl.getScore(conf.get("Scoreboard"));
+  
+    const balanceLL = pl.getMoney();
+    if(!conf.get("LLMoney")){
     if (balance < cost) {
         pl.sendText(info+`§c需要 ${cost}${lang.get("CoinName")} 才能传送！`);
         return;
+    }
+    }else{
+    if (balanceLL < cost) {
+        pl.sendText(info+`§c你需要 ${cost}LLMoney才能传送！`);
+        return;
+    }
     }
     if(cooltime.has(pl.realName) && cooltime.get(pl.realName) > 0){
         pl.sendText(info+`§c传送冷却中，剩余时间：${cooltime.get(pl.realName)}秒`);
@@ -2324,10 +2190,10 @@ rtpCmd.setCallback((cmd,ori,out,res) => {
     if(!x || !z) return out.error("XZ 生成失败")
 
     // 提示玩家
-    const camera = setInterval(() => {
+   /* const camera = setInterval(() => {
     mc.runcmd("camera \"" + pl.realName +"\" fade time 0.25 2 2  color 0 0 0") //视觉效果 
     //mc.runcmd("camera \"" + pl.realnNme +"\" set minecraft:free pos ~ ~20 ~ facing " + pl.realnNme)   
-    },2000)
+    },2000)*/
     pl.sendText(info+lang.get("rtp.search.chunks"));
     pl.sendText(`§7随机坐标：§fX: ${x}, Z: ${z}`);
     mc.runcmd("effect \"" + pl.realName +"\" resistance 10 255 true")
@@ -2352,9 +2218,12 @@ rtpCmd.setCallback((cmd,ori,out,res) => {
 
             pl.teleport(safeLocation.x,safeLocation.y,safeLocation.z,safeLocation.dimid)
             pl.sendText(info+lang.get("rtp.tp.success"))
-            mc.runcmd("camera \"" + pl.realnNme +"\" clear")
-            clearInterval(camera)
+            //clearInterval(camera)
+            if(conf.get("LLMoney") == 0){
             pl.setScore(conf.get("Scoreboard"), balance - cost)
+            }else{
+            pl.reduceMoney(balance - cost)
+            }
         }
     }, 1000);
 
@@ -2467,7 +2336,23 @@ function ValueCheck(plname,value){
         return true
     }
 }
+function LLValueCheck(plname, value) {
+    let pl = mc.getPlayer(plname);
+    if (!pl) return false;
+    
+    let LLMoney = pl.getMoney();  // 正确获取LLMoney
+    if (LLMoney === null || LLMoney === undefined) {
+        pl.setMoney(0);  // 初始化LLMoney
+        return false;
+    }
 
+    if (LLMoney < value) {
+        return false;
+    } else {
+        pl.reduceMoney(value);  // 正确扣除LLMoney
+        return true;
+    }
+}
 
 //对接联合封禁
 function CheckUniteBan(realname, xuid, uuid, clientid, ip) { //检查函数
