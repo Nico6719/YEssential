@@ -13,50 +13,92 @@
 ## 功能一览
 
 Economic (经济核心)（对接PAPI，变量名：%player_money%和%player_llmoney% ，可以显示当前玩家金币数量）（需要GMLIB和GMLIB-LRCA）
+
 SupportLLMoney （支持LLmoney经济系统）
+
 Hub (一键回城，可通过指令设置传送点)
+
 Rtp （随机传送）
-Tpa （传送系统，借鉴了子邪大佬写的TeleportMaster）
+
+Tpa （传送系统）
+
 Home (家)
+
 Back (回死亡点)
+
 Warp (公共传送点)
+
 DMotd (动态motd)
+
 WeiHu (维护提示)
+
 Cleanitem (清理掉落物)
+
 Suicide (自杀)
+
 BStopMsg (自定义stop提示)
+
 Notice （自定义公告，支持颜色符号，\n换行）
+
 FixExpLag (防止经验球卡服)
+
 Crash (把玩家客户端搞崩)
+
 ServersTP (传送到其他服务器)（配置文件：Server.json）
+
 PVP （PVP功能，防止玩家恶意攻击）
+
 MoreLangSupport (插件支持多语言，配置文件：lang.json，您可以自行编写翻译成其他语言发布lang文件到minebbs内！)
+
 开服自动开启死亡不掉落（可在config.json配置）
+
 
 ## 指令一览
 
 /home //打开home菜单
+
 /warp //打开warp菜单
+
 /back //前往最近的暴毙点
+
 /moneygui //打开经济系统
+
 /moneys add & reduce & set 玩家名 金额 //添加玩家的金额
+
 /moneys get 玩家名 //查询该名玩家的余额
+
 /notice //查看公告
+
 /noticeset //更改公告
+
 /wh //打开或关闭维护状态
+
 /cleanitem //清理掉落物（立刻执行）
+
 /suicide //自杀
+
 /servers //跨服传送
+
 /PVP //PVP功能
+
 /rtp //随机传送
+
 /rtpreset //重置冷却时间（Only 管理员）
+
 /tpa //玩家互传系统
+
 /tpayes //同意传送
+
 /tpano //拒绝传送
+
 /tpasettings //拒绝或者同意所有传送请求
+
 /hub //一键回到指定地点
+
 /sethub //设置/hub传送的地点
+
 /crash //打开崩溃玩家客户端菜单
+
 
 ## 部分数据文件位置一览
 
