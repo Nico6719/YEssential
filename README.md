@@ -3,9 +3,12 @@
 
 ## Eula
 
-反馈问题前请排查依赖是否正确加载！\n
-反馈在讨论区或者github反馈[（QQ群：1045392458）](https://qm.qq.com/cgi-bin/qm/qr?k=NXRAgTOPiTci5lD9CiUNanMoQFnFSu_y&jump_from=webapi&authKey=soeBGqg/5XJrPvri6uMtcsDvvlUWijGyw3nQXF7Q5q1wWkoyXAtS)\n
-未经授权禁止整合到整合包内！\n
+反馈问题前请排查依赖是否正确加载！
+
+反馈在讨论区或者github反馈[（QQ群：1045392458）](https://qm.qq.com/cgi-bin/qm/qr?k=NXRAgTOPiTci5lD9CiUNanMoQFnFSu_y&jump_from=webapi&authKey=soeBGqg/5XJrPvri6uMtcsDvvlUWijGyw3nQXF7Q5q1wWkoyXAtS)
+
+未经授权禁止整合到整合包内！
+
 
 ## 功能一览
 
