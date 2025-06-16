@@ -19,16 +19,16 @@
 //<reference path="c:\Users\11025\Documents/dts/HelperLib-master/src/index.d.ts"/> 
 const { PAPI } = require('./GMLIB-LegacyRemoteCallApi/lib/BEPlaceholderAPI-JS');
 const economy = ll.require("DataAPI")?.Economy;
-const YEST_LangDir = "./plugins/YEssential/lang/<{1}>";
+const YEST_LangDir = "./plugins/YEssential/lang/";
 const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version =[2,3,1];
+const version =[2,3,4];
 const info = "§l§b[YEST] §r";
 const lang = new JsonConfigFile(YEST_LangDir + "zh_cn.json", JSON.stringify({
     "Version.Chinese":"版本:",
-    "version": "2.3.1",
+    "version": "2.3.4",
     "notice.editor":"§l§e公告编辑器",
     "notice.no.change": "§e公告内容未更改！",
     "notice.exit.edit":"已取消编辑",
@@ -46,6 +46,7 @@ const lang = new JsonConfigFile(YEST_LangDir + "zh_cn.json", JSON.stringify({
     "server.from.title":"跨服传送列表",
     "choose.a.server":"请选择一个服务器",
     "server.tp.fail": "§c跨服传送失败，请检查目标服务器状态！",
+    "no.server.cantpto":"server.json 内容为空或 servers 键不存在！",
     "save.notice.ok": "保存公告成功！",
     "suicide.kill.ok": "自杀执行成功！",
     "pls.input.number":"请输入增加数量!",
@@ -383,7 +384,7 @@ Sercmd.setCallback((cmd, ori, out, res) => {
     }
 
     if (serverList.length === 0) {
-        logger.error("server.json 内容为空或 servers 键不存在！");
+        logger.error(lang.get("no.server.cantpto"));
         pl.tell(info + lang.get("no.server.can.tp"));
         return;
     }
@@ -609,10 +610,10 @@ mc.listen("onServerStarted", () => {
     logger.info("    ╚═╝   ╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚═╝  ╚═╝╚══════╝")
     logger.info("--------------------------------------------------------------------------------")
     logger.info("在线config编辑器：https://jzrxh.work/projects/yessential/config.html")
-    logger.info("感谢PHEyeji提供技术支持")
+    logger.info("感谢PHEyeji提供技术支持和指导")
     logger.info("感谢ender罗小黑提供在线网页支持")
    // logger.warn("这是一个测试版本，请勿用于生产环境！！！")
-    logger.warn("lang.json文件需要删除重新生成！！！,配置文件需要手动迁移至各个文件夹内！")
+    logger.warn("lang.json文件需要删除重新生成！！！")
     logger.warn("如有疑问或bug请联系作者反馈！！！！")
     //调用示例： pl.tell(info + lang.get("1.1"));
     if(conf.get("KeepInventory")){
@@ -712,7 +713,6 @@ if(conf.get("AutoCleanItem") > 0){
             if(second == 15) mc.broadcast(info+lang.get("clean.msg.15"))
             if(second == 10) mc.broadcast(info+lang.get("clean.msg.10"))
             if(second == 3) mc.broadcast(info+lang.get("clean.msg.3"))
-            if(second == 3) mc.sendToast(info,lang.get("clean.msg.3"))
             if(second == 2) mc.broadcast(info+lang.get("clean.msg.2"))
             if(second == 1) mc.broadcast(info+lang.get("clean.msg.1"))
             if(second <= 0) {
@@ -979,6 +979,7 @@ moneygui.setup()
 
 function MoneyGui(plname){
     let pl = mc.getPlayer(plname)
+    let target = mc.getPlayer(plname)
     if(!pl) return
 
     let fm = mc.newSimpleForm()
