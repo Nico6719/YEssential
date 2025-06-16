@@ -197,7 +197,7 @@ let rtpdata = new JsonConfigFile(datapath +"/RTPData/Rtpdata.json",JSON.stringif
 
 let warpdata = new JsonConfigFile(datapath +"warpdata.json",JSON.stringify({}));
   
-let MoneyHistory = new JsonConfigFile(datapath +"/MonneyHistory/MoneyHistory.json",JSON.stringify({}));
+let MoneyHistory = new JsonConfigFile(datapath +"/MoneyHistory/MoneyHistory.json",JSON.stringify({}));
   
 let noticeconf = new JsonConfigFile(datapath + "/NoticeSettingsData/notice.json",JSON.stringify({}));
 
@@ -225,7 +225,7 @@ setInterval(() => {
             moneyranking.set(pl.realName, score);
         }
     });
-}, 1000);
+}, 4000);
 function ranking(plname) {
     let pl = mc.getPlayer(plname);
     if (!pl) return;
@@ -291,6 +291,7 @@ function ranking(plname) {
         ][Math.min(3, rank - 1)] || "§7";
     }
 }
+conf.init("RTPAnimation",0)
 conf.init("PVPModeEnabled",1)
 conf.init("CheckPluginUpdate", false);
 conf.init("DebugModeEnabled", false);
@@ -610,9 +611,7 @@ mc.listen("onServerStarted", () => {
     logger.info("在线config编辑器：https://jzrxh.work/projects/yessential/config.html")
     logger.info("感谢PHEyeji提供技术支持")
     logger.info("感谢ender罗小黑提供在线网页支持")
-    logger.warn("这是一个测试版本，请勿用于生产环境！！！")
-    logger.warn("这是一个测试版本，请勿用于生产环境！！！")
-    logger.warn("这是一个测试版本，请勿用于生产环境！！！")
+   // logger.warn("这是一个测试版本，请勿用于生产环境！！！")
     logger.warn("lang.json文件需要删除重新生成！！！,配置文件需要手动迁移至各个文件夹内！")
     logger.warn("如有疑问或bug请联系作者反馈！！！！")
     //调用示例： pl.tell(info + lang.get("1.1"));
@@ -713,7 +712,7 @@ if(conf.get("AutoCleanItem") > 0){
             if(second == 15) mc.broadcast(info+lang.get("clean.msg.15"))
             if(second == 10) mc.broadcast(info+lang.get("clean.msg.10"))
             if(second == 3) mc.broadcast(info+lang.get("clean.msg.3"))
-            if(second == 3) pl.sendToast(info,lang.get("clean.msg.3"))
+            if(second == 3) mc.sendToast(info,lang.get("clean.msg.3"))
             if(second == 2) mc.broadcast(info+lang.get("clean.msg.2"))
             if(second == 1) mc.broadcast(info+lang.get("clean.msg.1"))
             if(second <= 0) {
@@ -995,6 +994,11 @@ function MoneyGui(plname){
                 let fm = mc.newSimpleForm()
                 fm.setTitle("查询"  +lang.get("CoinName"))
                 fm.setContent("你的"+lang.get("CoinName")+"为:"+pl.getScore(conf.get("Scoreboard")))
+                if(!conf.get("LLMoney")){
+                pl.sendText(info +"你的当前金币为："+target.getScore(conf.get("Scoreboard")))
+                }else{  
+                pl.sendText(info +"你的当前LLMoney金币为："+target.getMoney())    
+                }
                 pl.sendForm(fm,(pl,id)=>{
                     if(id == null) return pl.runcmd("moneygui")
                 })
@@ -1056,7 +1060,7 @@ function MoneyTransferGui(plname){
         let amount = data[2]
         if(amount == null) return pl.tell(info + lang.get("money.tr.noinput"));
         if(amount == "all") amount = pl.getScore(conf.get("Scoreboard"))
-        if(/^\d+$/.test(amount) == false) return pl.tell(info + lang.get("key.not.number"));
+        if(/^\d+$/.test(amount) == false) return pl.tell(info + lang.get("key.not.number"));        
         if(amount <= 0) return pl.tell(info + lang.get("money.must.bigger0"));
         if(amount > pl.getScore(conf.get("Scoreboard"))) return pl.sendText("转账数量不能大于你的"+lang.get("CoinName"))
         let beizhu = data[3]
@@ -1070,8 +1074,8 @@ function MoneyTransferGui(plname){
         pl.setScore(conf.get("Scoreboard"), plBalance - amount);
         target.setScore(conf.get("Scoreboard"), targetBalance + realamount);
         }else{
-            pl.setMoney(plBalance - amount)
-            target.setMoney(targetBalance + realamount)
+        pl.setMoney(plBalance - amount)
+        target.setMoney(targetBalance + realamount)
         }
         let moneyhisdata = MoneyHistory.get(pl.realName)
         moneyhisdata[String(system.getTimeStr())+"§"+getRandomLetter()] = lang.get("money.transfer")+lang.get("CoinName")+"给"+target.realName+"，数量："+amount+"，实际到账："+realamount+"，手续费："+tax
@@ -1085,13 +1089,13 @@ function MoneyTransferGui(plname){
         pl.sendText(info +"转账成功，实际到账："+realamount+"，手续费："+tax)
         target.sendText(info + pl.realName+lang.get("money.transfer")+lang.get("CoinName")+"给你，数量："+amount+"，实际到账："+realamount+"，手续费："+tax+"备注："+beizhu )
     })
-}
-const debugCmd = mc.newCommand("yedebug", "开发者模式", PermType.GameMasters);
-debugCmd.overload([]);
-debugCmd.setCallback((_, ori) => {
-    const newMode = !conf.get("DebugModeEnabled");
-    conf.set("DebugModeEnabled", newMode);
-    ori.player.sendText(`调试模式已 ${newMode ? "开启" : "关闭"}`);
+    }
+    const debugCmd = mc.newCommand("yedebug", "开发者模式", PermType.GameMasters);
+    debugCmd.overload([]);
+    debugCmd.setCallback((_, ori) => {
+        const newMode = !conf.get("DebugModeEnabled");
+        conf.set("DebugModeEnabled", newMode);
+        ori.player.sendText(`调试模式已 ${newMode ? "开启" : "关闭"}`);
 });
 debugCmd.setup();
 const YE_API = {
@@ -2185,29 +2189,69 @@ rtpCmd.setCallback((cmd,ori,out,res) => {
     cooltime.set(pl.realName,cooldown)
 
     let plpos = pl.pos
+    let RTPx = pl.pos.x
+    let RTPy = pl.pos.y
+    let RTPz = pl.pos.z
 
     const { x,z } = generateRandomCoordinate()
     if(!x || !z) return out.error("XZ 生成失败")
-
     // 提示玩家
-   /* const camera = setInterval(() => {
-    mc.runcmd("camera \"" + pl.realName +"\" fade time 0.25 2 2  color 0 0 0") //视觉效果 
-    //mc.runcmd("camera \"" + pl.realnNme +"\" set minecraft:free pos ~ ~20 ~ facing " + pl.realnNme)   
-    },2000)*/
+if (conf.get("RTPAnimation") == 1 ){
+    setTimeout(()=> {
+        mc.runcmd("camera \"" + pl.realName +"\" fade time 0.1 0.01 0.1  color 0 0 0")
+    },900)
+    setTimeout(()=> {
+        mc.runcmd("camera \"" + pl.realName +"\" set minecraft:free pos "+RTPx+" "+(RTPy+20)+" "+RTPz+" facing " + pl.realName)
+        pl.sendText(info+lang.get("rtp.loading.chunks2"),5)
+    },1000)
+    setTimeout(()=> {
+        mc.runcmd("camera \"" + pl.realName +"\" fade time 0.1 0.01 0.1  color 0 0 0")
+    },1910)
+    setTimeout(()=> {
+        mc.runcmd("camera \"" + pl.realName +"\" set minecraft:free pos "+RTPx+" "+(RTPy+50)+" "+RTPz+" facing " + pl.realName)
+        pl.sendText(info+lang.get("rtp.loading.chunks1"),5)
+    },1900)
+    setTimeout(()=> {
+        mc.runcmd("camera \"" + pl.realName +"\" fade time 0.1 0.01 0.1  color 0 0 0")
+    },1900)
+    setTimeout(()=> {
+        mc.runcmd("camera \"" + pl.realName +"\" set minecraft:free pos "+RTPx+" "+(RTPy+75)+" "+RTPz+" facing " + pl.realName)
+        pl.sendText(info+lang.get("rtp.loading.chunks3"),5)
+    },2900)
+    setTimeout(()=> {
+        mc.runcmd("camera \"" + pl.realName +"\" fade time 0.01 0.01 0.1  color 0 0 0")
+    },2900)
+    setTimeout(()=> {
+        mc.runcmd("camera \"" + pl.realName +"\" fade time 0.1 2 1  color 0 0 0")
+    },4100)
+    setTimeout(()=> {
+        mc.runcmd("camera \"" + pl.realName +"\" fade time 0.1 2 1  color 0 0 0")
+    },4900)
+    setTimeout(()=> {
+        pl.teleport(x,500,z,pl.pos.dimid)
+    },3050)
+    setTimeout(()=> {
+        mc.runcmd("camera \"" + pl.realName +"\" clear")
+    },6900)
+    pl.sendText(info+lang.get("rtp.search.chunks"));
+    pl.sendText(`§7随机坐标：§fX: ${x}, Z: ${z}`);
+    mc.runcmd("effect \"" + pl.realName +"\" resistance 20 255 true")
+    }else
+    {
+    pl.teleport(x,500,z,pl.pos.dimid)
     pl.sendText(info+lang.get("rtp.search.chunks"));
     pl.sendText(`§7随机坐标：§fX: ${x}, Z: ${z}`);
     mc.runcmd("effect \"" + pl.realName +"\" resistance 10 255 true")
-    pl.teleport(x,500,z,pl.pos.dimid)
+    }
     let tpsuccess = false
-
+    setTimeout(()=> {
     let task = setInterval(() => {
-        pl.sendText(info+lang.get("rtp.loading.chunks3"),5)
+        pl.sendText(info+lang.get("rtp.loading.chunks1"),5)
         if(pl.pos.y < 499){
             clearInterval(task);
             tpsuccess = true
              
             const safeLocation = findSafeLocation(x,z,pl.pos.dimid, maxAttempts);
-            logger.log(safeLocation)
                     // 生成安全坐标
             if (!safeLocation) {
                 pl.sendText(info+lang.get("rtp.cannotfind.safexyz"));
@@ -2218,7 +2262,9 @@ rtpCmd.setCallback((cmd,ori,out,res) => {
 
             pl.teleport(safeLocation.x,safeLocation.y,safeLocation.z,safeLocation.dimid)
             pl.sendText(info+lang.get("rtp.tp.success"))
-            //clearInterval(camera)
+            setTimeout(()=> {
+            mc.runcmd("playsound random.levelup "+ pl.realName)
+            },500)
             if(conf.get("LLMoney") == 0){
             pl.setScore(conf.get("Scoreboard"), balance - cost)
             }else{
@@ -2226,7 +2272,7 @@ rtpCmd.setCallback((cmd,ori,out,res) => {
             }
         }
     }, 1000);
-
+    },6000)
     setTimeout(() => { 
         if(tpsuccess == true) return
         clearInterval(task);
