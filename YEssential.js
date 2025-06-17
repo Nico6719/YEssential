@@ -24,11 +24,11 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version =[2,3,4];
+const version =[2,3,5];
 const info = "§l§b[YEST] §r";
 const lang = new JsonConfigFile(YEST_LangDir + "zh_cn.json", JSON.stringify({
     "Version.Chinese":"版本:",
-    "version": "2.3.4",
+    "version": "2.3.5",
     "notice.editor":"§l§e公告编辑器",
     "notice.no.change": "§e公告内容未更改！",
     "notice.exit.edit":"已取消编辑",
@@ -206,9 +206,8 @@ let pvpConfig = new JsonConfigFile(datapath +"/PVPSettingsData/pvp_data.json",JS
 
 let noticetxt = new IniConfigFile(datapath +"/NoticeSettingsData/notice.txt");
 
-let MdataPath = "./plugins/YEssential/data/Moneyranking/";
-
-let moneyranking = new JsonConfigFile(MdataPath)
+let MdataPath = "./plugins/YEssential/data/Moneyranking.json";
+let moneyranking = new JsonConfigFile(MdataPath, "{}");
 
 var c_y = JSON.stringify({
     servers: [
