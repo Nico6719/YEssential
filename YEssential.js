@@ -24,11 +24,11 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version =[2,3,5];
+const version =[2,3,6];
 const info = "§l§b[YEST] §r";
 const lang = new JsonConfigFile(YEST_LangDir + "zh_cn.json", JSON.stringify({
     "Version.Chinese":"版本:",
-    "version": "2.3.5",
+    "version": "2.3.6",
     "notice.editor":"§l§e公告编辑器",
     "notice.no.change": "§e公告内容未更改！",
     "notice.exit.edit":"已取消编辑",
@@ -426,7 +426,7 @@ noticeSetCmd.overload([]);
 noticeSetCmd.setCallback((_cmd, ori, output) => {
     const pl = ori.player;
     if (!conf.get("NoticeEnabled")) {
-        player.tell(info + lang.get("module.no.Enabled"));
+        pl.tell(info + lang.get("module.no.Enabled"));
         return;
     }
     if (!pl || !pl.isOP()) {
@@ -479,6 +479,10 @@ let = cmd = mc.newCommand("notice","公告",PermType.Any)
 cmd.overload([])
 cmd.setCallback((cmd, ori, out, res) => {
     let pl = ori.player;
+    if (!conf.get("NoticeEnabled")) {
+        pl.tell(info + lang.get("module.no.Enabled"));
+        return;
+    }
     if (!pl) return;
     noticeconf.init(String(pl.realName),0)
     if(!file.exists("./plugins/YEssential/data/NoticeSettingsData/notice.txt")){
@@ -516,6 +520,7 @@ mc.listen("onJoin",(pl)=>{
     setTimeout(() => {
         if (!mc.getPlayer(pl.realName)) return;
         if (noticeconf.get(String(pl.realName)) == 1) return;
+        if (!conf.get("NoticeEnabled")) { return; }
         pl.runcmd("notice");
     }, 1000);
 })
