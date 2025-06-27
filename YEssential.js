@@ -2967,7 +2967,7 @@ function CheckUniteBan(realname, xuid, uuid, clientid, ip) { //检查函数
     };
     
 	const jsonData = JSON.stringify(postdata);
-    const url = "http://pheyeji.vip:19132/api.php";
+    const url = "http://uniteban.xyz:19132/api.php";
 
     network.httpPost(
         url,
