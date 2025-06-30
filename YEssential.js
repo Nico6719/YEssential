@@ -24,11 +24,11 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version =[2,3,7];
+const version =[2,3,8];
 const info = "§l§b[YEST] §r";
 const lang = new JsonConfigFile(YEST_LangDir + "zh_cn.json", JSON.stringify({
     "Version.Chinese":"版本:",
-    "version": "2.3.7",
+    "version": "2.3.8",
     "notice.editor":"§l§e公告编辑器",
     "notice.no.change": "§e公告内容未更改！",
     "notice.exit.edit":"已取消编辑",
@@ -332,7 +332,7 @@ setInterval(() => {
             moneyranking.set(pl.realName, moneyValue);
         }
     });
-}, 4000);
+}, 6000);
 
 function ranking(plname) {
     let pl = mc.getPlayer(plname);
@@ -872,6 +872,9 @@ mc.listen("onServerStarted",()=>{
 //PVP模块start
 mc.listen("onServerStarted", function() {
     // 注册命令
+    if (!conf.get("PVPModeEnabled")) {
+        return;
+    }
     const pvp = mc.newCommand("pvp", "设置是否 PVP。", PermType.Any);
     pvp.optional("bool", ParamType.Bool);
     pvp.overload(["bool"]);
@@ -1119,11 +1122,12 @@ function MoneyGui(plname){
             case 0:
                 let fm = mc.newSimpleForm()
                 fm.setTitle("查询"  +lang.get("CoinName"))
-                fm.setContent("你的"+lang.get("CoinName")+"为:"+pl.getScore(conf.get("Scoreboard")))
                 if(!conf.get("LLMoney")){
                 pl.sendText(info +"你的当前金币为："+target.getScore(conf.get("Scoreboard")))
+                fm.setContent("你的"+lang.get("CoinName")+"为:"+pl.getScore(conf.get("Scoreboard")))
                 }else{  
-                pl.sendText(info +"你的当前LLMoney金币为："+target.getMoney())    
+                pl.sendText(info +"你的当前LLMoney金币为："+ pl.getMoney())    
+                fm.setContent("你的"+lang.get("CoinName")+"为:"+pl.getMoney(conf.get("Scoreboard")))
                 }
                 pl.sendForm(fm,(pl,id)=>{
                     if(id == null) return pl.runcmd("moneygui")
@@ -1401,8 +1405,7 @@ function MoneyReduceGui(plname){
         pl.sendText(info +lang.get("success")+lang.get("to")+lang.get("player")+target.realName+"的"+lang.get("CoinName")+"减少"+data[1])
         if(!conf.get("LLMoney")){
         pl.sendText(info +"玩家当前金币为："+target.getScore(conf.get("Scoreboard")))
-         }else{
-        pl.sendText(data[1])   
+         }else{  
         pl.sendText(info +"玩家当前金币为："+target.getMoney())    
          }
     })
@@ -1435,8 +1438,7 @@ function MoneyAddGui(plname){
         MoneyHistory.set(pl.realName,moneyhisdata)
         if(!conf.get("LLMoney")){
         pl.sendText(info +"玩家当前金币为："+target.getScore(conf.get("Scoreboard")))
-         }else{
-        pl.sendText(data[1])   
+         }else{   
         pl.sendText(info +"玩家当前金币为："+target.getMoney())    
          }
     })
@@ -2557,7 +2559,6 @@ function handleSendRedPacket(pl, amount, count, targetPlayer, message) {
         pl.tell("§c请勿重复发送红包！");
         return;
     }
-    isSending = true;
     if (typeof amount !== "number" || typeof count !== "number") {
         pl.tell(info + "§c参数错误: 金额和数量必须是数字");
         return;
@@ -2620,7 +2621,7 @@ function handleSendRedPacket(pl, amount, count, targetPlayer, message) {
         createdAt: Date.now(),
         expireAt: Date.now() + (config.expireTime * 1000)
     };
-    
+    isSending = true;
     // 使用修复后的方法保存红包数据
     redpacketData.set(`packets.${packetId}`, packet);
     redpacketData.set("nextId", packetId + 1);
@@ -2858,7 +2859,7 @@ function handleExpiredPacket(packet) {
             sender.tell(info + `§a你的红包#${packet.id}已过期，退还§e${packet.remainingAmount}§a${lang.get("CoinName")}`);
         }
     }
-    
+    isSending = false;
     // 从数据中移除过期红包
     redpacketData.delete(`packets.${packet.id}`);
 }
@@ -2895,9 +2896,10 @@ setInterval(() => {
     
     // 如果有更新，保存数据
     if (updated) {
-        redpacketData.save();
+          removeExpiredRedPackets();
+          redpacketData.save();
     }
-}, 60 * 1000); // 每1分钟检查一次
+}, 5 * 60 * 1000); // 每5分钟检查一次
 
 // 在插件初始化后添加红包帮助命令
 mc.listen("onServerStarted", () => {
