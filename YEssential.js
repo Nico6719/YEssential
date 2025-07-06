@@ -2981,13 +2981,16 @@ function CheckUniteBan(realname, xuid, uuid, clientid, ip) { //检查函数
                     const response = JSON.parse(result);
                     if (response.exists === true) {
                         logger.warn(`玩家 ${realname} 联合封禁检查不通过`);
-                        mc.runcmd("kick \"" + realname + "\" 联合封禁检查不通过");
+                        const msg = "联合封禁UniteBan检查不通过\n封禁原因:" + response.reason + "\n申诉地址\nhttp://uniteban.xyz:19132/appeal.php";
+                        pl.kick(msg);
                         //updateinfo(realname, xuid, uuid, clientid, ip)
                         //getMacAddress(realname, xuid, uuid, clientid, ip)
                     } else {
                         logger.log(`玩家 ${realname} 联合封禁检查通过`);
                     }
                 } else {
+			logger.error("玩家 "+realname +" 检查失败，正在重试...");
+			CheckUniteBan(realname, xuid, uuid, clientid, ip)
                     //  logger.error(`请求失败，状态码: ${status}`);
                 }
             } catch (e) {
