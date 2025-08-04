@@ -10,7 +10,7 @@
                           Produced by Nico6719 and PHEyeji
                  This plugin is distributed under the GPLv3 License
 
-该插件由ico6719,PHEyeji联合创作
+该插件由Nico6719,PHEyeji联合创作
 未经允许禁止擅自修改或者发售
 该插件仅在[github,MineBBS,KLPBBS]发布
 禁止二次发布插件
@@ -18,17 +18,21 @@
 // LiteLoader-AIDS automatic generated
 //<reference path="c:\Users\11025\Documents/dts/HelperLib-master/src/index.d.ts"/> 
 const { PAPI } = require('./GMLIB-LegacyRemoteCallApi/lib/BEPlaceholderAPI-JS');
-const economy = ll.require("DataAPI")?.Economy;
 const YEST_LangDir = "./plugins/YEssential/lang/";
+const LANG_DIR = "./plugins/YEssential/lang/";
+const DEFAULT_LANG_FILE = "zh_cn.json";
 const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version =[2,3,8];
+const version = "2.4.0";
+const regversion =[2,4,0];
 const info = "§l§b[YEST] §r";
 const lang = new JsonConfigFile(YEST_LangDir + "zh_cn.json", JSON.stringify({
+    "Upd.check":"正在检查新版本中.... 您可在config.json禁用自动更新",
+    "Upd.success":"更新成功！稍后将重载插件",
+    "Upd.fail":"更新失败",
     "Version.Chinese":"版本:",
-    "version": "2.3.8",
     "notice.editor":"§l§e公告编辑器",
     "notice.no.change": "§e公告内容未更改！",
     "notice.exit.edit":"已取消编辑",
@@ -182,10 +186,119 @@ const lang = new JsonConfigFile(YEST_LangDir + "zh_cn.json", JSON.stringify({
     "number":"数字",
     "CoinName":"金币",
     "to":"将",
-    "add":"加"
+    "add":"加",
     
+    
+    // 语言文件处理状态
+    _loaded: false,
+    _filePath: `${LANG_DIR}/${DEFAULT_LANG_FILE}`,
+    
+    // 加载并更新语言文件
+    load() {
+        try {
+            // 确保语言目录存在
+            if (!File.exists(LANG_DIR)) {
+                File.mkdir(LANG_DIR);
+            }
+            
+            // 1. 检查并读取现有语言文件
+            let userTranslations = {};
+            if (File.exists(this._filePath)) {
+                const file = new File(this._filePath);
+                file.open(File.ReadMode);
+                userTranslations = this.parse(file.readAll());
+                file.close();
+                logger.log(`已加载语言文件: ${this._filePath}`);
+            }
+            
+            // 2. 合并语言内容（保留用户自定义翻译）
+            this.merge(userTranslations);
+            
+            // 3. 保存更新后的语言文件
+            const file = new File(this._filePath);
+            file.open(File.WriteMode);
+            file.write(this.toString());
+            file.close();
+            
+            this._loaded = true;
+            logger.log(`语言文件已更新: ${this._filePath}`);
+        } catch (e) {
+            logger.error(`语言文件处理失败: ${e}`);
+            this._loaded = false;
+        }
+        return this;
+    },
+    
+    // 解析语言文件内容
+    parse(content) {
+        const translations = {};
+        const lines = content.split('\n');
+        
+        for (const line of lines) {
+            // 跳过空行和注释
+            if (!line.trim() || line.trim().startsWith('#')) continue;
+            
+            // 解析键值对
+            const index = line.indexOf('=');
+            if (index !== -1) {
+                const key = line.substring(0, index).trim();
+                const value = line.substring(index + 1).trim();
+                translations[key] = value;
+            }
+        }
+        return translations;
+    },
+    
+    // 合并用户翻译
+    merge(userTranslations) {
+        // 添加新键或更新默认值
+        for (const key of Object.keys(this)) {
+            // 跳过内部属性
+            if (key.startsWith('_')) continue;
+            
+            if (userTranslations[key]) {
+                // 保留用户自定义翻译
+                this[key] = userTranslations[key];
+            } else {
+                // 确保所有键都有值
+                if (!this[key]) this[key] = `[未翻译] ${key}`;
+            }
+        }
+    },
+    
+    // 转换为文件内容
+    toString() {
+        let content = '# MyPlugin 语言文件\n';
+        content += '# 最后更新: ' + new Date().toLocaleString() + '\n\n';
+        
+        for (const key of Object.keys(this)) {
+            // 跳过内部属性
+            if (key.startsWith('_')) continue;
+            
+            content += `${key}=${this[key]}\n`;
+        }
+        
+        return content;
+    },
+    
+    // 格式化翻译文本（支持 %s, %d 等占位符）
+    format(key, ...args) {
+        if (!this[key]) return `[缺少翻译: ${key}]`;
+        
+        return this[key].replace(/%s|%d|%\w+/g, match => {
+            return args.length ? args.shift() : match;
+        });
+    }
 }));
-ll.registerPlugin(NAME, PluginInfo,version, {
+const lang1 = {
+    // 默认翻译内容
+    "welcome": "欢迎使用插件!",
+    "goodbye": "再见!",
+    "update": "发现新版本: %s",
+    
+};
+
+ll.registerPlugin(NAME, PluginInfo,regversion, {
     Author: "Nico6719",
     License: "GPL-3.0",
     QQ : "1584573887",
@@ -203,6 +316,8 @@ let MoneyHistory = new JsonConfigFile(datapath +"/MoneyHistory/MoneyHistory.json
 let noticeconf = new JsonConfigFile(datapath + "/NoticeSettingsData/notice.json",JSON.stringify({}));
 
 let pvpConfig = new JsonConfigFile(datapath +"/PVPSettingsData/pvp_data.json",JSON.stringify({}));
+
+//let AutoUpdate = new JsonConfigFile(datapath +"/AutoUpdate/Updatedata.json",JSON.stringify({}));
 
 let noticetxt = new IniConfigFile(datapath +"/NoticeSettingsData/notice.txt");
 
@@ -400,6 +515,7 @@ function ranking(plname) {
     }
 }
 conf.init("RTPAnimation",0)
+conf.init("AutoUpdate",1)
 conf.init("PVPModeEnabled",1)
 conf.init("CheckPluginUpdate", false);
 conf.init("DebugModeEnabled", false);
@@ -718,14 +834,31 @@ function teleportPlayer(pl,player) {
         logger.error(e.stack);
     }
 }
+function compareVersions(v1, v2) {
+    // 将版本号拆分成数字数组 ("2.3.9" => [2, 3, 9])
+    const parts1 = v1.split('.').map(Number);
+    const parts2 = v2.split('.').map(Number);
+    
+    // 比较每个分段
+    const maxLength = Math.max(parts1.length, parts2.length);
+    for (let i = 0; i < maxLength; i++) {
+        // 处理长度不一致的情况（缺失的部分视为0）
+        const num1 = parts1[i] || 0;
+        const num2 = parts2[i] || 0;
+        
+        if (num1 > num2) return 1;   // v1 > v2
+        if (num1 < num2) return -1;  // v1 < v2
+    }
+    return 0;  // 版本相同
+}
 // ======================
 // 服务器启动时自动检测公告更新
 // ======================
 mc.listen("onServerStarted", () => { 
     isSending = false;
-    PAPI.registerPlayerPlaceholder(getScoreMoney, "YEssential", "player_money");//玩家的金钱PAPI
-    PAPI.registerPlayerPlaceholder(getLLMoney, "YEssential", "player_LLmoney");//玩家的LLMoney金钱PAPI
-    logger.info(PluginInfo+lang.get("Version.Chinese")+lang.get("version")+",作者：Nico6719") 
+    PAPI.registerPlayerPlaceholder(getScoreMoney, "YEssential", "player_money");//注册玩家的金钱PAPI
+    PAPI.registerPlayerPlaceholder(getLLMoney, "YEssential", "player_LLmoney");//注册玩家的LLMoney金钱PAPI
+    logger.info(PluginInfo+lang.get("Version.Chinese")+version+",作者：Nico6719") 
     logger.info("--------------------------------------------------------------------------------")
     logger.info(" ██╗   ██╗███████╗███████╗███████╗███████╗███╗   ██╗████████╗██╗ █████╗ ██╗  ")
     logger.info(" ╚██╗ ██╔╝██╔════╝██╔════╝██╔════╝██╔════╝████╗  ██║╚══██╔══╝██║██╔══██╗██║  ")
@@ -737,21 +870,64 @@ mc.listen("onServerStarted", () => {
     logger.info("在线config编辑器：https://jzrxh.work/projects/yessential/config.html")
     logger.info("感谢PHEyeji提供技术支持和指导")
     logger.info("感谢ender罗小黑提供在线网页支持")
-   // logger.warn("这是一个测试版本，请勿用于生产环境！！！")
-    logger.warn("lang.json文件需要删除重新生成！！！")
+ // logger.warn("这是一个测试版本，请勿用于生产环境！！！")
+    logger.warn("zh_cn.json文件需要删除重新生成！！！")
     logger.warn("如有疑问或bug请联系作者反馈！！！！")
     //调用示例： pl.tell(info + lang.get("1.1"));
     if(conf.get("KeepInventory")){
         mc.runcmdEx("gamerule KeepInventory true")
         colorLog("green",lang.get("gamerule.KeepInventory.true"))
     }
+    if(conf.get("AutoUpdate")) {
+    logger.warn(lang.get("Upd.check"))
+    network.httpGet("https://dl.mcmcc.cc/file/Version.json", (status, result) => {
+    if (status !== 200) {
+        logger.error(`请求失败！状态码: ${status}`);
+        return;
+    }
+    try {
+        // 解析 JSON 数据
+        const jsonData = JSON.parse(result);
+        
+        // 提取版本号
+
+        const remoteVersion = jsonData.version;
+        
+        // 比较版本
+        const comparison = compareVersions(remoteVersion, version);
+        
+        if (comparison > 0) {
+            logger.warn(`发现新版本! ${version} → ${remoteVersion}`);
+            logger.warn(`正在更新 ${remoteVersion} 中.....`);
+	        network.httpGet('https://dl.mcmcc.cc/file/YEssential.js', function (st2, dat2) {
+		    if (st2 == 200) {
+               colorLog("green",lang.get("Upd.success"))
+			   let new_plugin_raw = dat2.replace(/\r/g, '');
+			   file.writeTo(pluginpath+"YEssential.js", new_plugin_raw) 
+               setTimeout(() => {
+                mc.runcmdEx("ll reload YEssential")
+               } , 1000);
+		    }
+		    else 
+            {
+			logger.warn("更新失败")
+		    }
+    	})
+        } else if (comparison < 0) {
+            logger.warn(`您的本地版本比远程版本更新！ (${version} > ${remoteVersion})`);
+        } else {
+            logger.log(`您已是最新版本 (${version})`);
+        }
+    } catch (e) {
+        logger.error("JSON 解析错误: " + e);
+    }
+    });
+    } else {
+        return;  
+    }   
     const lastShutdown = conf.get("lastServerShutdown") || 0;
     conf.set("lastServerShutdown", Date.now());
     const lastUpdate = noticeconf.get("lastNoticeUpdate") || 0;
-    if (!conf.get("NoticeEnabled")) {
-        logger.info(info + lang.get("module.no.Enabled"));
-        return;
-    }
     if (lastUpdate > lastShutdown) {
         conf.set("forceNotice", true);
         logger.info(lang.get("notice.is.changed"));
@@ -864,7 +1040,7 @@ mc.listen("onServerStarted",()=>{
     let scoreboard = mc.getScoreObjective(conf.get("Scoreboard"))
     if(scoreboard == null){
         scoreboard = mc.newScoreObjective(conf.get("Scoreboard"),conf.get("Scoreboard"))
-        logger.log("计分板不存在，自动创建")
+        logger.warn("计分板项目不存在，以为您自动创建")
     }
 
     Motd()
@@ -1259,12 +1435,12 @@ function OPMoneyGui(plname){
 
     let fm = mc.newSimpleForm()
     fm.setTitle("(OP)"+lang.get("CoinName"))
-    fm.addButton("增加玩家"+lang.get("CoinName"),"textures/ui/icon_best3")
-    fm.addButton("减少玩家"+lang.get("CoinName"),"textures/ui/redX1")
-    fm.addButton("设置玩家"+lang.get("CoinName"), "textures/ui/gear")
-    fm.addButton("查看玩家"+lang.get("CoinName"), "textures/ui/MCoin")
-    fm.addButton("查看玩家"+lang.get("CoinName")+"历史记录", "textures/ui/book_addtextpage_default")
-    fm.addButton(lang.get("CoinName")+"排行榜", "textures/ui/icon_book_writable")
+    fm.addButton("增加玩家的"+lang.get("CoinName"),"textures/ui/icon_best3")
+    fm.addButton("减少玩家的"+lang.get("CoinName"),"textures/ui/redX1")
+    fm.addButton("设置玩家的"+lang.get("CoinName"), "textures/ui/gear")
+    fm.addButton("查看玩家的"+lang.get("CoinName"), "textures/ui/MCoin")
+    fm.addButton("查看玩家的"+lang.get("CoinName")+"历史记录", "textures/ui/book_addtextpage_default")
+    fm.addButton("全服"+lang.get("CoinName")+"排行榜", "textures/ui/icon_book_writable")
     pl.sendForm(fm,(pl,id)=>{
         if(id == null) return pl.tell(info + lang.get("gui.exit"));
         switch(id){
@@ -1333,7 +1509,7 @@ function MoneyGetGui(plname){
         let target = mc.getPlayer(lst[data[0]])
         if(!target) return pl.tell(info + lang.get("money.tr.noonline"));
         if(!conf.get("LLMoney")){
-        pl.sendText(info +"玩家当前金币为："+target.getScore(conf.get("Scoreboard")))
+        pl.sendText(info +"玩家现在所拥有的金币为："+target.getScore(conf.get("Scoreboard")))
          }else{  
         pl.sendText(info +"玩家当前LLMoney金币为："+target.getMoney())    
          }
@@ -1439,6 +1615,7 @@ function MoneyAddGui(plname){
         if(!conf.get("LLMoney")){
         pl.sendText(info +"玩家当前金币为："+target.getScore(conf.get("Scoreboard")))
          }else{   
+        pl.sendText("已成功给"+pl.realname+"添加"+data[1]+conf.get("Scoreboard"))   
         pl.sendText(info +"玩家当前金币为："+target.getMoney())    
          }
     })
@@ -2983,14 +3160,12 @@ function CheckUniteBan(realname, xuid, uuid, clientid, ip) { //检查函数
                         logger.warn(`玩家 ${realname} 联合封禁检查不通过`);
                         const msg = "联合封禁UniteBan检查不通过\n封禁原因:" + response.reason + "\n申诉地址\nhttp://uniteban.xyz:19132/appeal.php";
                         pl.kick(msg);
-                        //updateinfo(realname, xuid, uuid, clientid, ip)
-                        //getMacAddress(realname, xuid, uuid, clientid, ip)
                     } else {
                         logger.log(`玩家 ${realname} 联合封禁检查通过`);
                     }
                 } else {
-			logger.error("玩家 "+realname +" 检查失败，正在重试...");
-			CheckUniteBan(realname, xuid, uuid, clientid, ip)
+                logger.error("玩家 "+realname +" 检查失败，正在重试...");
+		     	CheckUniteBan(realname, xuid, uuid, clientid, ip)
                     //  logger.error(`请求失败，状态码: ${status}`);
                 }
             } catch (e) {
