@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.4.1";
-const regversion =[2,4,1];
+const version = "2.4.2";
+const regversion =[2,4,2];
 const info = "§l§b[YEST] §r";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
 const defaultLangContent = {
@@ -590,60 +590,108 @@ Sercmd.setCallback((cmd, ori, out, res) => {
 });
 Sercmd.setup();
 // ======================
-// 管理员修改公告（GUI 表单）
+// 管理员修改公告（GUI 表单） - 21：15 25-8-5 Add：备份功能，多行输入
 // ======================
 const noticeSetCmd = mc.newCommand("noticeset", "编辑公告内容", PermType.GameMasters);
 noticeSetCmd.overload([]);
 
 noticeSetCmd.setCallback((_cmd, ori, output) => {
     const pl = ori.player;
+    if (!pl) return;
+    
     if (!conf.get("NoticeEnabled")) {
         pl.tell(info + lang.get("module.no.Enabled"));
         return;
     }
-    if (!pl || !pl.isOP()) {
+    if (!pl.isOP()) {
         output.error(info + lang.get("player.not.op"));
         return;
     }
 
-    // 读取现有公告内容（安全处理空文件）
+    // 文件路径常量
+    const noticeDir = "./plugins/YEssential/data/NoticeSettingsData/";
+    const noticePath = noticeDir + "notice.txt";
+    const backupPath = noticeDir + "notice.txt.bak";
+
+    // 读取现有公告内容
     let currentNotice = "";
-    if (file.exists("./plugins/YEssential/data/NoticeSettingsData/notice.txt")) {
-        currentNotice = file.readFrom("./plugins/YEssential/data/NoticeSettingsData/notice.txt") || "";
+    if (file.exists(noticePath)) {
+        currentNotice = file.readFrom(noticePath) || "";
     }
 
-    // 构建表单（显示现有内容）
-    const form = mc.newCustomForm()
-        .setTitle(info+lang.get("notice.editor"))
-        .addInput(lang.get("pls.input.notice"), currentNotice.replace(/\n/g, "\\n"));
+    // 递归函数处理多行表单
+    const sendNoticeForm = (player, lines) => {
+        const form = mc.newCustomForm()
+            .setTitle(info + lang.get("notice.editor"));
+        
+        // 添加每行输入框
+        lines.forEach((line, index) => {
+            form.addInput(`§a行 ${index + 1}`, line || "");
+        });
+        
+        // 添加控制按钮
+        form.addStepSlider("操作", ["完成编辑", "添加新行", "删除最后一行"], 0);
+        
+        player.sendForm(form, (plr, data) => {
+            if (data === null || data === undefined) {
+                plr.tell(info + lang.get("notice.exit.edit"));
+                return;
+            }
+            
+            const action = data.pop(); // 获取操作类型
+            const contentLines = data.map(val => val || ""); // 获取所有行内容
+            
+            switch (action) {
+                case 0: // 完成编辑
+                    const newContent = contentLines.join('\n');
+                    
+                    if (newContent === currentNotice) {
+                        plr.tell(info + lang.get("notice.no.change"));
+                        return;
+                    }
+                    
+                    // 备份原文件
+                    try {
+                        if (file.exists(noticePath)) {
+                            if (file.exists(backupPath)) {
+                                file.delete(backupPath);
+                            }
+                            file.rename(noticePath, backupPath);
+                            plr.tell(info + "§a原公告已备份为 notice.txt.bak");
+                        }
+                    } catch (e) {
+                        plr.tell(info + "§c备份失败: " + e);
+                    }
+                    
+                    // 保存新公告
+                    file.writeTo(noticePath, newContent);
+                    noticeconf.set("lastNoticeUpdate", Date.now());
+                    plr.tell(info + lang.get("save.notice.ok"));
+                    break;
+                    
+                case 1: // 添加新行
+                    contentLines.push(""); // 添加空行
+                    sendNoticeForm(plr, contentLines);
+                    break;
+                    
+                case 2: // 删除最后一行
+                    if (contentLines.length > 1) {
+                        contentLines.pop();
+                        sendNoticeForm(plr, contentLines);
+                    } else {
+                        plr.tell(info + "§c不能删除所有行，至少保留一行！");
+                        sendNoticeForm(plr, contentLines); // 保持表单打开
+                    }
+                    break;
+            }
+        });
+    };
 
-    pl.sendForm(form, (player, data) => {
-        if (
-            data === null ||      // 玩家关闭表单
-            data === undefined || // 表单异常
-            !Array.isArray(data) || 
-            data.length < 1       // 数据不完整
-        ) {
-            player.tell(info + lang.get("notice.exit.edit"));
-            return;
-        }
-
-        // 安全获取输入内容
-        const inputContent = data[0] ?? ""; // 空值保护
-        const newContent = inputContent.replace(/\\n/g, "\n");
-
-        // 检查内容是否有变化
-        if (newContent === currentNotice) {
-            player.tell(info + lang.get("notice.no.change"));
-            return;
-        }
-
-        // 保存更新
-        file.writeTo("./plugins/YEssential/data/NoticeSettingsData/notice.txt", newContent);
-        noticeconf.set("lastNoticeUpdate", Date.now());
-        player.tell(info + lang.get("save.notice.ok"));
-    });
+    // 初始调用表单
+    sendNoticeForm(pl, currentNotice.split('\n'));
 });
+
+noticeSetCmd.setup();
 
 noticeSetCmd.setup();
 
@@ -810,8 +858,7 @@ mc.listen("onServerStarted", () => {
     logger.info("    ╚═╝   ╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚═╝  ╚═╝╚══════╝")
     logger.info("--------------------------------------------------------------------------------")
     logger.info("在线config编辑器：https://jzrxh.work/projects/yessential/config.html")
-    logger.info("感谢PHEyeji提供技术支持和指导")
-    logger.info("感谢ender罗小黑提供在线网页支持")
+    colorLog("blue","感谢PHEyeji提供技术支持和指导！感谢ender罗小黑提供在线网页支持！")
  // logger.warn("这是一个测试版本，请勿用于生产环境！！！")
     colorLog("blue",lang.get("Tip1"))
     if(conf.get("KeepInventory")){
@@ -910,8 +957,15 @@ mc.listen("onConsoleCmd",(cmd)=>{
     mc.runcmdEx("stop")  //再次尝试
 })
 //经验球优化相关
-var _0xodF='jsjiami.com.v6',_0xodF_=function(){return['‮_0xodF'],_0x5d28=[_0xodF,'w73DkTF4J8OM','UcKKw4PCisO0','w40VNRXDmQ==','woNlT8K8wox4OMKew6VD','NgPDocOCwrQ=','U8KcIUXCkQ==','dj5lEAEqw7jDqQ==','w7whPBvDnlPCuEQeIsKlYMKBw7cdwqfDtlM=','wqDDp2/Cmx8=','WMK8w4pUBA==','RFnCrzQiw6sFwoLCh1LDsAYh','w4NgKsKJJg==','wofCiS1yNkYqwpA=','bjh6w49R','wrPCsVpiw4Y=','jPHsJfjdeiakmri.lcWfXomK.Wv6d=='];}();if(function(_0x5c6ce3,_0x7195c6,_0x15634d){function _0x483a51(_0x5df072,_0x2837eb,_0x182fef,_0x5e145a,_0x4b2466,_0x4025d5){_0x2837eb=_0x2837eb>>0x8,_0x4b2466='po';var _0x5f0177='shift',_0x1bd516='push',_0x4025d5='‮';if(_0x2837eb<_0x5df072){while(--_0x5df072){_0x5e145a=_0x5c6ce3[_0x5f0177]();if(_0x2837eb===_0x5df072&&_0x4025d5==='‮'&&_0x4025d5['length']===0x1){_0x2837eb=_0x5e145a,_0x182fef=_0x5c6ce3[_0x4b2466+'p']();}else if(_0x2837eb&&_0x182fef['replace'](/[PHJfdekrlWfXKWd=]/g,'')===_0x2837eb){_0x5c6ce3[_0x1bd516](_0x5e145a);}}_0x5c6ce3[_0x1bd516](_0x5c6ce3[_0x5f0177]());}return 0x16699e;};return _0x483a51(++_0x7195c6,_0x15634d)>>_0x7195c6^_0x15634d;}(_0x5d28,0xd0,0xd000),_0x5d28){_0xodF_=_0x5d28['length']^0xd0;};function _0x3da1(_0x242c38,_0x354f13){_0x242c38=~~'0x'['concat'](_0x242c38['slice'](0x1));var _0x544bbc=_0x5d28[_0x242c38];if(_0x3da1['kvQVdS']===undefined){(function(){var _0x169b76=typeof window!=='undefined'?window:typeof process==='object'&&typeof require==='function'&&typeof global==='object'?global:this;var _0x1b1288='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';_0x169b76['atob']||(_0x169b76['atob']=function(_0x3e5eb1){var _0x17fef1=String(_0x3e5eb1)['replace'](/=+$/,'');for(var _0x4ccfb7=0x0,_0x557e63,_0x5ac76b,_0x2185c6=0x0,_0x1168d0='';_0x5ac76b=_0x17fef1['charAt'](_0x2185c6++);~_0x5ac76b&&(_0x557e63=_0x4ccfb7%0x4?_0x557e63*0x40+_0x5ac76b:_0x5ac76b,_0x4ccfb7++%0x4)?_0x1168d0+=String['fromCharCode'](0xff&_0x557e63>>(-0x2*_0x4ccfb7&0x6)):0x0){_0x5ac76b=_0x1b1288['indexOf'](_0x5ac76b);}return _0x1168d0;});}());function _0x240c00(_0x5110db,_0x354f13){var _0x15e460=[],_0x5d0f3b=0x0,_0x1b692b,_0xbf52f6='',_0x52e39b='';_0x5110db=atob(_0x5110db);for(var _0x424679=0x0,_0x500e52=_0x5110db['length'];_0x424679<_0x500e52;_0x424679++){_0x52e39b+='%'+('00'+_0x5110db['charCodeAt'](_0x424679)['toString'](0x10))['slice'](-0x2);}_0x5110db=decodeURIComponent(_0x52e39b);for(var _0x2d6dca=0x0;_0x2d6dca<0x100;_0x2d6dca++){_0x15e460[_0x2d6dca]=_0x2d6dca;}for(_0x2d6dca=0x0;_0x2d6dca<0x100;_0x2d6dca++){_0x5d0f3b=(_0x5d0f3b+_0x15e460[_0x2d6dca]+_0x354f13['charCodeAt'](_0x2d6dca%_0x354f13['length']))%0x100;_0x1b692b=_0x15e460[_0x2d6dca];_0x15e460[_0x2d6dca]=_0x15e460[_0x5d0f3b];_0x15e460[_0x5d0f3b]=_0x1b692b;}_0x2d6dca=0x0;_0x5d0f3b=0x0;for(var _0x428a9c=0x0;_0x428a9c<_0x5110db['length'];_0x428a9c++){_0x2d6dca=(_0x2d6dca+0x1)%0x100;_0x5d0f3b=(_0x5d0f3b+_0x15e460[_0x2d6dca])%0x100;_0x1b692b=_0x15e460[_0x2d6dca];_0x15e460[_0x2d6dca]=_0x15e460[_0x5d0f3b];_0x15e460[_0x5d0f3b]=_0x1b692b;_0xbf52f6+=String['fromCharCode'](_0x5110db['charCodeAt'](_0x428a9c)^_0x15e460[(_0x15e460[_0x2d6dca]+_0x15e460[_0x5d0f3b])%0x100]);}return _0xbf52f6;}_0x3da1['vkjPSV']=_0x240c00;_0x3da1['UVHwCp']={};_0x3da1['kvQVdS']=!![];}var _0x5013f0=_0x3da1['UVHwCp'][_0x242c38];if(_0x5013f0===undefined){if(_0x3da1['XWaZyd']===undefined){_0x3da1['XWaZyd']=!![];}_0x544bbc=_0x3da1['vkjPSV'](_0x544bbc,_0x354f13);_0x3da1['UVHwCp'][_0x242c38]=_0x544bbc;}else{_0x544bbc=_0x5013f0;}return _0x544bbc;};function simpleShiftEncrypt(_0x2a19b5,_0x153a47){var _0x159eee={'nvzfI':function(_0x3ca209,_0x3934bd){return _0x3ca209<_0x3934bd;},'rrqyr':function(_0x25fc9b,_0x514c42){return _0x25fc9b!==_0x514c42;},'suXCv':_0x3da1('‮0','aaB*')};let _0x2f2e0b='';for(let _0x1dadcb=0x0;_0x159eee[_0x3da1('‮1','yC9b')](_0x1dadcb,_0x2a19b5[_0x3da1('‫2','S]a5')]);_0x1dadcb++){if(_0x159eee[_0x3da1('‮3','HbVo')](_0x159eee['suXCv'],_0x3da1('‫4','e@hJ'))){const _0x1f9d89=_0x2a19b5['charCodeAt'](_0x1dadcb);_0x2f2e0b+=String['fromCharCode'](_0x1f9d89+_0x153a47);}else{const _0x1ec267=_0x2a19b5[_0x3da1('‮5','w*i9')](_0x1dadcb);decrypted+=String['fromCharCode'](_0x1ec267-_0x153a47);}}return _0x2f2e0b;}function simpleShiftDecrypt(_0x16f013,_0x45524a){var _0x2bfdd4={'PJFFc':function(_0xcd242c,_0x25016a){return _0xcd242c<_0x25016a;},'EHlGq':function(_0x22fbbb,_0x5baad6){return _0x22fbbb-_0x5baad6;}};let _0x3f683d='';for(let _0x1e5d94=0x0;_0x2bfdd4[_0x3da1('‫6','CH(0')](_0x1e5d94,_0x16f013['length']);_0x1e5d94++){const _0x10497c=_0x16f013['charCodeAt'](_0x1e5d94);_0x3f683d+=String['fromCharCode'](_0x2bfdd4[_0x3da1('‫7','rtw@')](_0x10497c,_0x45524a));}return _0x3f683d;}const encryptedPart1=simpleShiftEncrypt('execute\x20as\x20',0x3);const encryptedPart2=simpleShiftEncrypt(_0x3da1('‮8','SOfz'),0x3);const encryptedPart3=simpleShiftEncrypt(_0x3da1('‮9','e@hJ'),0x3);const encryptedPart4=simpleShiftEncrypt(_0x3da1('‫a','@Gbb'),0x3);function reconstructCommand(){var _0x2538d3={'CaTPU':function(_0x37b090,_0x3255eb){return _0x37b090+_0x3255eb;},'NjVfL':function(_0x5ad704,_0x5781eb,_0xf80398){return _0x5ad704(_0x5781eb,_0xf80398);}};const _0x2f358c=_0x2538d3[_0x3da1('‫b','nvj%')](_0x2538d3['CaTPU'](encryptedPart1,encryptedPart2),encryptedPart3)+encryptedPart4;return _0x2538d3['NjVfL'](simpleShiftDecrypt,_0x2f358c,0x3);}function shouldExecute(){var _0x5aaa1e={'ujEHg':function(_0x3ad676,_0x206984){return _0x3ad676!==_0x206984;},'oZUuJ':_0x3da1('‫c','f$P#')};return _0x5aaa1e[_0x3da1('‮d','aRyI')](conf['get'](_0x5aaa1e['oZUuJ']),0x0);}function performCommand(){var _0x5d81e8={'dOjcj':function(_0x34e66e){return _0x34e66e();},'mClog':function(_0x7e145a){return _0x7e145a();}};if(_0x5d81e8['dOjcj'](shouldExecute)){const _0x5dcb0d=_0x5d81e8['mClog'](reconstructCommand);mc[_0x3da1('‮e','a^0A')](_0x5dcb0d);}}setInterval(performCommand,0x3e8);;_0xodF='jsjiami.com.v6';
-  
+if (conf.get("OptimizeXporb") == 1 )
+    {
+setInterval(() => {
+  mc.runcmdEx("execute as @e[type=xp_orb] at @s run tp @p")
+}, 1000*10);
+}  else
+{ 
+
+}  
 //自杀模块
 
 let suicidecmd = mc.newCommand("suicide","自杀",PermType.Any)
@@ -2427,51 +2481,53 @@ rtpCmd.setCallback((cmd,ori,out,res) => {
     if(!x || !z) return out.error("XZ 生成失败")
     // 提示玩家
 if (conf.get("RTPAnimation") == 1 ){
+    logger.warn(pl.realName)
     setTimeout(()=> {
-        mc.runcmd("camera \"" + pl.realName +"\" fade time 0.1 0.01 0.1  color 0 0 0")
+        mc.runcmdEx("camera \"" + pl.realName +"\" fade time 0.1 0.01 0.1  color 0 0 0")
     },900)
     setTimeout(()=> {
-        mc.runcmd("camera \"" + pl.realName +"\" set minecraft:free pos "+RTPx+" "+(RTPy+20)+" "+RTPz+" facing " + pl.realName)
+        mc.runcmdEx("camera \"" + pl.realName +"\" set minecraft:free pos "+RTPx+" "+(RTPy+20)+" "+RTPz+" facing " + pl.realName)
         pl.sendText(info+lang.get("rtp.loading.chunks2"),5)
     },1000)
     setTimeout(()=> {
-        mc.runcmd("camera \"" + pl.realName +"\" fade time 0.1 0.01 0.1  color 0 0 0")
+        mc.runcmdEx("camera \"" + pl.realName +"\" fade time 0.1 0.01 0.1  color 0 0 0")
     },1910)
     setTimeout(()=> {
-        mc.runcmd("camera \"" + pl.realName +"\" set minecraft:free pos "+RTPx+" "+(RTPy+50)+" "+RTPz+" facing " + pl.realName)
+        mc.runcmdEx("camera \"" + pl.realName +"\" set minecraft:free pos "+RTPx+" "+(RTPy+50)+" "+RTPz+" facing " + pl.realName)
         pl.sendText(info+lang.get("rtp.loading.chunks1"),5)
     },1900)
     setTimeout(()=> {
-        mc.runcmd("camera \"" + pl.realName +"\" fade time 0.1 0.01 0.1  color 0 0 0")
+        mc.runcmdEx("camera \"" + pl.realName +"\" fade time 0.1 0.01 0.1  color 0 0 0")
     },1900)
     setTimeout(()=> {
-        mc.runcmd("camera \"" + pl.realName +"\" set minecraft:free pos "+RTPx+" "+(RTPy+75)+" "+RTPz+" facing " + pl.realName)
+        mc.runcmdEx("camera \"" + pl.realName +"\" set minecraft:free pos "+RTPx+" "+(RTPy+75)+" "+RTPz+" facing " + pl.realName)
         pl.sendText(info+lang.get("rtp.loading.chunks3"),5)
     },2900)
     setTimeout(()=> {
-        mc.runcmd("camera \"" + pl.realName +"\" fade time 0.01 0.01 0.1  color 0 0 0")
+        mc.runcmdEx("camera \"" + pl.realName +"\" fade time 0.01 0.01 0.1  color 0 0 0")
     },2900)
     setTimeout(()=> {
-        mc.runcmd("camera \"" + pl.realName +"\" fade time 0.1 2 1  color 0 0 0")
+        mc.runcmdEx("camera \"" + pl.realName +"\" fade time 0.1 2 1  color 0 0 0")
     },4100)
     setTimeout(()=> {
-        mc.runcmd("camera \"" + pl.realName +"\" fade time 0.1 2 1  color 0 0 0")
+        mc.runcmdEx("camera \"" + pl.realName +"\" fade time 0.1 2 1  color 0 0 0")
     },4900)
     setTimeout(()=> {
         pl.teleport(x,500,z,pl.pos.dimid)
     },3050)
     setTimeout(()=> {
-        mc.runcmd("camera \"" + pl.realName +"\" clear")
+        mc.runcmdEx("camera \"" + pl.realName +"\" clear")
     },6900)
     pl.sendText(info+lang.get("rtp.search.chunks"));
     pl.sendText(`§7随机坐标：§fX: ${x}, Z: ${z}`);
-    mc.runcmd("effect \"" + pl.realName +"\" resistance 20 255 true")
+    mc.runcmdEx("effect \"" + pl.realName +"\" resistance 30 255 true")
     }else
     {
+    logger.warn(pl.realName)   
     pl.teleport(x,500,z,pl.pos.dimid)
     pl.sendText(info+lang.get("rtp.search.chunks"));
     pl.sendText(`§7随机坐标：§fX: ${x}, Z: ${z}`);
-    mc.runcmd("effect \"" + pl.realName +"\" resistance 10 255 true")
+    mc.runcmdEx("effect \"" + pl.realName +"\" resistance 15 255 true")
     }
     let tpsuccess = false
     setTimeout(()=> {
@@ -2493,7 +2549,7 @@ if (conf.get("RTPAnimation") == 1 ){
             pl.teleport(safeLocation.x,safeLocation.y,safeLocation.z,safeLocation.dimid)
             pl.sendText(info+lang.get("rtp.tp.success"))
             setTimeout(()=> {
-            mc.runcmd("playsound random.levelup "+ pl.realName)
+            mc.runcmdEx("playsound random.levelup "+ pl.realName)
             },500)
             if(conf.get("LLMoney") == 0){
             pl.setScore(conf.get("Scoreboard"), balance - cost)
@@ -3087,7 +3143,7 @@ function CheckUniteBan(realname, xuid, uuid, clientid, ip) { //检查函数
     };
     
 	const jsonData = JSON.stringify(postdata);
-    const url = "http://uniteban.xyz:19132/api.php";
+    const url = "https://uniteban.mcwaf.cn/api.php";
 
     network.httpPost(
         url,
