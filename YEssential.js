@@ -31,7 +31,7 @@ const defaultLangContent = {
     "Upd.check":"正在检查新版本中.... 您可在config.json禁用自动更新",
     "Upd.success":"更新成功！稍后将重载插件",
     "Upd.fail":"更新失败",
-    "Tip1":"如有疑问或bug请联系作者反馈！！！！",
+    "Tip1":"如有Bug请联系作者反馈！！！！",
     "Version.Chinese":"版本:",
     "notice.editor":"§l§e公告编辑器",
     "notice.no.change": "§e公告内容未更改！",
@@ -232,7 +232,7 @@ function mergeLangFiles() {
         // 如果有新键添加，则写入文件
         if (addedCount > 0) {
             file.writeTo(langFilePath, JSON.stringify(mergedData, null, 2));
-            logger.info(`语言文件已更新，新增 ${addedCount} 个条目`);
+            colorLog("green",`语言文件已更新，新增 ${addedCount} 个条目`);
             
             // 重新初始化语言对象以使用最新数据
             lang = new JsonConfigFile(langFilePath, JSON.stringify(mergedData));
@@ -839,7 +839,7 @@ mc.listen("onServerStarted", () => {
         
         if (comparison > 0) {
             logger.warn(`发现新版本! ${version} → ${remoteVersion}`);
-            logger.warn(`正在更新 ${remoteVersion} 中.....`);
+            logger.warn(`正在更新到 ${remoteVersion} 中.....`);
 	        network.httpGet('https://dl.mcmcc.cc/file/YEssential.js', function (st2, dat2) {
 		    if (st2 == 200) {
                colorLog("green",lang.get("Upd.success"))
