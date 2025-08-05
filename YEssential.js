@@ -19,19 +19,19 @@
 //<reference path="c:\Users\11025\Documents/dts/HelperLib-master/src/index.d.ts"/> 
 const { PAPI } = require('./GMLIB-LegacyRemoteCallApi/lib/BEPlaceholderAPI-JS');
 const YEST_LangDir = "./plugins/YEssential/lang/";
-const LANG_DIR = "./plugins/YEssential/lang/";
-const DEFAULT_LANG_FILE = "zh_cn.json";
 const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.4.0";
-const regversion =[2,4,0];
+const version = "2.4.1";
+const regversion =[2,4,1];
 const info = "§l§b[YEST] §r";
-const lang = new JsonConfigFile(YEST_LangDir + "zh_cn.json", JSON.stringify({
+// 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
+const defaultLangContent = {
     "Upd.check":"正在检查新版本中.... 您可在config.json禁用自动更新",
     "Upd.success":"更新成功！稍后将重载插件",
     "Upd.fail":"更新失败",
+    "Tip1":"如有疑问或bug请联系作者反馈！！！！",
     "Version.Chinese":"版本:",
     "notice.editor":"§l§e公告编辑器",
     "notice.no.change": "§e公告内容未更改！",
@@ -55,6 +55,8 @@ const lang = new JsonConfigFile(YEST_LangDir + "zh_cn.json", JSON.stringify({
     "suicide.kill.ok": "自杀执行成功！",
     "pls.input.number":"请输入增加数量!",
     "key.not.number":"请输入数字！",
+    "money.create.score":"计分板项目不存在，以为您自动创建",
+    "money.callback.menu":"§a正在返回经济系统主界面...",
     "money.player.list":"排行榜",
     "money.transfer":"转账",
     "moeny.view":"查看",
@@ -65,7 +67,7 @@ const lang = new JsonConfigFile(YEST_LangDir + "zh_cn.json", JSON.stringify({
     "money.add.number":"请输入要增加的",
     "moeny.set.number":"请输入要设置的",
     "money.history":"历史记录(最近50条)：",
-    "money.no.enough": "您的金币不足！",
+    "money.no.enough": "您的余额不足！",
     "money.tr.error1":"无效的接收方！",
     "money.tr.error2":"不能给自己转账!",
     "money.tr.noonline":"目标玩家离线",
@@ -76,6 +78,10 @@ const lang = new JsonConfigFile(YEST_LangDir + "zh_cn.json", JSON.stringify({
     "moeny.setting.number":"请输入设置数量",
     "money.must.bigger0":"转账数量必须大于0！",
     "money.cannot.smaller0":"§c实际到账金额不能为负数！",
+    "money.op.add":"增加玩家的",
+    "money.op.remove":"减少玩家的",
+    "money.op.set":"设置玩家的",
+    "money.op.look":"查看玩家的",
     "warp.menu.public":"公共传送点",
     "warp.menu.public.op":"(OP)公共传送点",
     "warp.go.to":"前往传送点",
@@ -186,117 +192,55 @@ const lang = new JsonConfigFile(YEST_LangDir + "zh_cn.json", JSON.stringify({
     "number":"数字",
     "CoinName":"金币",
     "to":"将",
-    "add":"加",
-    
-    
-    // 语言文件处理状态
-    _loaded: false,
-    _filePath: `${LANG_DIR}/${DEFAULT_LANG_FILE}`,
-    
-    // 加载并更新语言文件
-    load() {
-        try {
-            // 确保语言目录存在
-            if (!File.exists(LANG_DIR)) {
-                File.mkdir(LANG_DIR);
-            }
-            
-            // 1. 检查并读取现有语言文件
-            let userTranslations = {};
-            if (File.exists(this._filePath)) {
-                const file = new File(this._filePath);
-                file.open(File.ReadMode);
-                userTranslations = this.parse(file.readAll());
-                file.close();
-                logger.log(`已加载语言文件: ${this._filePath}`);
-            }
-            
-            // 2. 合并语言内容（保留用户自定义翻译）
-            this.merge(userTranslations);
-            
-            // 3. 保存更新后的语言文件
-            const file = new File(this._filePath);
-            file.open(File.WriteMode);
-            file.write(this.toString());
-            file.close();
-            
-            this._loaded = true;
-            logger.log(`语言文件已更新: ${this._filePath}`);
-        } catch (e) {
-            logger.error(`语言文件处理失败: ${e}`);
-            this._loaded = false;
-        }
-        return this;
-    },
-    
-    // 解析语言文件内容
-    parse(content) {
-        const translations = {};
-        const lines = content.split('\n');
-        
-        for (const line of lines) {
-            // 跳过空行和注释
-            if (!line.trim() || line.trim().startsWith('#')) continue;
-            
-            // 解析键值对
-            const index = line.indexOf('=');
-            if (index !== -1) {
-                const key = line.substring(0, index).trim();
-                const value = line.substring(index + 1).trim();
-                translations[key] = value;
-            }
-        }
-        return translations;
-    },
-    
-    // 合并用户翻译
-    merge(userTranslations) {
-        // 添加新键或更新默认值
-        for (const key of Object.keys(this)) {
-            // 跳过内部属性
-            if (key.startsWith('_')) continue;
-            
-            if (userTranslations[key]) {
-                // 保留用户自定义翻译
-                this[key] = userTranslations[key];
-            } else {
-                // 确保所有键都有值
-                if (!this[key]) this[key] = `[未翻译] ${key}`;
-            }
-        }
-    },
-    
-    // 转换为文件内容
-    toString() {
-        let content = '# MyPlugin 语言文件\n';
-        content += '# 最后更新: ' + new Date().toLocaleString() + '\n\n';
-        
-        for (const key of Object.keys(this)) {
-            // 跳过内部属性
-            if (key.startsWith('_')) continue;
-            
-            content += `${key}=${this[key]}\n`;
-        }
-        
-        return content;
-    },
-    
-    // 格式化翻译文本（支持 %s, %d 等占位符）
-    format(key, ...args) {
-        if (!this[key]) return `[缺少翻译: ${key}]`;
-        
-        return this[key].replace(/%s|%d|%\w+/g, match => {
-            return args.length ? args.shift() : match;
-        });
-    }
-}));
-const lang1 = {
-    // 默认翻译内容
-    "welcome": "欢迎使用插件!",
-    "goodbye": "再见!",
-    "update": "发现新版本: %s",
-    
+    "add":"加"
 };
+
+// 创建语言文件（如果不存在）
+const langFilePath = YEST_LangDir + "zh_cn.json";
+let lang = new JsonConfigFile(langFilePath, JSON.stringify(defaultLangContent));
+
+// 语言文件合并功能
+function mergeLangFiles() {
+    try {
+        // 确保语言目录存在
+        if (!file.exists(YEST_LangDir)) {
+            file.mkdir(YEST_LangDir);
+        }
+        
+        // 读取现有语言文件（如果存在）
+        let currentLangData = {};
+        if (file.exists(langFilePath)) {
+            try {
+                const content = file.readFrom(langFilePath);
+                currentLangData = JSON.parse(content);
+            } catch (e) {
+                logger.error("解析语言文件时出错: " + e);
+            }
+        }
+        
+        // 合并数据（只添加新键，保留现有键的值）
+        const mergedData = {...currentLangData};
+        let addedCount = 0;
+        
+        for (const key in defaultLangContent) {
+            if (!(key in mergedData)) {
+                mergedData[key] = defaultLangContent[key];
+                addedCount++;
+            }
+        }
+        
+        // 如果有新键添加，则写入文件
+        if (addedCount > 0) {
+            file.writeTo(langFilePath, JSON.stringify(mergedData, null, 2));
+            logger.info(`语言文件已更新，新增 ${addedCount} 个条目`);
+            
+            // 重新初始化语言对象以使用最新数据
+            lang = new JsonConfigFile(langFilePath, JSON.stringify(mergedData));
+        }
+    } catch (e) {
+        logger.error("合并语言文件时出错: " + e);
+    }
+}
 
 ll.registerPlugin(NAME, PluginInfo,regversion, {
     Author: "Nico6719",
@@ -316,8 +260,6 @@ let MoneyHistory = new JsonConfigFile(datapath +"/MoneyHistory/MoneyHistory.json
 let noticeconf = new JsonConfigFile(datapath + "/NoticeSettingsData/notice.json",JSON.stringify({}));
 
 let pvpConfig = new JsonConfigFile(datapath +"/PVPSettingsData/pvp_data.json",JSON.stringify({}));
-
-//let AutoUpdate = new JsonConfigFile(datapath +"/AutoUpdate/Updatedata.json",JSON.stringify({}));
 
 let noticetxt = new IniConfigFile(datapath +"/NoticeSettingsData/notice.txt");
 
@@ -493,7 +435,7 @@ function ranking(plname) {
     pl.sendForm(form, (pl, id) => {
         // 点击任何按钮都提示并返回主菜单
         if (id !== null) {
-            pl.tell(info + "§a正在返回经济系统主界面...");
+            pl.tell(info +lang.get("money.callback.menu"));
         }
         pl.runcmd("moneygui");
     });
@@ -871,13 +813,12 @@ mc.listen("onServerStarted", () => {
     logger.info("感谢PHEyeji提供技术支持和指导")
     logger.info("感谢ender罗小黑提供在线网页支持")
  // logger.warn("这是一个测试版本，请勿用于生产环境！！！")
-    logger.warn("zh_cn.json文件需要删除重新生成！！！")
-    logger.warn("如有疑问或bug请联系作者反馈！！！！")
-    //调用示例： pl.tell(info + lang.get("1.1"));
+    colorLog("blue",lang.get("Tip1"))
     if(conf.get("KeepInventory")){
         mc.runcmdEx("gamerule KeepInventory true")
         colorLog("green",lang.get("gamerule.KeepInventory.true"))
     }
+    mergeLangFiles();
     if(conf.get("AutoUpdate")) {
     logger.warn(lang.get("Upd.check"))
     network.httpGet("https://dl.mcmcc.cc/file/Version.json", (status, result) => {
@@ -910,13 +851,13 @@ mc.listen("onServerStarted", () => {
 		    }
 		    else 
             {
-			logger.warn("更新失败")
+			logger.error(lang.get("Upd.fail"))
 		    }
     	})
         } else if (comparison < 0) {
-            logger.warn(`您的本地版本比远程版本更新！ (${version} > ${remoteVersion})`);
+            colorLog("red",`您的本地版本比远程版本更新！ (${version} > ${remoteVersion})`);
         } else {
-            logger.log(`您已是最新版本 (${version})`);
+            colorLog("green",`您已是最新版本 (${version})`);
         }
     } catch (e) {
         logger.error("JSON 解析错误: " + e);
@@ -925,6 +866,7 @@ mc.listen("onServerStarted", () => {
     } else {
         return;  
     }   
+    
     const lastShutdown = conf.get("lastServerShutdown") || 0;
     conf.set("lastServerShutdown", Date.now());
     const lastUpdate = noticeconf.get("lastNoticeUpdate") || 0;
@@ -1040,7 +982,7 @@ mc.listen("onServerStarted",()=>{
     let scoreboard = mc.getScoreObjective(conf.get("Scoreboard"))
     if(scoreboard == null){
         scoreboard = mc.newScoreObjective(conf.get("Scoreboard"),conf.get("Scoreboard"))
-        logger.warn("计分板项目不存在，以为您自动创建")
+        logger.warn(lang.get("money.create.score"))
     }
 
     Motd()
@@ -1297,7 +1239,7 @@ function MoneyGui(plname){
         switch(id){
             case 0:
                 let fm = mc.newSimpleForm()
-                fm.setTitle("查询"  +lang.get("CoinName"))
+                fm.setTitle(lang.get("money.query")+lang.get("CoinName"))
                 if(!conf.get("LLMoney")){
                 pl.sendText(info +"你的当前金币为："+target.getScore(conf.get("Scoreboard")))
                 fm.setContent("你的"+lang.get("CoinName")+"为:"+pl.getScore(conf.get("Scoreboard")))
@@ -1435,10 +1377,10 @@ function OPMoneyGui(plname){
 
     let fm = mc.newSimpleForm()
     fm.setTitle("(OP)"+lang.get("CoinName"))
-    fm.addButton("增加玩家的"+lang.get("CoinName"),"textures/ui/icon_best3")
-    fm.addButton("减少玩家的"+lang.get("CoinName"),"textures/ui/redX1")
-    fm.addButton("设置玩家的"+lang.get("CoinName"), "textures/ui/gear")
-    fm.addButton("查看玩家的"+lang.get("CoinName"), "textures/ui/MCoin")
+    fm.addButton(lang.get("money.op.add")+lang.get("CoinName"),"textures/ui/icon_best3")
+    fm.addButton(lang.get("money.op.remove")+lang.get("CoinName"),"textures/ui/redX1")
+    fm.addButton(lang.get("money.op.set")+lang.get("CoinName"), "textures/ui/gear")
+    fm.addButton(lang.get("money.op.look")+lang.get("CoinName"), "textures/ui/MCoin")
     fm.addButton("查看玩家的"+lang.get("CoinName")+"历史记录", "textures/ui/book_addtextpage_default")
     fm.addButton("全服"+lang.get("CoinName")+"排行榜", "textures/ui/icon_book_writable")
     pl.sendForm(fm,(pl,id)=>{
@@ -1498,7 +1440,7 @@ function MoneyGetGui(plname){
     let pl = mc.getPlayer(plname)
     if(!pl) return
     let fm = mc.newCustomForm()
-    fm.setTitle("查看玩家"+lang.get("CoinName"))
+    fm.setTitle(lang.get("money.op.look")+lang.get("CoinName"))
     let lst = []
     mc.getOnlinePlayers().forEach((pl)=>{
         lst.push(pl.realName)
@@ -1520,7 +1462,7 @@ function MoneySetGui(plname){
     let pl = mc.getPlayer(plname)
     if(!pl) return
     let fm = mc.newCustomForm()
-    fm.setTitle("设置玩家"+lang.get("CoinName"))
+    fm.setTitle(lang.get("money.op.set")+lang.get("CoinName"))
     let lst = []
     mc.getOnlinePlayers().forEach((pl)=>{
         lst.push(pl.realName)
@@ -1541,12 +1483,11 @@ function MoneySetGui(plname){
         let moneyhisdata = MoneyHistory.get(target.realName)
         moneyhisdata[String(system.getTimeStr())+"§"+getRandomLetter()] = lang.get("CoinName")+"设置"+data[1]
         MoneyHistory.set(pl.realName,moneyhisdata)
-
         pl.sendText(info +lang.get("success")+lang.get("to")+lang.get("player")+target.realName+"的"+lang.get("CoinName")+"设置为"+data[1])
          if(!conf.get("LLMoney")){
         pl.sendText(info +"玩家当前金币为："+target.getScore(conf.get("Scoreboard")))
          }else{
-        pl.sendText(info +"玩家当前金币为："+Number(data[1]))    
+        pl.sendText(info +"玩家当前金币为："+target.getMoney())    
          }
     })
 }
@@ -1557,7 +1498,7 @@ function MoneyReduceGui(plname){
     let pl = mc.getPlayer(plname)
     if(!pl) return
     let fm = mc.newCustomForm()
-    fm.setTitle("减少玩家"+lang.get("CoinName"))
+    fm.setTitle(lang.get("money.op.remove")+lang.get("CoinName"))
     let lst = []
     mc.getOnlinePlayers().forEach((pl)=>{
         lst.push(pl.realName)
@@ -1570,7 +1511,7 @@ function MoneyReduceGui(plname){
         let target = mc.getPlayer(lst[data[0]])
         if(!target) return pl.tell(info + lang.get("money.tr.noonline"));
         if(conf.get("LLMoney") == 0){
-        target.reduceScore(conf.get("Scoreboard"),parseInt(data[1]))
+            target.reduceScore(conf.get("Scoreboard"),parseInt(data[1]))
         }else{
             target.reduceMoney(Number(data[1]))
         }
@@ -1591,7 +1532,7 @@ function MoneyAddGui(plname){
     let pl = mc.getPlayer(plname)
     if(!pl) return
     let fm = mc.newCustomForm()
-    fm.setTitle("增加玩家"+lang.get("CoinName"))
+    fm.setTitle(lang.get("money.op.add")+lang.get("CoinName"))
     let lst = []
     mc.getOnlinePlayers().forEach((pl)=>{
         lst.push(pl.realName)
