@@ -16,7 +16,6 @@
 禁止二次发布插件
 ----------------------------------*/
 // LiteLoader-AIDS automatic generated
-// LiteLoader-AIDS automatic generated
 /// <reference path="c:\Users\Admin\ku/dts/helperlib/src/index.d.ts"/> 
 const { PAPI } = require('./GMLIB-LegacyRemoteCallApi/lib/BEPlaceholderAPI-JS');
 const YEST_LangDir = "./plugins/YEssential/lang/";
@@ -29,6 +28,8 @@ const regversion =[2,4,3];
 const info = "§l§b[YEST] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
+// 创建语言文件（如果不存在）      
+const langFilePath = YEST_LangDir + "zh_cn.json";
 const defaultLangContent = {
     "Upd.check":"正在检查新版本中.... 您可在config.json禁用自动更新",
     "Upd.success":"更新成功！稍后将重载插件",
@@ -204,55 +205,13 @@ const defaultLangContent = {
     "number":"数字",
     "CoinName":"金币",
     "to":"将",
-    "add":"加"
+    "add":"加",
+    
 };
 
-// 创建语言文件（如果不存在）      
-const langFilePath = YEST_LangDir + "zh_cn.json";
-let lang = new JsonConfigFile(langFilePath, JSON.stringify(defaultLangContent));
 
-// 语言文件合并功能
-function mergeLangFiles() {
-    try {
-        // 确保语言目录存在
-        if (!file.exists(YEST_LangDir)) {
-            file.mkdir(YEST_LangDir);
-        }
-        
-        // 读取现有语言文件（如果存在）
-        let currentLangData = {};
-        if (file.exists(langFilePath)) {
-            try {
-                const content = file.readFrom(langFilePath);
-                currentLangData = JSON.parse(content);
-            } catch (e) {
-                logger.error("解析语言文件时出错: " + e);
-            }
-        }
-        
-        // 合并数据（只添加新键，保留现有键的值）
-        const mergedData = {...currentLangData};
-        let addedCount = 0;
-        
-        for (const key in defaultLangContent) {
-            if (!(key in mergedData)) {
-                mergedData[key] = defaultLangContent[key];
-                addedCount++;
-            }
-        }
-        
-        // 如果有新键添加，则写入文件
-        if (addedCount > 0) {
-            file.writeTo(langFilePath, JSON.stringify(mergedData, null, 2));
-            colorLog("green",`语言文件已更新，新增 ${addedCount} 个条目`);
-            
-            // 重新初始化语言对象以使用最新数据
-            lang = new JsonConfigFile(langFilePath, JSON.stringify(mergedData));
-        }
-    } catch (e) {
-        logger.error("合并语言文件时出错: " + e);
-    }
-}
+
+
 
 ll.registerPlugin(NAME, PluginInfo,regversion, {
     Author: "Nico6719",
@@ -260,6 +219,7 @@ ll.registerPlugin(NAME, PluginInfo,regversion, {
     QQ : "1584573887",
 });
 
+let lang = new JsonConfigFile(langFilePath, JSON.stringify(defaultLangContent));
 
 let conf = new JsonConfigFile(pluginpath +"/Config/config.json",JSON.stringify({}));
   
@@ -387,13 +347,543 @@ const redpacketData = {
     }
     
 };
-function displayPlayerMoneyInfo(pl, target) {
-    if (!conf.get("LLMoney")) {
-        pl.sendText(info + "你的当前金币为：" + target.getScore(conf.get("Scoreboard")))
-        return "你的" + lang.get("CoinName") + "为:" + pl.getScore(conf.get("Scoreboard"));
-    } else {
-        pl.sendText(info + "你的当前LLMoney金币为：" + pl.getMoney());
-        return "你的" + lang.get("CoinName") + "为:" + pl.getMoney();
+// 异步文件操作工具类
+class AsyncFileManager {
+    static async readFile(path, defaultContent = '{}') {
+        return new Promise((resolve, reject) => {
+            try {
+                if (!file.exists(path)) {
+                    file.writeTo(path, defaultContent);
+                    resolve(JSON.parse(defaultContent));
+                } else {
+                    const content = file.readFrom(path);
+                    resolve(JSON.parse(content || defaultContent));
+                }
+            } catch (e) {
+                logger.error(`读取文件失败: ${path}`, e);
+                resolve(JSON.parse(defaultContent));
+            }
+        });
+    }
+
+    static async writeFile(path, data) {
+        return new Promise((resolve, reject) => {
+            try {
+                const content = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+                file.writeTo(path, content);
+                resolve(true);
+            } catch (e) {
+                logger.error(`写入文件失败: ${path}`, e);
+                reject(e);
+            }
+        });
+    }
+}
+
+// 异步网络请求管理器
+class AsyncNetworkManager {
+    static async httpGet(url, timeout = 10000) {
+        return new Promise((resolve, reject) => {
+            const timer = setTimeout(() => {
+                reject(new Error(`请求超时: ${url}`));
+            }, timeout);
+
+            network.httpGet(url, (status, result) => {
+                //clearTimeout(timer);
+                if (status === 200) {
+                    resolve(result);
+                } else {
+                    reject(new Error(`请求失败，状态码: ${status}`));
+                }
+            });
+        });
+    }
+
+    static async httpPost(url, data, contentType = 'application/json', timeout = 10000) {
+        return new Promise((resolve, reject) => {
+            const timer = setTimeout(() => {
+                reject(new Error(`请求超时: ${url}`));
+            }, timeout);
+
+            network.httpPost(url, data, contentType, (status, result) => {
+                clearTimeout(timer);
+                if (status === 200) {
+                    resolve(result);
+                } else {
+                    reject(new Error(`请求失败，状态码: ${status}`));
+                }
+            });
+        });
+    }
+}
+
+// 异步更新检查器
+class AsyncUpdateChecker {
+    static async checkForUpdates(currentVersion) {
+        try {
+            logger.warn(lang.get("Upd.check"));
+            
+            const result = await AsyncNetworkManager.httpGet("https://dl.mcmcc.cc/file/Version.json");
+            const jsonData = JSON.parse(result);
+            const remoteVersion = jsonData.version;
+            
+            const comparison = compareVersions(remoteVersion, currentVersion);
+            
+            if (comparison > 0) {
+                logger.warn(`发现新版本! ${currentVersion} → ${remoteVersion}`);
+                await this.downloadUpdate(remoteVersion);
+            } else if (comparison < 0) {
+                colorLog("red", `您的本地版本比远程版本更新！ (${currentVersion} > ${remoteVersion})`);
+            } else {
+                colorLog("green", `您已是最新版本 (${currentVersion})`);
+            }
+        } catch (error) {
+            logger.error("更新检查失败: " + error.message);
+        }
+    }
+
+    static async downloadUpdate(version) {
+        try {
+            logger.warn(`正在更新到 ${version} 中.....`);
+            
+            const pluginData = await AsyncNetworkManager.httpGet('https://dl.mcmcc.cc/file/YEssential.js');
+            const processedData = pluginData.replace(/\r/g, '');
+            
+            await AsyncFileManager.writeFile(pluginpath + "YEssential.js", processedData);
+            
+            colorLog("green", lang.get("Upd.success"));
+            
+            setTimeout(() => {
+                mc.runcmdEx("ll reload YEssential");
+            }, 1000);
+        } catch (error) {
+            logger.error(lang.get("Upd.fail") + ": " + error.message);
+        }
+    }
+}
+
+// 异步语言文件管理器
+class AsyncLanguageManager {
+    static async mergeLangFiles() {
+        try {
+            // 确保语言目录存在
+            if (!file.exists(YEST_LangDir)) {
+                file.mkdir(YEST_LangDir);
+            }
+            
+            // 异步读取现有语言文件
+            const currentLangData = await AsyncFileManager.readFile(langFilePath, JSON.stringify(defaultLangContent));
+            
+            // 合并数据
+            const mergedData = { ...currentLangData };
+            let addedCount = 0;
+            
+            for (const key in defaultLangContent) {
+                if (!(key in mergedData)) {
+                    mergedData[key] = defaultLangContent[key];
+                    addedCount++;
+                }
+            }
+            
+            // 如果有新键添加，则异步写入文件
+            if (addedCount > 0) {
+                await AsyncFileManager.writeFile(langFilePath, mergedData);
+                colorLog("green", `语言文件已更新，新增 ${addedCount} 个条目`);
+                
+                // 重新初始化语言对象
+                lang = new JsonConfigFile(langFilePath, JSON.stringify(mergedData));
+            }
+        } catch (error) {
+            logger.error("合并语言文件时出错: " + error.message);
+        }
+    }
+}
+
+// 异步联合封禁检查器
+class AsyncBanChecker {
+    static async checkUniteBan(realname, xuid, uuid, clientid, ip, maxRetries = 3) {
+        const postdata = {
+            ...(realname != null && { name: realname }),
+            ...(xuid != null && { xuid: xuid }),
+            ...(uuid != null && { uuid: uuid }),
+            ...(clientid != null && { clientid: clientid }),
+            ...(ip != null && { ip: ip })
+        };
+        
+        const jsonData = JSON.stringify(postdata);
+        const url = "https://uniteban.mcwaf.cn/api.php";
+        
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                const result = await AsyncNetworkManager.httpPost(url, jsonData, "application/json", 15000);
+                const response = JSON.parse(result);
+                
+                if (response.exists === true) {
+                    logger.warn(`玩家 ${realname} 联合封禁检查不通过`);
+                    const msg = "联合封禁UniteBan检查不通过\n封禁原因:" + response.reason + "\n申诉地址\nhttp://uniteban.xyz:19132/appeal.php";
+                    
+                    const player = mc.getPlayer(realname);
+                    if (player) {
+                        player.kick(msg);
+                    }
+                    return false;
+                } else {
+                    logger.log(`玩家 ${realname} 联合封禁检查通过`);
+                    return true;
+                }
+            } catch (error) {
+                logger.warn(`玩家 ${realname} 封禁检查失败 (尝试 ${attempt}/${maxRetries}): ${error.message}`);
+                
+                if (attempt === maxRetries) {
+                    logger.error(`玩家 ${realname} 联合封禁检查最终失败，跳过检查`);
+                    return true; // 检查失败时允许玩家进入
+                }
+                
+                // 重试前等待
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            }
+        }
+    }
+}
+class AsyncTeleportSystem {
+    static generateRandomCoordinate() {
+        const config = conf.get("RTP");
+        const maxRadius = config.maxRadius || 5000;        // 最大传送半径
+        const minRadius = config.minRadius || 100;         // 最小传送半径
+        
+        let x, z;
+        let attempts = 0;
+        const maxAttempts = 50;
+        
+        do {
+            // 生成随机角度
+            const angle = Math.random() * 2 * Math.PI;
+            
+            // 在最小和最大半径之间生成随机距离
+            const minRadiusSquared = minRadius * minRadius;
+            const maxRadiusSquared = maxRadius * maxRadius;
+            const radiusSquared = minRadiusSquared + Math.random() * (maxRadiusSquared - minRadiusSquared);
+            const radius = Math.sqrt(radiusSquared);
+            
+            // 计算坐标
+            x = Math.floor(radius * Math.cos(angle));
+            z = Math.floor(radius * Math.sin(angle));
+            
+            attempts++;
+        } while (attempts < maxAttempts);
+        
+        return { x, z };
+    }
+
+    // 验证坐标是否在有效范围内
+    static isCoordinateValid(x, z) {
+        const config = conf.get("RTP");
+        const maxRadius = config.maxRadius || 5000;
+        const minRadius = config.minRadius || 100;
+        
+        const distance = Math.sqrt(x * x + z * z);
+        return distance >= minRadius && distance <= maxRadius;
+    }
+
+    // 其他方法保持不变...
+    static getSurfaceHeight(x, z, dimension) {
+        for (let y = 60; y <= 120; y++) {
+            try {
+                const currentBlock = mc.getBlock(x, y, z, dimension);
+                const aboveBlock = mc.getBlock(x, y + 1, z, dimension);
+                const above2Block = mc.getBlock(x, y + 2, z, dimension);
+                
+                if (currentBlock && aboveBlock && above2Block) {
+                    if (currentBlock.type !== "minecraft:air" && 
+                        aboveBlock.type === "minecraft:air" && 
+                        above2Block.type === "minecraft:air") {
+                        return y + 1;
+                    }
+                }
+            } catch (error) {
+                continue;
+            }
+        }
+        return 70;
+    }
+
+    static isLocationSafe(x, y, z, dimension) {
+        try {
+            const feetBlock = mc.getBlock(x, y, z, dimension);
+            const headBlock = mc.getBlock(x, y + 1, z, dimension);
+            const groundBlock = mc.getBlock(x, y - 1, z, dimension);
+            
+            if (!feetBlock || !headBlock || !groundBlock) {
+                return false;
+            }
+
+            const feetSafe = feetBlock.type === "minecraft:air";
+            const headSafe = headBlock.type === "minecraft:air";
+            
+            const dangerousBlocks = [
+                "minecraft:air", "minecraft:lava", "minecraft:water", 
+                "minecraft:flowing_lava", "minecraft:flowing_water",
+                "minecraft:cactus", "minecraft:fire", "minecraft:void_air"
+            ];
+            
+            const groundSafe = !dangerousBlocks.includes(groundBlock.type);
+            
+            return feetSafe && headSafe && groundSafe;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    static async findSafeLocationAsync(centerX, centerZ, dimension, maxAttempts = 25) {
+        return new Promise((resolve) => {
+            let attempt = 0;
+            
+            const checkLocation = () => {
+                if (attempt >= maxAttempts) {
+                    resolve(null);
+                    return;
+                }
+
+                const searchRadius = 50;
+                const offsetX = Math.floor(Math.random() * searchRadius * 2) - searchRadius;
+                const offsetZ = Math.floor(Math.random() * searchRadius * 2) - searchRadius;
+                
+                const x = centerX + offsetX;
+                const z = centerZ + offsetZ;
+
+                try {
+                    const y = this.getSurfaceHeight(x, z, dimension);
+                    
+                    if (this.isLocationSafe(x, y, z, dimension)) {
+                        resolve({ x, y, z, dimid: dimension });
+                        return;
+                    }
+                } catch (error) {
+                    // 继续下一次尝试
+                }
+
+                attempt++;
+                setTimeout(checkLocation, 20);
+            };
+
+            checkLocation();
+        });
+    }
+
+ // 新增：RTP动画系统
+    static async performRTPAnimationAsync(player, x, z, y) {
+        
+        return new Promise((resolve) => {
+            if (conf.get("RTPAnimation") == 1) {
+                // 动画模式传送
+                player.sendText(info + lang.get("rtp.search.chunks"));
+                mc.runcmdEx(`effect "${player.realName}" resistance 30 255 true`);
+                
+                // 第一阶段：淡出
+                setTimeout(() => {
+                    mc.runcmdEx(`camera "${player.realName}" fade time 0.1 10 0.1 color 0 0 0`);
+                }, 900);
+    
+                
+                // 第五阶段：实际传送
+                setTimeout(() => {
+                    player.teleport(x, 500, z, player.pos.dimid);
+                }, 3050);
+                
+                // 最终阶段：清除镜头效果
+                setTimeout(() => {
+                    mc.runcmdEx(`camera "${player.realName}" clear`);
+                    resolve(); // 动画完成
+                }, 6900);
+                
+            } else {
+                // 简单传送模式
+                player.teleport(x, 500, z, player.pos.dimid);
+                player.sendText(info + lang.get("rtp.search.chunks"));
+                mc.runcmdEx(`effect "${player.realName}" resistance 15 255 true`);
+                resolve(); // 立即完成
+            }
+        });
+    }
+
+    // 修改主要的RTP执行方法
+    static async performRTPAsync(player) {
+        const config = conf.get("RTP");
+        const cost = config.cost || 0;
+        const cooldown = config.cooldown || 0;
+        const maxRadius = config.maxRadius || 5000;
+        const minRadius = config.minRadius || 100;
+        
+        try {
+            // 冷却检查
+            if (cooltime && cooltime.has(player.realName) && cooltime.get(player.realName) > 0) {
+                player.sendText(info + `§c传送冷却中，剩余时间：${cooltime.get(player.realName)}秒`);
+                return false;
+            }
+
+            // 金币检查
+            if (cost > 0) {
+                const balance = conf.get("LLMoney") ? player.getMoney() : player.getScore(conf.get("Scoreboard"));
+                if (balance < cost) {
+                    player.sendText(info + `§c需要 ${cost}${lang.get("CoinName")} 才能传送！`);
+                    return false;
+                }
+            }
+
+            player.sendText(info + "§e正在寻找安全的传送位置...");
+            if (config.minRadius && config.maxRadius) {
+                player.sendText(info + `§7传送范围：§f${minRadius} - ${maxRadius} 格`);
+            }
+
+            // 设置冷却（在传送前设置，防止动画期间重复使用）
+            if (cooldown > 0 && cooltime) {
+                cooltime.set(player.realName, cooldown);
+            }
+
+            // 扣除费用（在传送前扣除）
+            if (cost > 0) {
+                if (conf.get("LLMoney")) {
+                    player.reduceMoney(cost);
+                } else {
+                    player.reduceScore(conf.get("Scoreboard"), cost);
+                }
+                player.sendText(info + `§e花费 ${cost}${lang.get("CoinName")}`);
+            }
+
+            // 尝试找到合适的坐标
+            let safeLocation = null;
+            let coordinateAttempts = 0;
+            const maxCoordinateAttempts = 3;
+
+            while (!safeLocation && coordinateAttempts < maxCoordinateAttempts) {
+                coordinateAttempts++;
+                
+                const { x, z } = this.generateRandomCoordinate();
+                
+                // 验证坐标是否在有效范围内
+                if (!this.isCoordinateValid(x, z)) {
+                    continue;
+                }
+                
+                const distance = Math.floor(Math.sqrt(x * x + z * z));
+                player.sendText(`§7尝试第 ${coordinateAttempts} 次：坐标 X:${x}, Z:${z} (距离出生点: ${distance}格)`);
+
+                // 预估地面高度用于动画
+                const estimatedY = this.getSurfaceHeight(x, z, player.pos.dimid);
+                
+                // 执行RTP动画（如果启用）
+                await this.performRTPAnimationAsync(player, x, z, estimatedY);
+                
+                // 等待区块加载
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // 查找安全位置
+                safeLocation = await this.findSafeLocationAsync(x, z, player.pos.dimid, 25);
+                
+                if (safeLocation) {
+                    break;
+                } else {
+                    player.sendText(`§c坐标 (${x}, ${z}) 附近未找到安全位置，尝试新坐标...`);
+                    // 如果没找到安全位置，清除可能的动画效果
+                    if (conf.get("RTPAnimation") == 1) {
+                        setTimeout(() => {
+                            mc.runcmdEx(`camera "${player.realName}" clear`);
+                        }, 1000);
+                    }
+                }
+            }
+
+            if (safeLocation) {
+                // 找到安全位置，进行最终传送
+                const finalDistance = Math.floor(Math.sqrt(safeLocation.x * safeLocation.x + safeLocation.z * safeLocation.z));
+                player.teleport(safeLocation.x, safeLocation.y, safeLocation.z, safeLocation.dimid);
+                player.sendText(info + `§a传送成功！位置: ${safeLocation.x}, ${safeLocation.y}, ${safeLocation.z}`);
+                player.sendText(info + `§e距离出生点: §f${finalDistance} 格`);
+
+                // 播放成功音效
+                setTimeout(() => {
+                    try {
+                        mc.runcmdEx("playsound random.levelup " + player.realName);
+                    } catch (e) {}
+                }, 500);
+
+                return true;
+            } else {
+                // 所有尝试都失败了，使用备用方案
+                player.sendText(info + "§e未找到理想位置，使用备用传送方案...");
+                const fallbackResult = await this.fallbackTeleport(player);
+                
+                if (!fallbackResult) {
+                    // 备用方案也失败，退还费用和重置冷却
+                    if (cost > 0) {
+                        if (conf.get("LLMoney")) {
+                            player.addMoney(cost);
+                        } else {
+                            player.addScore(conf.get("Scoreboard"), cost);
+                        }
+                        player.sendText(info + `§a已退还 ${cost}${lang.get("CoinName")}`);
+                    }
+                    
+                    if (cooldown > 0 && cooltime) {
+                        cooltime.delete(player.realName);
+                    }
+                    
+                    return false;
+                }
+                
+                return true;
+            }
+
+        } catch (error) {
+            logger.error(`RTP传送失败: ${error.message}`);
+            player.sendText(info + "§c传送过程发生错误");
+            
+            // 清除可能的动画效果
+            if (conf.get("RTPAnimation") == 1) {
+                try {
+                    mc.runcmdEx(`camera "${player.realName}" clear`);
+                } catch (e) {}
+            }
+            
+            // 出错时退还费用和重置冷却
+            if (cost > 0) {
+                if (conf.get("LLMoney")) {
+                    player.addMoney(cost);
+                } else {
+                    player.addScore(conf.get("Scoreboard"), cost);
+                }
+            }
+            
+            if (cooldown > 0 && cooltime) {
+                cooltime.delete(player.realName);
+            }
+            
+            return false;
+        }
+    }
+
+    // 备用传送方案
+    static async fallbackTeleport(player) {
+        try {
+            const { x, z } = this.generateRandomCoordinate();
+            const y = 100;
+            
+            player.teleport(x, y, z, player.pos.dimid);
+            player.sendText(info + "§6已传送到安全高度，请自行寻找落脚点");
+            player.sendText(`§7坐标: X:${x}, Y:${y}, Z:${z}`);
+            
+            // 给玩家缓降效果
+            setTimeout(() => {
+                try {
+                    mc.runcmdEx(`effect "${player.realName}" slow_falling 10 1`);
+                } catch (e) {}
+            }, 100);
+
+            return true;
+        } catch (error) {
+            logger.error(`备用传送失败: ${error.message}`);
+            return false;
+        }
     }
 }
 function ranking(plname) {
@@ -503,7 +993,6 @@ function ranking(plname) {
 
 conf.init("AutoUpdate",1)  //2.4.0
 conf.init("PVPModeEnabled",1)
-//conf.init("DebugModeEnabled", false);
 conf.init("HubEnabled",0)
 conf.init("TpaEnabled",0)
 conf.init("NoticeEnabled",0)
@@ -759,8 +1248,6 @@ noticeSetCmd.setCallback((_cmd, ori, output) => {
 
 noticeSetCmd.setup();
 
-noticeSetCmd.setup();
-
 let = cmd = mc.newCommand("notice","公告",PermType.Any)
 cmd.overload([])
 cmd.setCallback((cmd, ori, out, res) => {
@@ -909,8 +1396,11 @@ function compareVersions(v1, v2) {
 // ======================
 // 服务器启动时自动检测公告更新
 // ======================
-mc.listen("onServerStarted", () => { 
+mc.listen("onServerStarted", async () => { 
     isSending = false;
+    
+    try {
+        // 注册PAPI
     PAPI.registerPlayerPlaceholder(getScoreMoney, "YEssential", "player_money");//注册玩家的金钱PAPI
     PAPI.registerPlayerPlaceholder(getLLMoney, "YEssential", "player_LLmoney");//注册玩家的LLMoney金钱PAPI
     logger.info(PluginInfo+lang.get("Version.Chinese")+version+",作者：Nico6719") 
@@ -926,65 +1416,34 @@ mc.listen("onServerStarted", () => {
     colorLog("blue","感谢PHEyeji提供技术支持和指导！感谢ender罗小黑提供在线网页支持！")
  // logger.warn("这是一个测试版本，请勿用于生产环境！！！")
     colorLog("blue",lang.get("Tip1"))
-    if(conf.get("KeepInventory")){
-        mc.runcmdEx("gamerule KeepInventory true")
-        colorLog("green",lang.get("gamerule.KeepInventory.true"))
-    }
-    mergeLangFiles();
-    if(conf.get("AutoUpdate")) {
-    logger.warn(lang.get("Upd.check"))
-    network.httpGet("https://dl.mcmcc.cc/file/Version.json", (status, result) => {
-    if (status !== 200) {
-        logger.error(`请求失败！状态码: ${status}`);
-        return;
-    }
-    try {
-        // 解析 JSON 数据
-        const jsonData = JSON.parse(result);
+     // 异步合并语言文件
+        await AsyncLanguageManager.mergeLangFiles();
         
-        // 提取版本号
-
-        const remoteVersion = jsonData.version;
-        
-        // 比较版本
-        const comparison = compareVersions(remoteVersion, version);
-        
-        if (comparison > 0) {
-            logger.warn(`发现新版本! ${version} → ${remoteVersion}`);
-            logger.warn(`正在更新到 ${remoteVersion} 中.....`);
-	        network.httpGet('https://dl.mcmcc.cc/file/YEssential.js', function (st2, dat2) {
-		    if (st2 == 200) {
-               colorLog("green",lang.get("Upd.success"))
-			   let new_plugin_raw = dat2.replace(/\r/g, '');
-			   file.writeTo(pluginpath+"YEssential.js", new_plugin_raw) 
-               setTimeout(() => {
-                mc.runcmdEx("ll reload YEssential")
-               } , 1000);
-		    }
-		    else 
-            {
-			logger.error(lang.get("Upd.fail"))
-		    }
-    	})
-        } else if (comparison < 0) {
-            colorLog("red",`您的本地版本比远程版本更新！ (${version} > ${remoteVersion})`);
-        } else {
-            colorLog("green",`您已是最新版本 (${version})`);
+        // 启用死亡不掉落
+        if (conf.get("KeepInventory")) {
+            mc.runcmdEx("gamerule KeepInventory true");
+            colorLog("green", lang.get("gamerule.KeepInventory.true"));
         }
-    } catch (e) {
-        logger.error("JSON 解析错误: " + e);
-    }
-    });
-    } else {
-        return;  
-    }   
-    
-    const lastShutdown = conf.get("lastServerShutdown") || 0;
-    conf.set("lastServerShutdown", Date.now());
-    const lastUpdate = noticeconf.get("lastNoticeUpdate") || 0;
-    if (lastUpdate > lastShutdown) {
-        conf.set("forceNotice", true);
-        logger.info(lang.get("notice.is.changed"));
+        
+        // 异步检查更新
+        if (conf.get("AutoUpdate")) {
+            // 不等待更新完成，让其在后台进行
+            AsyncUpdateChecker.checkForUpdates(version).catch(error => {
+                logger.error("后台更新检查失败: " + error.message);
+            });
+        }
+        
+        // 检查公告更新
+        const lastShutdown = conf.get("lastServerShutdown") || 0;
+        conf.set("lastServerShutdown", Date.now());
+        const lastUpdate = noticeconf.get("lastNoticeUpdate") || 0;
+        if (lastUpdate > lastShutdown) {
+            conf.set("forceNotice", true);
+            logger.info(lang.get("notice.is.changed"));
+        }
+        
+    } catch (error) {
+        logger.error("服务器启动初始化失败: " + error.message);
     }
 });
 function getScoreMoney(pl) {
@@ -1020,12 +1479,60 @@ mc.listen("onJoin", (pl) => {
 });
   
 mc.listen("onJoin",(pl)=>{
-    homedata.init(pl.realName,{})
-    rtpdata.init(pl.realName,{})
-    MoneyHistory.init(pl.realName,{})
-    let score = pl.getScore(conf.get("Scoreboard"))
-    if(!score) pl.setScore(conf.get("Scoreboard"),0)
-})
+   try {
+        // 初始化玩家数据
+        homedata.init(pl.realName, {});
+        rtpdata.init(pl.realName, {});
+        MoneyHistory.init(pl.realName, {});
+        
+        // 初始化金币
+        if (conf.get("LLMoney") == 1) {
+            let currentMoney = pl.getMoney();
+            if (currentMoney === null || currentMoney === undefined) {
+                pl.setMoney(0);
+            }
+        } else {
+            let score = pl.getScore(conf.get("Scoreboard"));
+            if (!score) pl.setScore(conf.get("Scoreboard"), 0);
+        }
+        
+        // 异步联合封禁检查
+        if (conf.get("UniteBanCheck") && !pl.isSimulatedPlayer() && !pl.isOP()) {
+            setTimeout(async () => {
+                if (!pl) return;
+                
+                try {
+                    let rawIp = pl.getDevice().ip;
+                    let ip = parseIpAddress(rawIp);
+                    
+                    await AsyncBanChecker.checkUniteBan(
+                        pl.realName, 
+                        pl.xuid, 
+                        pl.uuid, 
+                        pl.getDevice().clientId, 
+                        ip
+                    );
+                } catch (error) {
+                    logger.error(`玩家 ${pl.realName} 联合封禁检查异常: ${error.message}`);
+                }
+            }, 1000);
+        }
+        
+        // 异步公告显示
+        if (conf.get("join_notice") == 1) {
+            setTimeout(() => {
+                if (!mc.getPlayer(pl.realName)) return;
+                if (noticeconf.get(String(pl.realName)) == 1) return;
+                if (!conf.get("NoticeEnabled")) return;
+                pl.runcmd("notice");
+            }, 1000);
+        }
+        
+    } catch (error) {
+        logger.error(`玩家 ${pl.realName} 加入事件处理失败: ${error.message}`);
+    }
+});
+
 
 mc.listen("onConsoleCmd",(cmd)=>{
     if(cmd.toLowerCase() != "stop" || lang.get("stop.msg") == 0 ) return
@@ -1444,7 +1951,12 @@ function MoneyTransferGui(plname){
     if(!pl) return
     let fm = mc.newCustomForm()
     fm.setTitle(lang.get("money.transfer")+lang.get("CoinName"))
+    if(conf.get("LLMoney") == 0){
     fm.addLabel("当前税率:"+conf.get("PayTaxRate")+"(百分号)\n你的"+lang.get("CoinName")+"为："+pl.getScore(conf.get("Scoreboard")))
+        }else{
+        pl.setMoney(plBalance - amount)
+    fm.addLabel("当前税率:"+conf.get("PayTaxRate")+"(百分号)\n你的"+lang.get("CoinName")+"为："+pl.getMoney(conf.get("Scoreboard")))
+        }
     let lst = []
     mc.getOnlinePlayers().forEach((pl)=>{
         lst.push(pl.realName)
@@ -1537,6 +2049,7 @@ function OPMoneyGui(plname){
     fm.addButton(lang.get("money.op.look")+lang.get("CoinName"), "textures/ui/MCoin")
     fm.addButton("查看玩家的"+lang.get("CoinName")+"历史记录", "textures/ui/book_addtextpage_default")
     fm.addButton("全服"+lang.get("CoinName")+"排行榜", "textures/ui/icon_book_writable")
+    fm.addButton("使用玩家的金钱菜单", "textures/ui/icon_multiplayer")
     if (conf.get("RedPacketEnabled")== 1){
     fm.addButton(lang.get("rp.menu.1"),"textures/ui/gift_square")
     } else {}
@@ -1562,6 +2075,9 @@ function OPMoneyGui(plname){
                 ranking(pl.realName)
                 break
             case 6:
+                MoneyGui(pl.realName)
+                break
+            case 7:
                 redpacketgui(pl.realName)
                 break
         }
@@ -2508,228 +3024,26 @@ rtpResetCmd.setCallback((cmd, ori, out, res) => {
     out.success(`已重置 ${pl.realName} 的传送冷却`);
 });
 rtpResetCmd.setup();
-const rtpCmd = mc.newCommand("rtp", "随机传送", PermType.Any);
-rtpCmd.overload([]);
-rtpCmd.setCallback((cmd,ori,out,res) => {
+// 替换原有的RTP命令
+const asyncRtpCmd = mc.newCommand("rtp", "异步随机传送", PermType.Any);
+asyncRtpCmd.overload([]);
+asyncRtpCmd.setCallback(async (cmd, ori, out, res) => {
     const pl = ori.player;
-    const config = conf.get("RTP");
-    const cost = config.cost;
-    const cooldown = config.cooldown;
-    const maxAttempts = config.maxAttempts || 10;
-    if(!pl) return out.error("仅限玩家执行")
+    if (!pl) return out.error("仅限玩家执行");
+    
     if (!conf.get("RTPEnabled")) {
         pl.tell(info + lang.get("module.no.Enabled"));
         return;
     }
-    // 检查维度是否允许
-    const allowedDims = config.allowDimensions || [0];
-    if (!allowedDims.includes(pl.pos.dimid)) {
-        pl.tell(info + lang.get("rtp.onlycanusein.overworld"));
-        return;
+    
+    try {
+        await AsyncTeleportSystem.performRTPAsync(pl);
+    } catch (error) {
+        logger.error(`RTP命令执行失败: ${error.message}`);
+        pl.tell(info + "§c传送失败，请稍后重试");
     }
-
-    // 检查金币
-    const balance = pl.getScore(conf.get("Scoreboard"));
-  
-    const balanceLL = pl.getMoney();
-    if(!conf.get("LLMoney")){
-    if (balance < cost) {
-        pl.sendText(info+`§c需要 ${cost}${lang.get("CoinName")} 才能传送！`);
-        return;
-    }
-    }else{
-    if (balanceLL < cost) {
-        pl.sendText(info+`§c你需要 ${cost}LLMoney才能传送！`);
-        return;
-    }
-    }
-    if(cooltime.has(pl.realName) && cooltime.get(pl.realName) > 0){
-        pl.sendText(info+`§c传送冷却中，剩余时间：${cooltime.get(pl.realName)}秒`);
-        return;
-    }
-    cooltime.set(pl.realName,cooldown)
-
-    let plpos = pl.pos
-    let RTPx = pl.pos.x
-    let RTPy = pl.pos.y
-    let RTPz = pl.pos.z
-
-    const { x,z } = generateRandomCoordinate()
-    if(!x || !z) return out.error("XZ 生成失败")
-    // 提示玩家
-if (conf.get("RTPAnimation") == 1 ){
-    setTimeout(()=> {
-        mc.runcmdEx("camera \"" + pl.realName +"\" fade time 0.1 0.01 0.1  color 0 0 0")
-    },900)
-    setTimeout(()=> {
-        mc.runcmdEx("camera \"" + pl.realName +"\" set minecraft:free pos "+RTPx+" "+(RTPy+20)+" "+RTPz+" facing " + pl.realName)
-        pl.sendText(info+lang.get("rtp.loading.chunks2"),5)
-    },1000)
-    setTimeout(()=> {
-        mc.runcmdEx("camera \"" + pl.realName +"\" fade time 0.1 0.01 0.1  color 0 0 0")
-    },1910)
-    setTimeout(()=> {
-        mc.runcmdEx("camera \"" + pl.realName +"\" set minecraft:free pos "+RTPx+" "+(RTPy+50)+" "+RTPz+" facing " + pl.realName)
-        pl.sendText(info+lang.get("rtp.loading.chunks1"),5)
-    },1900)
-    setTimeout(()=> {
-        mc.runcmdEx("camera \"" + pl.realName +"\" fade time 0.1 0.01 0.1  color 0 0 0")
-    },1900)
-    setTimeout(()=> {
-        mc.runcmdEx("camera \"" + pl.realName +"\" set minecraft:free pos "+RTPx+" "+(RTPy+75)+" "+RTPz+" facing " + pl.realName)
-        pl.sendText(info+lang.get("rtp.loading.chunks3"),5)
-    },2900)
-    setTimeout(()=> {
-        mc.runcmdEx("camera \"" + pl.realName +"\" fade time 0.01 0.01 0.1  color 0 0 0")
-    },2900)
-    setTimeout(()=> {
-        mc.runcmdEx("camera \"" + pl.realName +"\" fade time 0.1 2 1  color 0 0 0")
-    },4100)
-    setTimeout(()=> {
-        mc.runcmdEx("camera \"" + pl.realName +"\" fade time 0.1 2 1  color 0 0 0")
-    },4900)
-    setTimeout(()=> {
-        pl.teleport(x,500,z,pl.pos.dimid)
-    },3050)
-    setTimeout(()=> {
-        mc.runcmdEx("camera \"" + pl.realName +"\" clear")
-    },6900)
-    pl.sendText(info+lang.get("rtp.search.chunks"));
-    pl.sendText(`§7随机坐标：§fX: ${x}, Z: ${z}`);
-    mc.runcmdEx("effect \"" + pl.realName +"\" resistance 30 255 true")
-    }else
-    {
-    pl.teleport(x,500,z,pl.pos.dimid)
-    pl.sendText(info+lang.get("rtp.search.chunks"));
-    pl.sendText(`§7随机坐标：§fX: ${x}, Z: ${z}`);
-    mc.runcmdEx("effect \"" + pl.realName +"\" resistance 15 255 true")
-    }
-    let tpsuccess = false
-    setTimeout(()=> {
-    let task = setInterval(() => {
-        pl.sendText(info+lang.get("rtp.loading.chunks1"),5)
-        if(pl.pos.y < 499){
-            clearInterval(task);
-            tpsuccess = true
-             
-            const safeLocation = findSafeLocation(x,z,pl.pos.dimid, maxAttempts);
-                    // 生成安全坐标
-            if (!safeLocation) {
-                pl.sendText(info+lang.get("rtp.cannotfind.safexyz"));
-                pl.teleport(plpos)
-                clearInterval(camera);
-                return;
-            }
-
-            pl.teleport(safeLocation.x,safeLocation.y,safeLocation.z,safeLocation.dimid)
-            pl.sendText(info+lang.get("rtp.tp.success"))
-            setTimeout(()=> {
-            mc.runcmdEx("playsound random.levelup "+ pl.realName)
-            },500)
-            if(conf.get("LLMoney") == 0){
-            pl.setScore(conf.get("Scoreboard"), balance - cost)
-            }else{
-            pl.reduceMoney(balance - cost)
-            }
-        }
-    }, 1000);
-    },6000)
-    setTimeout(() => { 
-        if(tpsuccess == true) return
-        clearInterval(task);
-        clearInterval(camera);
-        pl.sendText(info+lang.get("rtp.loadchunks.timeout"))
-        pl.teleport(plpos)
-    }, 10000);
-
-   
 });
-rtpCmd.setup()
-function generateRandomCoordinate() {
-    const config = conf.get("RTP");
-    const minRadius = config.minRadius || 100;
-    const maxRadius = config.maxRadius || 5000;
-
-    const angle = Math.random() * Math.PI * 2;
-    const radius = minRadius + Math.random() * (maxRadius - minRadius);
-    const x = Math.cos(angle) * radius;
-    const z = Math.sin(angle) * radius;
-    return { x, z };
-}
-
-function findSafeLocation(x,z,dimension, maxAttempts) {
-    const config = conf.get("RTP");
-    const minRadius = config.minRadius || 100;
-    const maxRadius = config.maxRadius || 5000;
-
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-
-       
-        // 获取地表高度
-        const y = getSurfaceHeight(x, z, dimension);
-        //logger.log(2)
-        //if(y == null) logger.log(3)
-        if (y === null) continue;
-
-        // 检查位置安全性
-        if (isLocationSafe(x, y, z, dimension)) {
-            return { x, y: y + 1, z, dimid: dimension }; // 返回脚部位置上方1格
-        } 
-    }
-
-    return null;
-}
-
-// 获取地表高度
-function getSurfaceHeight(x, z, dimension) {
-    const worldHeight = dimension === 0 ? 320 : dimension === 1 ? 128 : 128;
-    const startY = dimension === 1 ? 0 : worldHeight; // 下界从底部开始搜索
-    
-    // 搜索方向：主世界从上到下，下界从下到上
-    const step = dimension === 1 ? 1 : -1;
-    
-    for (let y = startY; y >= 0 && y <= worldHeight; y += step) {
-        const block = mc.getBlock(x, y, z, dimension);
-        if (!block) continue;
-        
-        // 找到第一个非空气固体方块
-        if (!block.isAir) {
-            //logger.log("Debug getSurfaceH:" + y)
-            return y;
-        }
-    }
-    //logger.log(1)
-    return null;
-}
-
-// 检查位置是否安全
-function isLocationSafe(x, y, z, dimension) {
-
-    // 检查玩家位置（脚部+1）
-    const bodyBlock = mc.getBlock(x, y + 1, z,dimension);
-    if (!bodyBlock || !bodyBlock.isAir) {
-        return false;
-    }
-    
-    // 检查头部位置（脚部+2）
-    const headBlock = mc.getBlock(x, y + 2, z,dimension);
-    if (!headBlock || !headBlock.isAir) {
-        return false;
-    }
-    
-    // 检查周围是否有危险方块
-    const offsets = [[0, 0, 1], [0, 0, -1], [1, 0, 0], [-1, 0, 0]];
-    for (const [dx, dy, dz] of offsets) {
-        const block = mc.getBlock(x + dx, y + dy, z + dz,dimension);
-        if (block && (block.type.includes("lava") || block.type.includes("fire"))) {
-            //logger.log("Debug 1")
-            return false;
-        }
-    }
-    
-    return true;
-}
-
+asyncRtpCmd.setup();
 function ValueCheck(plname,value){
     let score = mc.getPlayer(plname).getScore(conf.get("Scoreboard"))
     if(!score){
@@ -3259,82 +3573,3 @@ mc.listen("onServerStarted", () => {
         });
     }
 });     
-//对接联合封禁
-function CheckUniteBan(realname, xuid, uuid, clientid, ip) { //检查函数
-    const postdata = {
-        ...(realname != null && { name: realname }),
-        ...(xuid != null && { xuid: xuid }),
-        ...(uuid != null && { uuid: uuid }),
-        ...(clientid != null && { clientid: clientid }),
-        ...(ip != null && { ip: ip })
-    };
-    
-	const jsonData = JSON.stringify(postdata);
-    const url = "https://uniteban.mcwaf.cn/api.php";
-
-    network.httpPost(
-        url,
-        jsonData,
-        "application/json",
-        (status, result) => {
-            try {
-                if (status === 200) {
-                    const response = JSON.parse(result);
-                    if (response.exists === true) {
-                        logger.warn(`玩家 ${realname} 联合封禁检查不通过`);
-                        const msg = "联合封禁UniteBan检查不通过\n封禁原因:" + response.reason + "\n申诉地址\nhttp://uniteban.xyz:19132/appeal.php";
-                        pl.kick(msg);
-                    } else {
-                        logger.log(`玩家 ${realname} 联合封禁检查通过`);
-                    }
-                } else {
-                logger.error("玩家 "+realname +" 检查失败，正在重试...");
-		     	CheckUniteBan(realname, xuid, uuid, clientid, ip)
-                    //  logger.error(`请求失败，状态码: ${status}`);
-                }
-            } catch (e) {
-                // logger.error(`响应解析失败: ${e.message}`);
-            }
-        }
-    );
-}
-
-mc.listen("onJoin",(pl)=>{
-    if(conf.get("UniteBanCheck") == false) return
-    if(pl.isSimulatedPlayer() || pl.isOP()) return logger.log("假人/OP 自动跳过联合封禁检查")
-    setTimeout(() => {
-        if(!pl) return
-
-        let rawIp = pl.getDevice().ip;
-        let ip;
-        
-        if (rawIp.includes('|')) {
-            ip = rawIp.split('|')[0];  // 处理 "ip|port" 格式
-        } else if (rawIp.startsWith('[')) {
-            // 处理IPv6的 "[ip]:port" 格式
-            const endBracket = rawIp.indexOf(']');
-            if (endBracket !== -1) {
-                ip = rawIp.substring(1, endBracket); // 提取方括号内的IPv6地址
-            } else {
-                ip = rawIp; // 无效格式，保留原始值
-            }
-        } else {
-            // 处理 "ip:port" 格式（兼容IPv4和IPv6）
-            const lastColon = rawIp.lastIndexOf(':');
-            if (lastColon !== -1) {
-                const afterColon = rawIp.substring(lastColon + 1);
-                // 检查冒号后是否为端口号（纯数字）
-                if (/^\d+$/.test(afterColon)) {
-                    ip = rawIp.substring(0, lastColon); // 提取端口前的部分
-                } else {
-                    ip = rawIp; // 不是端口格式，保留原始值
-                }
-            } else {
-                ip = rawIp; // 无冒号，直接使用
-            }
-        }
-        
-        CheckUniteBan(pl.realName,pl.xuid,pl.uuid,pl.getDevice().clientId,ip)
-        
-    }, 1000);
-})
