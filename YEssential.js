@@ -16,16 +16,18 @@
 禁止二次发布插件
 ----------------------------------*/
 // LiteLoader-AIDS automatic generated
-//<reference path="c:\Users\11025\Documents/dts/HelperLib-master/src/index.d.ts"/> 
+// LiteLoader-AIDS automatic generated
+/// <reference path="c:\Users\Admin\ku/dts/helperlib/src/index.d.ts"/> 
 const { PAPI } = require('./GMLIB-LegacyRemoteCallApi/lib/BEPlaceholderAPI-JS');
 const YEST_LangDir = "./plugins/YEssential/lang/";
 const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.4.2";
-const regversion =[2,4,2];
+const version = "2.4.3";
+const regversion =[2,4,3];
 const info = "§l§b[YEST] §r";
+const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
 const defaultLangContent = {
     "Upd.check":"正在检查新版本中.... 您可在config.json禁用自动更新",
@@ -82,6 +84,16 @@ const defaultLangContent = {
     "money.op.remove":"减少玩家的",
     "money.op.set":"设置玩家的",
     "money.op.look":"查看玩家的",
+    "rp.menu.1":"红包",
+    "rp.send.packet":"发送红包",
+    "rp.open.packet":"领取红包",
+    "rp.all.help":"红包使用帮助",
+    "rp.send.amount":"要发送的红包数量：",
+    "rp.send.count":"红包金额：",
+    "rp.count.bigger.yourmoney":"红包总额度不能大于你的",
+    "redpacket.type":"红包类型：",
+    "rp.random.packet":"拼手气红包",
+    "rp.average.packet":"普通红包",
     "warp.menu.public":"公共传送点",
     "warp.menu.public.op":"(OP)公共传送点",
     "warp.go.to":"前往传送点",
@@ -195,7 +207,7 @@ const defaultLangContent = {
     "add":"加"
 };
 
-// 创建语言文件（如果不存在）
+// 创建语言文件（如果不存在）      
 const langFilePath = YEST_LangDir + "zh_cn.json";
 let lang = new JsonConfigFile(langFilePath, JSON.stringify(defaultLangContent));
 
@@ -247,6 +259,8 @@ ll.registerPlugin(NAME, PluginInfo,regversion, {
     License: "GPL-3.0",
     QQ : "1584573887",
 });
+
+
 let conf = new JsonConfigFile(pluginpath +"/Config/config.json",JSON.stringify({}));
   
 let homedata = new JsonConfigFile(datapath +"homedata.json",JSON.stringify({}));
@@ -255,18 +269,30 @@ let rtpdata = new JsonConfigFile(datapath +"/RTPData/Rtpdata.json",JSON.stringif
 
 let warpdata = new JsonConfigFile(datapath +"warpdata.json",JSON.stringify({}));
   
-let MoneyHistory = new JsonConfigFile(datapath +"/MoneyHistory/MoneyHistory.json",JSON.stringify({}));
-  
 let noticeconf = new JsonConfigFile(datapath + "/NoticeSettingsData/notice.json",JSON.stringify({}));
 
 let pvpConfig = new JsonConfigFile(datapath +"/PVPSettingsData/pvp_data.json",JSON.stringify({}));
 
 let noticetxt = new IniConfigFile(datapath +"/NoticeSettingsData/notice.txt");
 
-/*let redpacketData = new JsonConfigFile(datapath + "/Redpacketdata/Redpacket.json", JSON.stringify({
-    nextId: 1,
-    packets: {}
-}));*/
+let MdataPath = datapath +"/Money/Moneyranking.json";
+
+let offlineMoney = new JsonConfigFile(offlineMoneyPath, "{}");
+
+let MoneyHistory = new JsonConfigFile(datapath +"/Money/MoneyHistory.json",JSON.stringify({}));
+
+let moneyranking = new JsonConfigFile(MdataPath, "{}");
+
+var c_y = JSON.stringify({
+    servers: [
+      { server_name: "生存服", server_ip: "127.0.0.1", server_port: 19132 }
+    ]
+  });
+
+let servertp = new JsonConfigFile(datapath +"/TrSeverData/server.json", c_y);
+
+let tpacfg = new JsonConfigFile(datapath +"/TpaSettingsData/tpaAutoRejectConfig.json",JSON.stringify({}));
+
 function initRedpacketData() {
     const defaultData = {
         nextId: 1,
@@ -361,39 +387,19 @@ const redpacketData = {
     }
     
 };
-
-let MdataPath = "./plugins/YEssential/data/Moneyranking.json";
-let moneyranking = new JsonConfigFile(MdataPath, "{}");
-
-var c_y = JSON.stringify({
-    servers: [
-      { server_name: "生存服", server_ip: "127.0.0.1", server_port: 19132 }
-    ]
-  });
-let servertp = new JsonConfigFile(datapath +"/TrSeverData/server.json", c_y);
-
-let tpacfg = new JsonConfigFile(datapath +"/TpaSettingsData/tpaAutoRejectConfig.json",JSON.stringify({}));
-// 定时更新玩家金币排行榜
-setInterval(() => {
-    mc.getOnlinePlayers().forEach((pl) => {
-        let moneyValue;
-        if (conf.get("LLMoney") == 0) {
-            // 使用记分板
-            moneyValue = pl.getScore(conf.get("Scoreboard"));
-        } else {
-            // 使用LLMoney
-            moneyValue = pl.getMoney();
-        }
-        
-        if (moneyValue !== null && moneyValue !== undefined) {
-            moneyranking.set(pl.realName, moneyValue);
-        }
-    });
-}, 6000);
-
+function displayPlayerMoneyInfo(pl, target) {
+    if (!conf.get("LLMoney")) {
+        pl.sendText(info + "你的当前金币为：" + target.getScore(conf.get("Scoreboard")))
+        return "你的" + lang.get("CoinName") + "为:" + pl.getScore(conf.get("Scoreboard"));
+    } else {
+        pl.sendText(info + "你的当前LLMoney金币为：" + pl.getMoney());
+        return "你的" + lang.get("CoinName") + "为:" + pl.getMoney();
+    }
+}
 function ranking(plname) {
     let pl = mc.getPlayer(plname);
     if (!pl) return;
+    if (conf.get("RankingModel")==1) {
     let datas = JSON.parse(moneyranking.read());
     let lst = Object.keys(datas).map(name => ({
       name: name,
@@ -455,12 +461,49 @@ function ranking(plname) {
             "§a▣"   // 其他名次 - 绿色
         ][Math.min(3, rank - 1)] || "§7";
     }
+    } 
+    else
+    {
+
+        let form = mc.newSimpleForm();
+        let str = '';
+        let lst = [];
+        
+        // 读取并解析整个 JSON 文件
+        const rawData = moneyranking.read();
+        const data = rawData ? JSON.parse(rawData) : {};
+        const keys = Object.keys(data);
+        
+        if (keys.length === 0) {
+            pl.tell(info + lang.get("no.ranking.data"));
+            return;
+        }
+
+        keys.forEach((v) => {
+            let money = data[v]; // 直接从解析后的对象获取值
+            lst.push([v, money]);
+        });
+
+        // 排序并取前50名
+        lst.sort((a, b) => b[1] - a[1]);
+        let ranking = lst.slice(0, 50);
+
+        ranking.forEach((v) => {
+            str += `${v[0]}: ${v[1]}\n`;
+        });
+
+        form.setTitle(lang.get("ranking.list"));
+        form.setContent(str);
+
+        pl.sendForm(form, (pl, id) => {
+            if (id == null) pl.runcmd("moneygui");
+        });
+    }
 }
-conf.init("RTPAnimation",0)
-conf.init("AutoUpdate",1)
+
+conf.init("AutoUpdate",1)  //2.4.0
 conf.init("PVPModeEnabled",1)
-conf.init("CheckPluginUpdate", false);
-conf.init("DebugModeEnabled", false);
+//conf.init("DebugModeEnabled", false);
 conf.init("HubEnabled",0)
 conf.init("TpaEnabled",0)
 conf.init("NoticeEnabled",0)
@@ -468,6 +511,7 @@ conf.init("CrastModuleEnabled",0)
 conf.init("TRServersEnabled", false);
 conf.init("RTPEnabled", false);
 conf.init("NoticeEnabled",false);
+conf.init("RedPacketEnabled",false)
 conf.init("RedPacket", {
     expireTime: 300, // 红包过期时间（秒）
     maxAmount: 10000, // 单个红包最大金额
@@ -486,6 +530,7 @@ conf.init("RTP", {
     enableSound: true,      // 启用音效（后续加入）
     logToFile: true         // 记录日志 
 });
+conf.init("RTPAnimation",0)
 let Hub =  {
     x: 0,
     y: 100,
@@ -519,6 +564,7 @@ conf.init("Home",{
     "tp":0,
     "MaxHome":10
 })
+conf.init("RankingModel",1)//2.4.3
 conf.init("LLMoney",0) //2.3.1
 conf.init("Scoreboard","money")
 conf.init("PayTaxRate",0)
@@ -532,6 +578,26 @@ conf.init("OptimizeXporb",0)
 conf.init("join_notice",0)
 conf.init("lastServerShutdown", 0);        // 记录服务器关闭时间
 conf.init("UniteBanCheck",0)
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+// 定时更新玩家金币排行榜
+setInterval(() => {
+    mc.getOnlinePlayers().forEach((pl) => {
+        let moneyValue;
+        if (conf.get("LLMoney") == 0) {
+            // 使用记分板
+            moneyValue = pl.getScore(conf.get("Scoreboard"));
+        } else {
+            // 使用LLMoney
+            moneyValue = pl.getMoney();
+        }
+        
+        if (moneyValue !== null && moneyValue !== undefined) {
+            moneyranking.set(pl.realName, moneyValue);
+        }
+    });
+}, 6000);
 // 跨服传送命令模块
 let Sercmd = mc.newCommand("servers", "§l§a跨服传送", PermType.Any);
 Sercmd.overload([]);
@@ -731,7 +797,6 @@ cmd.setCallback((cmd, ori, out, res) => {
         }else{
             noticeconf.set(String(pl.realName),0)
         }
-       // noticeconf.set(pl.realName, data[data.length - 1] ? 1 : 0);
     });
 });
 cmd.setup()
@@ -931,6 +996,21 @@ function getLLMoney(pl){
     return LLMoney.toString();
 
 }
+// 金币信息显示函数
+function displayMoneyInfo(pl, target, isSelf = true) {
+    if (!pl || !target) return "信息获取失败";
+    const prefix = isSelf ? "你的" : `玩家 ${target.realName} 的`;
+    
+    if (!conf.get("LLMoney")) {
+        const money = target.getScore(conf.get("Scoreboard"));
+        pl.sendText(info + `${prefix}当前金币为：${money}`);
+        return `${prefix}${lang.get("CoinName")}为: ${money}`;
+    } else {
+        const money = target.getMoney();
+        pl.sendText(info + `${prefix}当前LLMoney金币为：${money}`);
+        return `${prefix}${lang.get("CoinName")}为: ${money}`;
+    }
+}
 mc.listen("onJoin", (pl) => {
     if (conf.get("forceNotice")) {
         conf.set("forceNotice", false);
@@ -964,7 +1044,6 @@ setInterval(() => {
 }, 1000*10);
 }  else
 { 
-
 }  
 //自杀模块
 
@@ -1238,31 +1317,6 @@ moneycmd.setCallback((cmd,ori,out,res)=>{
     }
 })
 moneycmd.setup()
-class Economy {
-    static getBalance(player) {
-        return player.getScore(Core.config.get("Scoreboard")) || 0;
-    }
-
-    static transfer(player, amount, targetPlayer = null) {
-        const scoreName = Core.config.get("Scoreboard");
-        if (amount < 0 && this.getBalance(player) < Math.abs(amount)) {
-            throw new Error("余额不足");
-        }
-
-        // 扣除操作
-        if (amount < 0) {
-            player.reduceScore(scoreName, Math.abs(amount));
-        } 
-        // 增加操作
-        else if (targetPlayer) {
-            targetPlayer.addScore(scoreName, amount);
-        } else {
-            player.addScore(scoreName, amount);
-        }
-
-        logger.info(`经济操作: ${player.realName} ${amount > 0 ? "获得" : "支出"} ${Math.abs(amount)}`);
-    }
-}
 let moneygui = mc.newCommand("moneygui",lang.get("CoinName"),PermType.Any)
 moneygui.overload([])
 moneygui.setCallback((cmd,ori,out,res)=>{
@@ -1288,24 +1342,21 @@ function MoneyGui(plname){
     fm.addButton(lang.get("money.transfer")+lang.get("CoinName"), "textures/ui/trade_icon")
     fm.addButton(lang.get("moeny.view")+lang.get("CoinName")+lang.get("money.history"), "textures/ui/book_addtextpage_default")
     fm.addButton(lang.get("CoinName")+lang.get("money.player.list"), "textures/ui/icon_book_writable")
+    if (conf.get("RedPacketEnabled")== 1){
+    fm.addButton(lang.get("rp.menu.1"),"textures/ui/gift_square")
+    } else {}
     pl.sendForm(fm,(pl,id)=>{
         if(id == null) return pl.tell(info + lang.get("gui.exit"));
         switch(id){
-            case 0:
+           case 0:
                 let fm = mc.newSimpleForm()
-                fm.setTitle(lang.get("money.query")+lang.get("CoinName"))
-                if(!conf.get("LLMoney")){
-                pl.sendText(info +"你的当前金币为："+target.getScore(conf.get("Scoreboard")))
-                fm.setContent("你的"+lang.get("CoinName")+"为:"+pl.getScore(conf.get("Scoreboard")))
-                }else{  
-                pl.sendText(info +"你的当前LLMoney金币为："+ pl.getMoney())    
-                fm.setContent("你的"+lang.get("CoinName")+"为:"+pl.getMoney(conf.get("Scoreboard")))
-                }
-                pl.sendForm(fm,(pl,id)=>{
-                    if(id == null) return pl.runcmd("moneygui")
-                })
-                
-                break
+                fm.setTitle(lang.get("money.query") + lang.get("CoinName"))
+                const content = displayMoneyInfo(pl, pl); // 查询自己
+                fm.setContent(content);
+                pl.sendForm(fm, (pl, id) => {
+                if (id === null) return pl.runcmd("moneygui");
+                });
+                break;
             case 1:
                 MoneyTransferGui(pl.realName)
                 break
@@ -1332,7 +1383,59 @@ function MoneyGui(plname){
             case 3:
                 ranking(pl.realName)
                 break
-
+            case 4:
+                redpacketgui(pl.realName)
+                break
+        }
+    })
+}
+function redpacketgui(plname){
+    let pl = mc.getPlayer(plname)
+    if(!pl) return
+    let fm = mc.newSimpleForm()
+    fm.setTitle(lang.get("rp.menu.1"))
+    fm.addButton(lang.get("rp.send.packet"), "textures/ui/trade_icon")
+    fm.addButton(lang.get("rp.open.packet"), "textures/ui/MCoin")
+    fm.addButton(lang.get("rp.all.help"), "textures/ui/book_addtextpage_default")
+     pl.sendForm(fm,(pl,id)=>{
+        if(id == null) return pl.tell(info + lang.get("gui.exit"));
+        switch(id){
+           case 0:
+                if (data === null) return pl.runcmd("moneygui");
+                let fm = mc.newCustomForm().setTitle(lang.get("rp.send.packet"))
+                fm.addDropdown(lang.get("redpacket.type"),[lang.get("rp.random.packet"),lang.get("rp.average.packet")])
+                fm.addInput(lang.get("rp.send.amount"))
+                fm.addInput(lang.get("rp.send.count"))
+                pl.sendForm(fm, (pl, data) => {
+                let type = data[0]      
+                let amount = data[1]
+                if(amount == null) return pl.tell(info + lang.get("money.tr.noinput"));
+                if(amount == "all") amount = pl.getScore(conf.get("Scoreboard"))
+                if(/^\d+$/.test(amount) == false) return pl.tell(info + lang.get("key.not.number"));        
+                if(amount <= 0) return pl.tell(info + lang.get("money.must.bigger0"));
+                let count = data[2]
+                if(count == null) return pl.tell(info + lang.get("money.tr.noinput"));
+                if(/^\d+$/.test(count) == false) return pl.tell(info + lang.get("key.not.number"));        
+                if(count <= 0) return pl.tell(info + lang.get("money.must.bigger0"));
+                if(!conf.get("LLMoney")){
+                if(count > pl.getScore(conf.get("Scoreboard"))) return pl.sendText(lang.get("rp.count.bigger.yourmoney")+lang.get("CoinName"))
+                }else{
+                if(count > pl.getMoney()) return pl.sendText(lang.get("rp.count.bigger.yourmoney")+lang.get("CoinName"))
+                }
+                if(type == 0){
+                pl.runcmd("rp send "+amount+" "+count)
+                }else{
+                pl.runcmd("rp send "+amount+" "+count+" average")
+                }
+                });
+                break;
+            case 1:
+                pl.runcmd("rp list")
+                break
+            case 2:
+                pl.runcmd("redpackethelp")
+                break
+    
         }
     })
 }
@@ -1385,9 +1488,6 @@ function MoneyTransferGui(plname){
         moneyhisdata = MoneyHistory.get(target.realName)
         moneyhisdata[String(system.getTimeStr())+"§"+getRandomLetter()] = "收到"+pl.realName+"转账"+lang.get("CoinName")+"，数量："+amount+"，实际到账："+realamount+"，手续费："+tax
         MoneyHistory.set(target.realName,moneyhisdata)
-        // MoneyHistory.add(pl.realName,"转账"+lang.get("CoinName")+"给"+target.realName+"，数量："+amount+"，实际到账："+realamount+"，手续费："+tax)
-        // debugLog(`转账请求：${pl.realName} → ${target.realName}, 金额：${amount}`);
-        // MoneyHistory.add(target.realName,"收到"+pl.realName+"转账"+lang.get("CoinName")+"，数量："+amount+"，实际到账："+realamount+"，手续费："+tax)
         pl.sendText(info +"转账成功，实际到账："+realamount+"，手续费："+tax)
         target.sendText(info + pl.realName+lang.get("money.transfer")+lang.get("CoinName")+"给你，数量："+amount+"，实际到账："+realamount+"，手续费："+tax+"备注："+beizhu )
     })
@@ -1437,6 +1537,9 @@ function OPMoneyGui(plname){
     fm.addButton(lang.get("money.op.look")+lang.get("CoinName"), "textures/ui/MCoin")
     fm.addButton("查看玩家的"+lang.get("CoinName")+"历史记录", "textures/ui/book_addtextpage_default")
     fm.addButton("全服"+lang.get("CoinName")+"排行榜", "textures/ui/icon_book_writable")
+    if (conf.get("RedPacketEnabled")== 1){
+    fm.addButton(lang.get("rp.menu.1"),"textures/ui/gift_square")
+    } else {}
     pl.sendForm(fm,(pl,id)=>{
         if(id == null) return pl.tell(info + lang.get("gui.exit"));
         switch(id){
@@ -1457,6 +1560,9 @@ function OPMoneyGui(plname){
                 break
             case 5:
                 ranking(pl.realName)
+                break
+            case 6:
+                redpacketgui(pl.realName)
                 break
         }
     })
@@ -1500,16 +1606,12 @@ function MoneyGetGui(plname){
         lst.push(pl.realName)
     })
     fm.addDropdown(lang.get("choose")+lang.get("player"),lst)
-    pl.sendForm(fm,(pl,data)=>{
-        if(data == null) return pl.runcmd("moneygui")
-        let target = mc.getPlayer(lst[data[0]])
-        if(!target) return pl.tell(info + lang.get("money.tr.noonline"));
-        if(!conf.get("LLMoney")){
-        pl.sendText(info +"玩家现在所拥有的金币为："+target.getScore(conf.get("Scoreboard")))
-         }else{  
-        pl.sendText(info +"玩家当前LLMoney金币为："+target.getMoney())    
-         }
-    })
+    pl.sendForm(fm, (pl, data) => {
+     if (data == null) return pl.runcmd("moneygui");
+       let target = mc.getPlayer(lst[data[0]]);
+          if (!target) return pl.tell(info + lang.get("money.tr.noonline"));
+          displayMoneyInfo(pl, target, false); // 查询其他玩家
+    });
 }
 
 function MoneySetGui(plname){
@@ -1572,7 +1674,6 @@ function MoneyReduceGui(plname){
         let moneyhisdata = MoneyHistory.get(target.realName)
         moneyhisdata[String(system.getTimeStr())+"§"+getRandomLetter()] = lang.get("CoinName")+"减少"+data[1]
         MoneyHistory.set(pl.realName,moneyhisdata)
-
         pl.sendText(info +lang.get("success")+lang.get("to")+lang.get("player")+target.realName+"的"+lang.get("CoinName")+"减少"+data[1])
         if(!conf.get("LLMoney")){
         pl.sendText(info +"玩家当前金币为："+target.getScore(conf.get("Scoreboard")))
@@ -1592,7 +1693,6 @@ function MoneyAddGui(plname){
         lst.push(pl.realName)
     })
     fm.addDropdown(lang.get("choose")+lang.get("player"),lst)
-    //fm.addInput("请输入增加的"+lang.get("CoinName"),"请输入增加的"+lang.get("CoinName"))
     fm.addInput(lang.get("money.add.number")+lang.get("CoinName"),lang.get("money.add.number")+lang.get("CoinName"))
     pl.sendForm(fm,(pl,data)=>{
         if(data == null) return pl.runcmd("moneygui")
@@ -1608,9 +1708,10 @@ function MoneyAddGui(plname){
         moneyhisdata[String(system.getTimeStr())+"§"+getRandomLetter()] = lang.get("CoinName")+"增加"+data[1]
         MoneyHistory.set(pl.realName,moneyhisdata)
         if(!conf.get("LLMoney")){
+        pl.sendText(info +"已成功给"+pl.realName+"添加"+data[1]+" "+conf.get("Scoreboard"))   
         pl.sendText(info +"玩家当前金币为："+target.getScore(conf.get("Scoreboard")))
          }else{   
-        pl.sendText("已成功给"+pl.realname+"添加"+data[1]+conf.get("Scoreboard"))   
+        pl.sendText(info +"已成功给"+pl.realName+"添加"+data[1]+conf.get("Scoreboard"))   
         pl.sendText(info +"玩家当前金币为："+target.getMoney())    
          }
     })
@@ -1680,7 +1781,7 @@ function WarpGui(plname){
         fm.addLabel("传送点名称："+lst[id])
         fm.addLabel("坐标："+warpdata.get(lst[id]).x+","+warpdata.get(lst[id]).y+","+warpdata.get(lst[id]).z+" "+transdimid[warpdata.get(lst[id]).dimid])
         fm.addLabel("传送花费："+conf.get("Warp"))
-        fm.addLabel("您的"+lang.get("CoinName")+"："+String(pl.getScore(conf.get("Scoreboard"))))
+        fm.addLabel(displayMoneyInfo(pl, pl, true))        
         pl.sendForm(fm,(pl,data)=>{
             if(data == null) return pl.tell(info + lang.get("gui.exit"));
             if(!conf.get("LLMoney")){
@@ -1758,21 +1859,18 @@ function BackGUI(plname){
     let cost = conf.get("Back")
     let pos = pl.lastDeathPos
     if(!pos) return pl.tell(info + lang.get("back.list.Empty"));
-    // if(!ValueCheck(pl.realName,conf.get("Back"))) return pl.sendText("返回失败 ！\n返回死亡点需要花费 "+conf.get("Back")+lang.get("CoinName"))
-    // pl.teleport(pos)
-    // pl.sendText("返回成功！")
     let fm = mc.newCustomForm()
     fm.setTitle(lang.get("back.to.point"))
     fm.addLabel(lang.get("back.to.point.sure"))
     fm.addLabel("死亡点坐标："+pl.lastDeathPos.x+","+pl.lastDeathPos.y+","+pl.lastDeathPos.z+" "+transdimid[pl.lastDeathPos.dimid])
-    fm.addLabel("您的"+lang.get("CoinName")+"："+String(pl.getScore(conf.get("Scoreboard"))))
+    fm.addLabel(displayMoneyInfo(pl, pl, true))    
     fm.addLabel("返回死亡点需要花费"+cost+lang.get("CoinName"))
     pl.sendForm(fm,(pl,id)=>{
         if(id == null) return pl.tell(info + lang.get("gui.exit"));
         if(!conf.get("LLMoney")){
-            if(!ValueCheck(pl.realName,conf.get("Back"))) return pl.tell(info + lang.get("money.no.enough"));
+        if(!ValueCheck(pl.realName,conf.get("Back"))) return pl.tell(info + lang.get("money.no.enough"));
         }else{
-            if(!LLValueCheck(pl.realName,conf.get("Back"))) return pl.tell(info + lang.get("money.no.enough"));
+        if(!LLValueCheck(pl.realName,conf.get("Back"))) return pl.tell(info + lang.get("money.no.enough"));
         }       
         pl.teleport(pl.lastDeathPos)
         pl.tell(info + lang.get("back.successful"));
@@ -1837,10 +1935,9 @@ function TpHome(plname){
             if(data == null) return pl.runcmd("home")
             if(!conf.get("LLMoney")){
             if(!ValueCheck(pl.realName,cost)) return pl.sendText("传送失败！\n传送家需要花费 "+conf.get("Home").tp+lang.get("CoinName"))
-    }else{
+            }else{
             if(!LLValueCheck(pl.realName,cost)) return pl.sendText("传送失败！\n传送家需要花费 "+conf.get("Home").tp+lang.get("CoinName"))
-    }
-        //    if(!ValueCheck(pl.realName,cost)) return pl.sendText("传送失败！\n传送家需要花费 "+conf.get("Home").tp+lang.get("CoinName"))
+            }
             pl.teleport(parseFloat(pldata[lst[id]].x),parseFloat(pldata[lst[id]].y),parseFloat(pldata[lst[id]].z),parseInt(pldata[lst[id]].dimid))
             pl.sendText("传送家 "+lst[id]+" 成功！")
         })
@@ -1872,10 +1969,9 @@ function DelHome(plname){
             if(data == null) return pl.tell(info + lang.get("gui.exit"));
             if(!conf.get("LLMoney")){
             if(!ValueCheck(pl.realName,cost)) return pl.sendText("删除失败！\n删除家需要花费 "+conf.get("Home").del+lang.get("CoinName"))
-    }else{
+            }else{
             if(!LLValueCheck(pl.realName,cost)) return pl.sendText("删除失败！\n删除家需要花费 "+conf.get("Home").del+lang.get("CoinName"))
-    }
-            //if(!ValueCheck(pl.realName,cost)) return pl.sendText("删除失败！\n删除家需要花费 "+conf.get("Home").del+lang.get("CoinName"))
+            }
             delete pldata[lst[id]]
             homedata.set(pl.realName,pldata)
             pl.sendText("删除家 "+lst[id]+" 成功！")
@@ -1892,47 +1988,28 @@ function AddHome(plname){
     let HomeCount = conf.get("Home").MaxHome
     let pldata = homedata.get(pl.realName)
     if(Object.keys(pldata).length >= HomeCount) return pl.sendText("您的家数量已达到上限值:"+HomeCount+"!")
-    //logger.log(Object.keys(pldata).length)
-
         let fm = mc.newCustomForm()
-        //logger.log(1)
         fm.setTitle(lang.get("home.add"))
         fm.addLabel("当前坐标："+String(pl.pos))
         fm.addLabel("您的"+lang.get("CoinName")+"："+String(pl.getScore(conf.get("Scoreboard"))))
         fm.addLabel("添加花费："+String(cost)+lang.get("CoinName"))
         fm.addInput((lang.get("home.add.input")))
-        //logger.log(2)
-        //fm.addButton("确认")
-        //fm.addButton("确认")
-        //logger.log(3)
-        //fm.addButton("取消")
-        //logger.log(1)
         pl.sendForm(fm,(pl,data)=>{
-            //logger.log(data)
             if(data == null) return pl.runcmd("home")
             if(data[3] == "" || !data[3]) return pl.tell(info + lang.get("home.name.noinput"));
-            //if(data[2]) return pl.sendText("取消成功")
-            
             let pldata = homedata.get(pl.realName)
-            //logger.log(pldata)
             if(Object.keys(pldata).includes(data[3])) return pl.tell(info + lang.get("home.name.repetitive"));
-            //logger.log(224)
             if(!conf.get("LLMoney")){
             if(!ValueCheck(pl.realName,conf.get("Home").add)) return pl.sendText("添加失败！\n添加家需要花费 "+cost+lang.get("CoinName"))
             }else{
             if(!LLValueCheck(pl.realName,conf.get("Home").add)) return pl.sendText("添加失败！\n添加家需要花费 "+cost+lang.get("CoinName"))
             }
-            //if(!ValueCheck(pl.realName,conf.get("Home").add)) return pl.sendText("添加失败！\n添加家需要花费 "+cost+lang.get("CoinName"))
-            //logger.log(225)
-
             pldata[data[3]] = {
                 "x":JSON.parse(pl.pos.x).toFixed(1),
                 "y":JSON.parse(pl.pos.y).toFixed(1),
                 "z":JSON.parse(pl.pos.z).toFixed(1),
                 "dimid":JSON.parse(pl.pos.dimid)
             }
-
-            //logger.log(226)
             homedata.set(pl.realName,pldata)
             pl.sendText("添加家："+data[3]+" 成功！")
 
@@ -2481,7 +2558,6 @@ rtpCmd.setCallback((cmd,ori,out,res) => {
     if(!x || !z) return out.error("XZ 生成失败")
     // 提示玩家
 if (conf.get("RTPAnimation") == 1 ){
-    logger.warn(pl.realName)
     setTimeout(()=> {
         mc.runcmdEx("camera \"" + pl.realName +"\" fade time 0.1 0.01 0.1  color 0 0 0")
     },900)
@@ -2523,7 +2599,6 @@ if (conf.get("RTPAnimation") == 1 ){
     mc.runcmdEx("effect \"" + pl.realName +"\" resistance 30 255 true")
     }else
     {
-    logger.warn(pl.realName)   
     pl.teleport(x,500,z,pl.pos.dimid)
     pl.sendText(info+lang.get("rtp.search.chunks"));
     pl.sendText(`§7随机坐标：§fX: ${x}, Z: ${z}`);
@@ -2685,15 +2760,17 @@ function LLValueCheck(plname, value) {
         return true;
     }
 }
-
 // ======================
-// 修复红包命令处理
+// Rp
 // ======================
 const redpacketCmd = mc.newCommand("redpacket", "红包功能", PermType.Any);
+
 redpacketCmd.setAlias("rp");
 
 // 添加子命令枚举
 redpacketCmd.setEnum("subcommand", ["send", "open", "list", "history"]);
+// 添加红包类型枚举
+redpacketCmd.setEnum("packetType", ["random", "average"]);
 
 // 添加命令重载
 redpacketCmd.mandatory("subcommand", ParamType.Enum, "subcommand");
@@ -2701,18 +2778,25 @@ redpacketCmd.optional("amount", ParamType.Int);
 redpacketCmd.optional("count", ParamType.Int);
 redpacketCmd.optional("player", ParamType.String);
 redpacketCmd.optional("message", ParamType.String);
+// 新增红包类型参数
+redpacketCmd.optional("packetType", ParamType.Enum, "packetType");
 
+// 更新重载，包含红包类型参数
+redpacketCmd.overload(["subcommand", "amount", "count", "player", "message", "packetType"]);
 redpacketCmd.overload(["subcommand", "amount", "count", "player", "message"]);
 redpacketCmd.overload(["subcommand"]);
 
 redpacketCmd.setCallback((cmd, ori, out, res) => {
     const pl = ori.player;
     if (!pl) return;
-    
+    if (!conf.get("RedPacketEnabled")) {
+        pl.tell(info + lang.get("module.no.Enabled"));
+        return;
+    }
     const sub = res.subcommand;
     switch (sub) {
         case "send":
-            handleSendRedPacket(pl, res.amount, res.count, res.player, res.message);
+            handleSendRedPacket(pl, res.amount, res.count, res.player, res.message, res.packetType);
             break;
         case "open":
             handleOpenRedPacket(pl);
@@ -2726,8 +2810,53 @@ redpacketCmd.setCallback((cmd, ori, out, res) => {
     }
 });
 redpacketCmd.setup();
-// 处理红包发送 - 修复函数
-function handleSendRedPacket(pl, amount, count, targetPlayer, message) {
+
+// 修复：添加 handleExpiredPacket 函数定义
+function handleExpiredPacket(packet) {
+    if (packet.remaining <= 0) return;
+    
+    logger.info(`[红包] 处理过期红包 #${packet.id}, 剩余金额: ${packet.remainingAmount}`);
+    
+    if (packet.remainingAmount > 0) {
+        const sender = mc.getPlayer(packet.sender);
+        if (sender) {
+            if (conf.get("LLMoney") == 0) {
+                sender.addScore(conf.get("Scoreboard"), packet.remainingAmount);
+            } else {
+                sender.addMoney(packet.remainingAmount);
+            }
+            sender.tell(info + `§a你的红包#${packet.id}已过期，退还§e${packet.remainingAmount}§a${lang.get("CoinName")}`);
+        }
+    }
+    
+    // 从数据中移除过期红包
+    redpacketData.delete(`packets.${packet.id}`);
+}
+
+// 处理红包发送 - 添加红包类型支持
+function handleSendRedPacket(pl, amount, count, targetPlayer, message, packetType = "random") {
+    // 智能参数类型识别
+    if (typeof targetPlayer === "string") {
+        // 如果第五个参数是红包类型
+        if (targetPlayer === "random" || targetPlayer === "average") {
+            packetType = targetPlayer;
+            targetPlayer = "";
+            message = "";
+        }
+        // 如果第六个参数是红包类型
+        if (typeof message === "string" && (message === "random" || message === "average")) {
+            packetType = message;
+            message = "";
+        }
+    }
+    
+    // 设置默认值
+    if (!packetType) packetType = "random"; // 默认拼手气红包
+    
+    if (!conf.get("RedPacketEnabled")) {
+        pl.tell(info + lang.get("module.no.Enabled")); 
+        return;    
+    }
     // 参数验证
     if (isSending) {
         pl.tell("§c请勿重复发送红包！");
@@ -2739,7 +2868,8 @@ function handleSendRedPacket(pl, amount, count, targetPlayer, message) {
     }
     
     if (!amount || !count || count < 1) {
-        pl.tell(info + "§c用法: /redpacket send <总金额> <红包个数> [玩家名] [祝福语]");
+        pl.tell(info + "§c用法: /redpacket send <总金额> <红包个数> [玩家名] [祝福语] [类型]");
+        pl.tell(info + "§7类型: random(拼手气) 或 average(普通)");
         return;
     }
     
@@ -2779,7 +2909,7 @@ function handleSendRedPacket(pl, amount, count, targetPlayer, message) {
         pl.reduceMoney(amount);
     }
     
-    // 创建红包
+    // 创建红包 - 添加红包类型
     const packetId = redpacketData.get("nextId");
     const packet = {
         id: packetId,
@@ -2789,35 +2919,37 @@ function handleSendRedPacket(pl, amount, count, targetPlayer, message) {
         remaining: count,
         remainingAmount: amount,
         recipients: [],
-        type: targetPlayer ? "specific" : "all",
+        targetType: targetPlayer ? "specific" : "all", // 重命名为targetType避免混淆
         targetPlayer: targetPlayer || "",
         message: message || `${pl.realName}的红包`,
+        packetType: packetType, // 新增红包类型字段
         createdAt: Date.now(),
         expireAt: Date.now() + (config.expireTime * 1000)
     };
     isSending = true;
-    // 使用修复后的方法保存红包数据
+    // 保存红包数据
     redpacketData.set(`packets.${packetId}`, packet);
     redpacketData.set("nextId", packetId + 1);
     
     // 广播红包消息
+    const typeName = packetType === "random" ? "拼手气" : "普通";
     if (targetPlayer) {
         const target = mc.getPlayer(targetPlayer);
         if (target) {
-            target.tell(info + `§a你收到来自${pl.realName}的红包，输入§e/rp open§a领取`);
+            target.tell(info + `§a你收到来自${pl.realName}的${typeName}红包，输入§e/rp open§a领取`);
         }
-        pl.tell(info + `§a成功向${targetPlayer}发送红包，金额:§e${amount}§a，数量:§e${count}`);
+        pl.tell(info + `§a成功向${targetPlayer}发送${typeName}红包，金额:§e${amount}§a，数量:§e${count}`);
     } else {
-        mc.broadcast(info + `§a玩家§e${pl.realName}§a发送了全服红包，输入§e/rp open§a领取`);
-        pl.tell(info + `§a成功发送全服红包，金额:§e${amount}§a，数量:§e${count}`);
+        mc.broadcast(info + `§a玩家§e${pl.realName}§a发送了${typeName}全服红包，输入§e/rp open§a领取`);
+        pl.tell(info + `§a成功发送${typeName}全服红包，金额:§e${amount}§a，数量:§e${count}`);
     }
-     logger.info(`[红包] 玩家 ${pl.realName} 发送红包 #${packetId}, 类型: ${packet.type}, 金额: ${amount}, 数量: ${count}`);
+     logger.info(`[红包] 玩家 ${pl.realName} 发送${typeName}红包 #${packetId}, 类型: ${packet.targetType}, 金额: ${amount}, 数量: ${count}`);
      isSending = false;
-    }
+}
 
-// 处理红包领取 - 修复函数
+// 处理红包领取 - 添加红包类型支持
 function handleOpenRedPacket(pl) {
-    logger.info(`[红包] 玩家 ${pl.realName} 尝试领取红包...`);
+    //logger.info(`[红包] 玩家 ${pl.realName} 尝试领取红包...`);
     
     const packets = redpacketData.get("packets") || {};
     const now = Date.now();
@@ -2828,8 +2960,7 @@ function handleOpenRedPacket(pl) {
         
         // 检查过期
         if (packet.expireAt < now) {
-            logger.info(`[红包] 红包 #${packet.id} 已过期，处理中...`);
-            handleExpiredPacket(packet);
+            handleExpiredPacket(packet); // 现在这个函数已经定义
             continue;
         }
         
@@ -2837,8 +2968,8 @@ function handleOpenRedPacket(pl) {
         const canClaim = 
             packet.remaining > 0 &&
             !packet.recipients.includes(pl.realName) &&
-            (packet.type === "all" || 
-             (packet.type === "specific" && 
+            (packet.targetType === "all" || 
+             (packet.targetType === "specific" && 
               packet.targetPlayer.toLowerCase() === pl.realName.toLowerCase()));
         
         if (canClaim) {
@@ -2848,7 +2979,7 @@ function handleOpenRedPacket(pl) {
     
     if (availablePackets.length === 0) {
         pl.tell(info + "§c当前没有可领取的红包");
-        logger.info(`[红包] 玩家 ${pl.realName} 没有可领取的红包`);
+        //logger.info(`[红包] 玩家 ${pl.realName} 没有可领取的红包`);
         return;
     }
     
@@ -2856,19 +2987,27 @@ function handleOpenRedPacket(pl) {
     availablePackets.sort((a, b) => a.createdAt - b.createdAt);
     const packet = availablePackets[0];
     
-    logger.info(`[红包] 玩家 ${pl.realName} 将领取红包 #${packet.id}`);
+    //logger.info(`[红包] 玩家 ${pl.realName} 将领取红包 #${packet.id}`);
     
-    // 计算红包金额
+    // 计算红包金额 - 根据红包类型使用不同算法
     let amount;
     if (packet.remaining === 1) {
+        // 最后一个红包，领取剩余全部金额
         amount = packet.remainingAmount;
     } else {
-        const maxAmount = Math.min(
-            packet.remainingAmount - packet.remaining + 1, 
-            Math.floor(packet.remainingAmount / packet.remaining * 2)
-        );
-        amount = Math.floor(Math.random() * maxAmount) + 1;
-        amount = Math.max(amount, 1);
+        if (packet.packetType === "random") {
+            // 拼手气红包算法
+            const maxAmount = Math.min(
+                packet.remainingAmount - packet.remaining + 1, 
+                Math.floor(packet.remainingAmount / packet.remaining * 2)
+            );
+            amount = Math.floor(Math.random() * maxAmount) + 1;
+            amount = Math.max(amount, 1);
+        } else {
+            // 普通红包算法（平均分配）
+            amount = Math.floor(packet.remainingAmount / packet.remaining);
+            amount = Math.max(amount, 1); // 确保至少1单位
+        }
     }
     
     // 更新红包数据
@@ -2876,7 +3015,7 @@ function handleOpenRedPacket(pl) {
     packet.remainingAmount -= amount;
     packet.recipients.push(pl.realName);
     
-    // 使用修复后的方法保存红包数据
+    // 保存红包数据
     redpacketData.set(`packets.${packet.id}`, packet);
     
     // 给玩家发放资金
@@ -2887,7 +3026,8 @@ function handleOpenRedPacket(pl) {
     }
     
     // 通知玩家
-    pl.tell(info + `§a恭喜你领取到§e${packet.sender}§a的红包，获得§e${amount}§a${lang.get("CoinName")}!`);
+    const typeName = packet.packetType === "random" ? "拼手气" : "普通";
+    pl.tell(info + `§a恭喜你领取到§e${packet.sender}§a的${typeName}红包，获得§e${amount}§a${lang.get("CoinName")}!`);
     logger.info(`[红包] 玩家 ${pl.realName} 领取红包 #${packet.id}, 获得 ${amount} 金币`);
     
     // 通知发送者
@@ -2897,7 +3037,7 @@ function handleOpenRedPacket(pl) {
     }
 }
 
-// 处理红包列表 - 修复函数
+// 在红包列表和详情中显示红包类型
 function handleListRedPacket(pl) {
     const packets = redpacketData.get("packets") || {};
     const now = Date.now();
@@ -2913,13 +3053,14 @@ function handleListRedPacket(pl) {
         if (packet.remaining <= 0) continue;
         if (packet.recipients.includes(pl.realName)) continue;
         
-        if (packet.type === "specific" && 
+        if (packet.targetType === "specific" && 
             packet.targetPlayer.toLowerCase() !== pl.realName.toLowerCase()) {
             continue;
         }
         
         const expireIn = Math.ceil((packet.expireAt - now) / 1000);
-        form.addButton(`§l§e${packet.sender}的红包\n§7金额: §f${packet.amount} §7剩余: §a${packet.remaining}/${packet.count}\n§7过期: §f${expireIn}秒`);
+        const typeName = packet.packetType === "random" ? "§6拼手气" : "§b普通";
+        form.addButton(`§l${typeName} §e${packet.sender}的红包\n§7金额: §f${packet.amount} §7剩余: §a${packet.remaining}/${packet.count}\n§7过期: §f${expireIn}秒`);
         hasPackets = true;
     }
     
@@ -2929,15 +3070,15 @@ function handleListRedPacket(pl) {
     }
     
     if (form && pl) {
-    pl.sendForm(form, (player, id) => {
-        if (id !== null && hasPackets) {
-            handleOpenRedPacket(pl);
-        }
-    });
-}
+        pl.sendForm(form, (player, id) => {
+            if (id !== null && hasPackets) {
+                handleOpenRedPacket(pl);
+            }
+        });
+    }
 }
 
-// 处理红包历史 - 修复函数
+// 在红包历史中显示红包类型
 function handleRedPacketHistory(pl) {
     const packets = redpacketData.get("packets") || {};
     let history = [];
@@ -2967,9 +3108,10 @@ function handleRedPacketHistory(pl) {
             `§7已领取: §f${packet.amount - packet.remainingAmount}` :
             `§7获得: §f${packet.recipients.includes(pl.realName) ? 
                 packet.amount - packet.remainingAmount : 0}`;
+        const typeName = packet.packetType === "random" ? "§6[拼]" : "§b[普]";
         
         form.addButton(
-            `§l${isSender ? "§b[发]" : "§a[收]"} §e${packet.sender}的红包\n` +
+            `§l${isSender ? "§b[发]" : "§a[收]"} ${typeName} §e${packet.sender}的红包\n` +
             `§7金额: §f${packet.amount} §7状态: ${status}\n` +
             amountReceived
         );
@@ -2983,14 +3125,16 @@ function handleRedPacketHistory(pl) {
     });
 }
 
-// 显示红包详情
+// 在红包详情中显示红包类型
 function showRedPacketDetail(pl, packet) {
     const form = mc.newCustomForm()
         .setTitle("§l§6红包详情");
     
     form.addLabel(`§f发送者: §e${packet.sender}`);
-    form.addLabel(`§f类型: §e${packet.type === "all" ? "全服红包" : "指定红包"}`);
-    if (packet.type === "specific") {
+    form.addLabel(`§f目标类型: §e${packet.targetType === "all" ? "全服红包" : "指定红包"}`);
+    // 新增红包类型显示
+    form.addLabel(`§f红包类型: §e${packet.packetType === "random" ? "拼手气红包" : "普通红包"}`);
+    if (packet.targetType === "specific") {
         form.addLabel(`§f指定玩家: §e${packet.targetPlayer}`);
     }
     form.addLabel(`§f总金额: §e${packet.amount}${lang.get("CoinName")}`);
@@ -3016,28 +3160,6 @@ function showRedPacketDetail(pl, packet) {
     });
 }
 
-// 处理过期红包 - 修复函数
-function handleExpiredPacket(packet) {
-    if (packet.remaining <= 0) return;
-    
-    logger.info(`[红包] 处理过期红包 #${packet.id}, 剩余金额: ${packet.remainingAmount}`);
-    
-    if (packet.remainingAmount > 0) {
-        const sender = mc.getPlayer(packet.sender);
-        if (sender) {
-            if (conf.get("LLMoney") == 0) {
-                sender.addScore(conf.get("Scoreboard"), packet.remainingAmount);
-            } else {
-                sender.addMoney(packet.remainingAmount);
-            }
-            sender.tell(info + `§a你的红包#${packet.id}已过期，退还§e${packet.remainingAmount}§a${lang.get("CoinName")}`);
-        }
-    }
-    isSending = false;
-    // 从数据中移除过期红包
-    redpacketData.delete(`packets.${packet.id}`);
-}
-
 // 修改红包过期检测逻辑
 setInterval(() => {
     const now = Date.now();
@@ -3047,91 +3169,96 @@ setInterval(() => {
     for (const id in packets) {
         const packet = packets[id];
         
-        // 检查红包是否过期且未被处理
-        if (packet.expire < now && packet.status !== "expired") {
-            logger.info(`[红包] 红包 #${id} 已过期，处理中...`);
-            
-            // 标记红包为已过期状态
-            packet.status = "expired";
-            updated = true;
-            
-            // 记录过期日志
-            logger.debug(`[红包] 标记红包 #${id} 为过期状态`);
-        }
-        
-        // 处理已标记为过期的红包
-        if (packet.status === "expired") {
-            // 实际删除过期红包
-            redpacketData.delete(`packets.${id}`);
-            logger.debug(`[红包] 已删除过期红包 #${id}`);
+        // 检查红包是否过期
+        if (packet.expireAt < now) {
+            handleExpiredPacket(packet);
             updated = true;
         }
     }
     
     // 如果有更新，保存数据
     if (updated) {
-          removeExpiredRedPackets();
-          redpacketData.save();
+        redpacketData.save();
     }
 }, 5 * 60 * 1000); // 每5分钟检查一次
 
 // 在插件初始化后添加红包帮助命令
 mc.listen("onServerStarted", () => {
-    mc.regPlayerCmd("redpackethelp", "红包帮助", (pl) => {
-        // 创建帮助表单
-        let helpForm = mc.newSimpleForm()
-            .setTitle("§l§6红包使用帮助")
-            .setContent("§7选择命令查看详细说明");
-        
-        helpForm.addButton("§a发送红包");
-        helpForm.addButton("§a领取红包");
-        helpForm.addButton("§a查看红包");
-        helpForm.addButton("§a红包历史");
-        
-        // 发送表单
-        pl.sendForm(helpForm, (player, id) => {
-            if (id === null) return;
+    if (!conf.get("RedPacketEnabled")) {
+        return;
+    } else {
+        mc.regPlayerCmd("redpackethelp", "红包帮助", (pl) => {
+            // 创建帮助表单
+            let helpForm = mc.newSimpleForm()
+                .setTitle("红包使用帮助")
+                .setContent("选择命令查看详细说明");
             
-            let helpText = "";
-            switch(id) {
-                case 0:
-                    helpText = 
-                        "§6发送红包命令: §a/rp send <金额> <数量> [玩家名] [祝福语]\n" +
-                        "§7- §f金额: 红包总金额\n" +
-                        "§7- §f数量: 红包个数\n" +
-                        "§7- §f玩家名: 指定接收玩家(可选)\n" +
-                        "§7- §f祝福语: 红包祝福语(可选)\n" +
-                        "§e示例: §a/rp send 1000 5 §7(发送5个总金额1000的全服红包)";
-                    break;
-                case 1:
-                    helpText = 
-                        "§6领取红包命令: §a/rp open\n" +
-                        "§7自动领取最早可用的红包\n\n" +
-                        "§6查看可领红包: §a/rp list\n" +
-                        "§7查看所有可领取的红包列表";
-                    break;
-                case 2:
-                    helpText = 
-                        "§6查看红包详情: §a/rp list\n" +
-                        "§7查看所有可领取的红包\n\n" +
-                        "§7点击红包可直接领取";
-                    break;
-                case 3:
-                    helpText = 
-                        "§6查看红包历史: §a/rp history\n" +
-                        "§7查看你发送和领取的红包记录";
-                    break;
-            }
+            helpForm.addButton("发送红包");
+            helpForm.addButton("领取红包");
+            helpForm.addButton("查看红包");
+            helpForm.addButton("红包历史");
+            helpForm.addButton("红包类型说明");
             
-            // 创建详情表单
-            let detailForm = mc.newCustomForm()
-                .setTitle("§l§6红包帮助")
-                .addLabel(helpText);
-            
-            pl.sendForm(detailForm, () => {});
+            // 发送表单
+            pl.sendForm(helpForm, (player, id) => {
+                if (id === null) return;
+                
+                let helpText = "";
+                switch(id) {
+                    case 0:
+                        helpText = 
+                            "§6发送红包命令: §a/rp send <金额> <数量> [玩家名] [祝福语] [类型]\n" +
+                            "§7- §f金额: 红包总金额\n" +
+                            "§7- §f数量: 红包个数\n" +
+                            "§7- §f玩家名: 指定接收玩家(可选)\n" +
+                            "§7- §f祝福语: 红包祝福语(可选)\n" +
+                            "§7- §f类型: random(拼手气)或average(普通)(可选，默认random)\n" +
+                            "§e示例: §a/rp send 1000 5 §7(发送5个总金额1000的拼手气红包)\n" +
+                            "§e示例: §a/rp send 1000 5 average §7(发送5个总金额1000的普通红包)\n" +
+                            "§e示例: §a/rp send 1000 5 Steve \"恭喜发财\" random §7(指定玩家的拼手气红包)";
+                        break;
+                    case 1:
+                        helpText = 
+                            "§6领取红包命令: §a/rp open\n" +
+                            "§7自动领取最早可用的红包\n\n" +
+                            "§6查看可领红包: §a/rp list\n" +
+                            "§7查看所有可领取的红包列表";
+                        break;
+                    case 2:
+                        helpText = 
+                            "§6查看红包详情: §a/rp list\n" +
+                            "§7查看所有可领取的红包\n\n" +
+                            "§7点击红包可直接领取";
+                        break;
+                    case 3:
+                        helpText = 
+                            "§6查看红包历史: §a/rp history\n" +
+                            "§7查看你发送和领取的红包记录";
+                        break;
+                    case 4:
+                        helpText = 
+                            "§6红包类型说明:\n" +
+                            "§a1. 拼手气红包(random):\n" +
+                            "§7- 每个红包金额随机分配\n" +
+                            "§7- 金额在1到剩余均值的两倍之间随机\n" +
+                            "§7- 最后一人获得剩余所有金额\n\n" +
+                            "§b2. 普通红包(average):\n" +
+                            "§7- 每个红包金额平均分配\n" +
+                            "§7- 金额 = 剩余金额 / 剩余个数(取整)\n" +
+                            "§7- 最后一人获得剩余所有金额";
+                        break;
+                }
+                
+                // 创建详情表单
+                let detailForm = mc.newCustomForm()
+                    .setTitle("§l§6红包帮助")
+                    .addLabel(helpText);
+                
+                pl.sendForm(detailForm, () => {});
+            });
         });
-    });
-});
+    }
+});     
 //对接联合封禁
 function CheckUniteBan(realname, xuid, uuid, clientid, ip) { //检查函数
     const postdata = {
