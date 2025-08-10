@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.4.3";
-const regversion =[2,4,3];
+const version = "2.4.4";
+const regversion =[2,4,4];
 const info = "§l§b[YEST] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
@@ -3572,4 +3572,5 @@ mc.listen("onServerStarted", () => {
             });
         });
     }
+
 });     
