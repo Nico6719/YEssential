@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.4.4";
-const regversion =[2,4,4];
+const version = "2.4.5";
+const regversion =[2,4,5];
 const info = "§l§b[YEST] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
@@ -670,7 +670,7 @@ class AsyncTeleportSystem {
         });
     }
 
- // 新增：RTP动画系统
+ // RTP动画系统
     static async performRTPAnimationAsync(player, x, z, y) {
         
         return new Promise((resolve) => {
@@ -1915,12 +1915,12 @@ function redpacketgui(plname){
                 fm.addInput(lang.get("rp.send.count"))
                 pl.sendForm(fm, (pl, data) => {
                 let type = data[0]      
-                let amount = data[1]
+                let amount = data[2]
                 if(amount == null) return pl.tell(info + lang.get("money.tr.noinput"));
                 if(amount == "all") amount = pl.getScore(conf.get("Scoreboard"))
                 if(/^\d+$/.test(amount) == false) return pl.tell(info + lang.get("key.not.number"));        
                 if(amount <= 0) return pl.tell(info + lang.get("money.must.bigger0"));
-                let count = data[2]
+                let count = data[1]
                 if(count == null) return pl.tell(info + lang.get("money.tr.noinput"));
                 if(/^\d+$/.test(count) == false) return pl.tell(info + lang.get("key.not.number"));        
                 if(count <= 0) return pl.tell(info + lang.get("money.must.bigger0"));
@@ -1954,8 +1954,7 @@ function MoneyTransferGui(plname){
     if(conf.get("LLMoney") == 0){
     fm.addLabel("当前税率:"+conf.get("PayTaxRate")+"(百分号)\n你的"+lang.get("CoinName")+"为："+pl.getScore(conf.get("Scoreboard")))
         }else{
-        pl.setMoney(plBalance - amount)
-    fm.addLabel("当前税率:"+conf.get("PayTaxRate")+"(百分号)\n你的"+lang.get("CoinName")+"为："+pl.getMoney(conf.get("Scoreboard")))
+    fm.addLabel("当前税率:"+conf.get("PayTaxRate")+"(百分号)\n你的"+lang.get("CoinName")+"为："+pl.getMoney())
         }
     let lst = []
     mc.getOnlinePlayers().forEach((pl)=>{
@@ -1970,29 +1969,40 @@ function MoneyTransferGui(plname){
         if (!target || target.isSimulatedPlayer()) {
             return pl.tell(info + lang.get("money.tr.error1"));
         }
-        if (pl.realName === target.realName) {
-            return pl.tell(info + lang.get("money.tr.error2"));
-        }
         if(!target) return pl.tell(info + lang.get("money.tr.noonline"));
         let amount = data[2]
         if(amount == null) return pl.tell(info + lang.get("money.tr.noinput"));
+        if(conf.get("LLMoney") == 0){
         if(amount == "all") amount = pl.getScore(conf.get("Scoreboard"))
+        }else{
+        if(amount == "all") amount = pl.getMoney(conf.get("Scoreboard"))
+        }
         if(/^\d+$/.test(amount) == false) return pl.tell(info + lang.get("key.not.number"));        
         if(amount <= 0) return pl.tell(info + lang.get("money.must.bigger0"));
+        if(conf.get("LLMoney") == 0){
         if(amount > pl.getScore(conf.get("Scoreboard"))) return pl.sendText("转账数量不能大于你的"+lang.get("CoinName"))
+        }else{
+        if(amount > pl.getMoney()) return pl.sendText("转账数量不能大于你的"+lang.get("CoinName"))
+        }
         let beizhu = data[3]
         let tax = Math.floor(amount * conf.get("PayTaxRate") / 100);
         let realamount = amount - tax;
         if (realamount <= 0) return pl.tell(info + lang.get("money.cannot.smaller0"));
         const plBalance = pl.getScore(conf.get("Scoreboard"));
         const targetBalance = target.getScore(conf.get("Scoreboard"));
+        const plllBalance = pl.getMoney();
+        const targetllBalance = target.getMoney();
+        if(conf.get("LLMoney") == 0){
         if (plBalance < amount) return pl.tell(info + lang.get("money.no.enough"));
+        }else {
+        if (plllBalance < amount) return pl.tell(info + lang.get("money.no.enough")); 
+        }
         if(conf.get("LLMoney") == 0){
         pl.setScore(conf.get("Scoreboard"), plBalance - amount);
         target.setScore(conf.get("Scoreboard"), targetBalance + realamount);
         }else{
-        pl.setMoney(plBalance - amount)
-        target.setMoney(targetBalance + realamount)
+        pl.setMoney(plllBalance - amount)
+        target.setMoney(targetllBalance + realamount)
         }
         let moneyhisdata = MoneyHistory.get(pl.realName)
         moneyhisdata[String(system.getTimeStr())+"§"+getRandomLetter()] = lang.get("money.transfer")+lang.get("CoinName")+"给"+target.realName+"，数量："+amount+"，实际到账："+realamount+"，手续费："+tax
@@ -2003,40 +2013,7 @@ function MoneyTransferGui(plname){
         pl.sendText(info +"转账成功，实际到账："+realamount+"，手续费："+tax)
         target.sendText(info + pl.realName+lang.get("money.transfer")+lang.get("CoinName")+"给你，数量："+amount+"，实际到账："+realamount+"，手续费："+tax+"备注："+beizhu )
     })
-    }
-    const debugCmd = mc.newCommand("yedebug", "开发者模式", PermType.GameMasters);
-    debugCmd.overload([]);
-    debugCmd.setCallback((_, ori) => {
-        const newMode = !conf.get("DebugModeEnabled");
-        conf.set("DebugModeEnabled", newMode);
-        ori.player.sendText(`调试模式已 ${newMode ? "开启" : "关闭"}`);
-});
-debugCmd.setup();
-const YE_API = {
-    // 经济系统
-    Economy: {
-        getBalance: (playerName) => mc.getPlayer(playerName)?.getScore(conf.get("Scoreboard")) || 0,
-        transfer: (from, to, amount) => {
-            const fromPlayer = mc.getPlayer(from);
-            const toPlayer = mc.getPlayer(to);
-            if (!fromPlayer || !toPlayer) return false;
-            // ...转账逻辑
-        }
-    },
-
-    // 传送系统
-    Teleport: {
-        addHome: (playerName, homeName) => {
-            const player = mc.getPlayer(playerName);
-            if (!player) return false;
-            // ...添加家逻辑
-        }
-    } 
-};
-
-// 全局挂载
-
-
+}
 function OPMoneyGui(plname){
     let pl = mc.getPlayer(plname)
     if(!pl) return
@@ -2274,11 +2251,6 @@ function OPWarpGui(plname){
         }
     })
 }
-function debugLog(...args) {
-    if (conf.get("DebugModeEnabled")) {
-        logger.debug("[DEBUG]", ...args);
-    }
-}
 function WarpGui(plname){
     let pl = mc.getPlayer(plname)
     if(!pl) return
@@ -2305,10 +2277,8 @@ function WarpGui(plname){
             }else{
             if(!LLValueCheck(pl.realName,conf.get("Warp"))) return pl.tell(info + lang.get("money.no.enough"));
             }
-            
             pl.teleport(parseFloat(warpdata.get(lst[id]).x),parseFloat(warpdata.get(lst[id]).y),parseFloat(warpdata.get(lst[id]).z),parseInt(warpdata.get(lst[id]).dimid))
             pl.sendText("已前往传送点 "+lst[id])
-            
         })
     })
 }
@@ -2372,6 +2342,7 @@ backcmd.setup()
 function BackGUI(plname){
     let pl = mc.getPlayer(plname)
     if(!pl) return
+    let realName = pl.realname;
     let cost = conf.get("Back")
     let pos = pl.lastDeathPos
     if(!pos) return pl.tell(info + lang.get("back.list.Empty"));
@@ -2385,10 +2356,11 @@ function BackGUI(plname){
         if(id == null) return pl.tell(info + lang.get("gui.exit"));
         if(!conf.get("LLMoney")){
         if(!ValueCheck(pl.realName,conf.get("Back"))) return pl.tell(info + lang.get("money.no.enough"));
-        }else{
+        }else{  
         if(!LLValueCheck(pl.realName,conf.get("Back"))) return pl.tell(info + lang.get("money.no.enough"));
         }       
         pl.teleport(pl.lastDeathPos)
+        mc.runcmdEx("effect "+pl.realName+" resistance 15 255 true")
         pl.tell(info + lang.get("back.successful"));
     })
 }
@@ -2398,7 +2370,7 @@ homegui.overload([])
 homegui.setCallback((cmd,ori,out,res)=>{
     let pl = ori.player
 
-    if(!pl) return out.error("仅限玩家执行")
+    if(!pl) return out.error("仅限玩家执行")        
     
     let fm = mc.newSimpleForm()
     fm.setTitle(lang.get("home.tp.system"))
@@ -3013,6 +2985,7 @@ setInterval(() => {
         }
     })
 }, 1000);
+////rtp  remake
 const rtpResetCmd = mc.newCommand("rtpreset", "重置传送冷却", PermType.GameMasters);
 rtpResetCmd.overload([]);
 rtpResetCmd.mandatory("player", ParamType.Player);
@@ -3024,7 +2997,6 @@ rtpResetCmd.setCallback((cmd, ori, out, res) => {
     out.success(`已重置 ${pl.realName} 的传送冷却`);
 });
 rtpResetCmd.setup();
-// 替换原有的RTP命令
 const asyncRtpCmd = mc.newCommand("rtp", "异步随机传送", PermType.Any);
 asyncRtpCmd.overload([]);
 asyncRtpCmd.setCallback(async (cmd, ori, out, res) => {
@@ -3572,5 +3544,4 @@ mc.listen("onServerStarted", () => {
             });
         });
     }
-
 });     
