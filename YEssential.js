@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.4.5";
-const regversion =[2,4,5];
+const version = "2.4.6";
+const regversion =[2,4,6];
 const info = "§l§b[YEST] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
@@ -40,7 +40,7 @@ const defaultLangContent = {
     "notice.no.change": "§e公告内容未更改！",
     "notice.exit.edit":"已取消编辑",
     "notice.for.server":"§l§e服务器公告",
-    "notice.dont.showagain":"下次进服是否再次提示",
+    "notice.dont.showagain":"以后进服不自动弹出(除非公告更新或停用此开关)",
     "notice.is.changed":"检测到新公告，玩家下次加入将强制显示",
     "player.not.op":"§c权限不足！",
     "gui.exit": "表单已关闭,未收到操作",
@@ -1275,7 +1275,7 @@ cmd.setCallback((cmd, ori, out, res) => {
         }
     });
 
-    fm.addSwitch(lang.get("notice.dont.showagain"),noticeconf.get(String(pl.realName)) == 1 ? true : false)
+    fm.addSwitch(lang.get("notice.dont.showagain"),noticeconf.get(String(pl.realName)) == 1 ? false : true)
     
     pl.sendForm(fm, (pl, data) => {
         if (data == null) return;
@@ -1287,21 +1287,6 @@ cmd.setCallback((cmd, ori, out, res) => {
     });
 });
 cmd.setup()
-mc.listen("onJoin",(pl)=>{
-     if (conf.get("LLMoney") == 1) {
-        let currentMoney = pl.getMoney();
-        if (currentMoney === null || currentMoney === undefined) {
-            pl.setMoney(0); // 初始化LLMoney
-        }
-    }
-    if(conf.get("join_notice") == 0) return
-    setTimeout(() => {
-        if (!mc.getPlayer(pl.realName)) return;
-        if (noticeconf.get(String(pl.realName)) == 1) return;
-        if (!conf.get("NoticeEnabled")) { return; }
-        pl.runcmd("notice");
-    }, 1000);
-})
 //Hub
 mc.regPlayerCmd('hub', '打开回城菜单', (pl) => {
     if (conf.get("HubEnabled") == 0) {
