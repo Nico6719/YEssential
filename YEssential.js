@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.4.6";
-const regversion =[2,4,6];
+const version = "2.4.7";
+const regversion =[2,4,7];
 const info = "§l§b[YEST] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
@@ -1953,6 +1953,9 @@ function MoneyTransferGui(plname){
         let target = mc.getPlayer(lst[data[1]])
         if (!target || target.isSimulatedPlayer()) {
             return pl.tell(info + lang.get("money.tr.error1"));
+        }
+        if (pl.realName === target.realName) {
+            return pl.tell(info + lang.get("money.tr.error2"));
         }
         if(!target) return pl.tell(info + lang.get("money.tr.noonline"));
         let amount = data[2]
