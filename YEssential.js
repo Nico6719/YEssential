@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.4.7";
-const regversion =[2,4,7];
+const version = "2.4.8";
+const regversion =[2,4,8];
 const info = "§l§b[YEST] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
@@ -61,6 +61,7 @@ const defaultLangContent = {
     "money.create.score":"计分板项目不存在，以为您自动创建",
     "money.callback.menu":"§a正在返回经济系统主界面...",
     "money.player.list":"排行榜",
+    "moneys.help":"您的语法有误！\n/moneys <name> add \n /monneys <name> del \n /moneys <name> set",
     "money.transfer":"转账",
     "moeny.view":"查看",
     "money.query":"查询",
@@ -187,13 +188,15 @@ const defaultLangContent = {
     "gamerule.KeepInventory.true":"死亡不掉落已启用",
     "cannot.create.newfile":"无法创建数据存储对象",
     "rtp.search.chunks":"§a正在寻找安全的传送位置，请稍候...",
+    "rtp.search.chunks2":"§e未找到理想位置，使用备用传送方案...",
     "rtp.loading.chunks3":"§7正在加载区块...",
     "rtp.loading.chunks2":"§7正在加载区块..",
     "rtp.loading.chunks1":"§7正在加载区块.",
-    "moneys.help":"您的语法有误！\n/moneys <name> add \n /monneys <name> del \n /moneys <name> set",
     "rtp.cannotfind.safexyz":"§c无法找到安全的传送位置，请稍后再试",
     "rtp.tp.success":"§a传送成功！",
+    "rtp.tp.success2":"§6已传送到安全高度，请自行寻找落脚点",
     "rtp.loadchunks.timeout":"§c目标区块加载超时",
+    "rtp.error":"§c传送过程发生错误",
     "pvp.is.on":"§6PVP 已开启。",
     "pvp.is.off":"§6PVP 已关闭。",
     "your.pvp.isoff":"§l§b你关闭了 PVP。",
@@ -730,7 +733,7 @@ class AsyncTeleportSystem {
                 }
             }
 
-            player.sendText(info + "§e正在寻找安全的传送位置...");
+            player.sendText(info + lang.get("rtp.search.chunks"));
             if (config.minRadius && config.maxRadius) {
                 player.sendText(info + `§7传送范围：§f${minRadius} - ${maxRadius} 格`);
             }
@@ -810,7 +813,7 @@ class AsyncTeleportSystem {
                 return true;
             } else {
                 // 所有尝试都失败了，使用备用方案
-                player.sendText(info + "§e未找到理想位置，使用备用传送方案...");
+                player.sendText(info + lang.get("rtp.search.chunks2"));
                 const fallbackResult = await this.fallbackTeleport(player);
                 
                 if (!fallbackResult) {
@@ -836,7 +839,7 @@ class AsyncTeleportSystem {
 
         } catch (error) {
             logger.error(`RTP传送失败: ${error.message}`);
-            player.sendText(info + "§c传送过程发生错误");
+            player.sendText(info + lang.get("rtp.error"));
             
             // 清除可能的动画效果
             if (conf.get("RTPAnimation") == 1) {
@@ -869,7 +872,7 @@ class AsyncTeleportSystem {
             const y = 100;
             
             player.teleport(x, y, z, player.pos.dimid);
-            player.sendText(info + "§6已传送到安全高度，请自行寻找落脚点");
+            player.sendText(info + lang.get("rtp.tp.success2"));
             player.sendText(`§7坐标: X:${x}, Y:${y}, Z:${z}`);
             
             // 给玩家缓降效果
