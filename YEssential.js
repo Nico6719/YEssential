@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.4.8";
-const regversion =[2,4,8];
+const version = "2.4.9";
+const regversion =[2,4,9];
 const info = "§l§b[YEST] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
@@ -2318,44 +2318,172 @@ function WarpAddGui(plname){
 
 mc.listen("onRespawn",(pl)=>{
     if(conf.get("BackTipAfterDeath")) {
-        BackGUI(pl.realName)
+         setTimeout(() => {
+            BackGUI(pl.realName)
+            }, 100);
     }
 })
+// 存储玩家死亡点数据
+let deathPoints = {};
 
-let backcmd = mc.newCommand("back","返回死亡点",PermType.Any)
+// 监听玩家死亡事件记录死亡点
+mc.listen("onPlayerDie", function(pl, src) {
+    let playerName = pl.realName;
+    
+    // 初始化玩家死亡点数组
+    if (!deathPoints[playerName]) {
+        deathPoints[playerName] = [];
+    }
+    
+    // 获取当前死亡位置
+    let deathPos = pl.lastDeathPos;
+    if (!deathPos) return;
+    
+    // 创建死亡点记录
+    let deathRecord = {
+        pos: deathPos,
+        time: new Date().toLocaleString(),
+        dimension: transdimid[deathPos.dimid] || "未知维度"
+    };
+    
+    // 添加到数组开头（最新的在前面）
+    deathPoints[playerName].unshift(deathRecord);
+    
+    // 只保留最近3个死亡点
+    if (deathPoints[playerName].length > 3) {
+        deathPoints[playerName] = deathPoints[playerName].slice(0, 3);
+    }
+    
+    pl.tell(info + "§a已记录您的死亡点！使用 /back 查看所有死亡点。");
+});
+
+let backcmd = mc.newCommand("back", "返回死亡点", PermType.Any)
 backcmd.overload([])
-backcmd.setCallback((cmd,ori,out,res)=>{
+backcmd.setCallback((cmd, ori, out, res) => {
     let pl = ori.player
-    if(!pl) return out.error("仅限玩家执行")
+    if (!pl) return out.error("仅限玩家执行")
     BackGUI(pl.realName)
 })
 backcmd.setup()
-function BackGUI(plname){
+
+function BackGUI(plname) {
     let pl = mc.getPlayer(plname)
-    if(!pl) return
-    let realName = pl.realname;
+    if (!pl) return
+    
+    let playerDeathPoints = deathPoints[pl.realName];
+    if (!playerDeathPoints || playerDeathPoints.length === 0) {
+        return pl.tell(info + lang.get("back.list.Empty"));
+    }
+    
     let cost = conf.get("Back")
-    let pos = pl.lastDeathPos
-    if(!pos) return pl.tell(info + lang.get("back.list.Empty"));
     let fm = mc.newCustomForm()
     fm.setTitle(lang.get("back.to.point"))
-    fm.addLabel(lang.get("back.to.point.sure"))
-    fm.addLabel("死亡点坐标："+pl.lastDeathPos.x+","+pl.lastDeathPos.y+","+pl.lastDeathPos.z+" "+transdimid[pl.lastDeathPos.dimid])
-    fm.addLabel(displayMoneyInfo(pl, pl, true))    
-    fm.addLabel("返回死亡点需要花费"+cost+lang.get("CoinName"))
-    pl.sendForm(fm,(pl,id)=>{
-        if(id == null) return pl.tell(info + lang.get("gui.exit"));
-        if(!conf.get("LLMoney")){
-        if(!ValueCheck(pl.realName,conf.get("Back"))) return pl.tell(info + lang.get("money.no.enough"));
-        }else{  
-        if(!LLValueCheck(pl.realName,conf.get("Back"))) return pl.tell(info + lang.get("money.no.enough"));
-        }       
-        pl.teleport(pl.lastDeathPos)
-        mc.runcmdEx("effect "+pl.realName+" resistance 15 255 true")
-        pl.tell(info + lang.get("back.successful"));
+    fm.addLabel("§6请选择要传送的死亡点：")
+    
+    // 显示所有死亡点信息
+    playerDeathPoints.forEach((point, index) => {
+        let pointInfo = `§e死亡点 ${index + 1}：\n`;
+        pointInfo += `§7坐标：${point.pos.x}, ${point.pos.y}, ${point.pos.z}\n`;
+        pointInfo += `§7维度：${point.dimension}\n`;
+        pointInfo += `§7时间：${point.time}`;
+        fm.addLabel(pointInfo);
+    });
+    
+    // 添加下拉选择框
+    let options = playerDeathPoints.map((point, index) => 
+        `死亡点${index + 1} - ${point.dimension} (${point.pos.x}, ${point.pos.y}, ${point.pos.z})`
+    );
+    fm.addDropdown("选择要传送的死亡点", options, 0);
+    
+    fm.addLabel(displayMoneyInfo(pl, pl, true))
+    fm.addLabel("传送需要花费" + cost + lang.get("CoinName"))
+    
+    pl.sendForm(fm, (pl, data) => {
+        // 修复：检查数据是否有效
+        if (data === null || data === undefined) {
+            return pl.tell(info + lang.get("gui.exit"));
+        }
+        
+        // 重新获取死亡点数据，确保数据最新
+        let currentDeathPoints = deathPoints[pl.realName];
+        if (!currentDeathPoints || currentDeathPoints.length === 0) {
+            return pl.tell(info + "§c死亡点数据已失效！");
+        }
+        
+        // 计算下拉框在表单数据中的索引位置
+        let dropdownIndex = 1 + currentDeathPoints.length;
+        let selectedIndex = data[dropdownIndex];
+        
+        // 修复：检查selectedIndex是否有效
+        if (selectedIndex === undefined || selectedIndex === null) {
+            return pl.tell(info + lang.get("gui.exit"));
+        }
+        
+        // 修复：确保索引在有效范围内
+        if (selectedIndex < 0 || selectedIndex >= currentDeathPoints.length) {
+            return pl.tell(info + "§c选择无效！");
+        }
+        
+        let selectedPoint = currentDeathPoints[selectedIndex];
+        
+        // 修复：检查选择的死亡点数据是否完整
+        if (!selectedPoint || !selectedPoint.pos) {
+            return pl.tell(info + "§c死亡点数据错误！");
+        }
+        
+        // 检查金钱
+        if (!conf.get("LLMoney")) {
+            if (!ValueCheck(pl.realName, conf.get("Back"))) return pl.tell(info + lang.get("money.no.enough"));
+        } else {
+            if (!LLValueCheck(pl.realName, conf.get("Back"))) return pl.tell(info + lang.get("money.no.enough"));
+        }
+        
+        // 传送到选择的死亡点
+        try {
+            pl.teleport(selectedPoint.pos)
+            mc.runcmdEx("effect " + pl.realName + " resistance 15 255 true")
+            pl.tell(info + `§a已传送至死亡点${selectedIndex + 1}！`);
+        } catch (e) {
+            pl.tell(info + "§c传送失败！");
+            logger.error("传送失败: " + e);
+        }
     })
 }
 
+// 添加一个命令来查看死亡点列表（调试用）
+let deathlistcmd = mc.newCommand("deathlog", "查看死亡历史记录", PermType.Any)
+deathlistcmd.overload([])
+deathlistcmd.setCallback((cmd, ori, out, res) => {
+    let pl = ori.player
+    if (!pl) return out.error("仅限玩家执行")
+    
+    let playerDeathPoints = deathPoints[pl.realName];
+    if (!playerDeathPoints || playerDeathPoints.length === 0) {
+        return pl.tell(info + "§c没有记录任何死亡点！");
+    }
+    
+    pl.tell("§6=== 您的死亡点列表 ===");
+    playerDeathPoints.forEach((point, index) => {
+        pl.tell(`§e死亡点 ${index + 1}：`);
+        pl.tell(`§7坐标：${point.pos.x}, ${point.pos.y}, ${point.pos.z}`);
+        pl.tell(`§7维度：${point.dimension}`);
+        pl.tell(`§7时间：${point.time}`);
+        pl.tell("§7-------------------");
+    });
+})
+deathlistcmd.setup()
+
+// 添加清理死亡点数据的函数
+function clearDeathPoints(playerName) {
+    if (deathPoints[playerName]) {
+        delete deathPoints[playerName];
+    }
+}
+
+// 获取玩家死亡点列表的函数
+function getPlayerDeathPoints(playerName) {
+    return deathPoints[playerName] || [];
+}
 let homegui = mc.newCommand("home","家园系统",PermType.Any)
 homegui.overload([])
 homegui.setCallback((cmd,ori,out,res)=>{
@@ -2745,7 +2873,10 @@ function startTpaRequestCountdown(req, timeoutSec, bossbarMode) {
                 percent, 3
             );
         }
-        
+        to.setBossBar(barId,
+                `§a${from.name}请求${dirText}§f${delayStr}${costStr}§s(/tpy同意 /tpn拒绝),剩余${remain}s`,
+                percent, 3
+            );
         if (remain <= 0) {
             clearInterval(timerId);
             cancelTpaRequest(to.name, info+lang.get("tpa.request.timeout"));
