@@ -23,9 +23,9 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.4.9";
-const regversion =[2,4,9];
-const info = "§l§b[YEST] §r";
+const version = "2.5.0";
+const regversion =[2,5,0];
+const info = "§l§e[--YEssential--] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
 // 创建语言文件（如果不存在）      
@@ -110,9 +110,14 @@ const defaultLangContent = {
     "warp.noinput.name":"传送点名称不能为空！",
     "warp.name.repetitive":"传送点名称已存在！",
     "back.to.point":"返回死亡点",
+    "back.helpinfo":"§a已记录您的死亡点！使用 /back 查看所有死亡点。",
     "back.to.point.sure":"确认返回死亡点？",
-    "back.list.Empty":"您没有死亡记录!",
+    "back.choose":"§6请选择要传送的死亡点：",
+    "back.list.Empty":"您没有死亡历史记录!",
     "back.successful":"返回成功！",
+    "back.fail":"§c传送失败！",
+    "back.choose.null":"§c选择无效！",
+    "back.deathlog.error":"§c死亡点数据错误！",
     "home.tp.system":"§6§l家园传送系统",
     "home.add":"§l§a添加家",
     "home.add.input":"请输入您的家名称",
@@ -2354,7 +2359,7 @@ mc.listen("onPlayerDie", function(pl, src) {
         deathPoints[playerName] = deathPoints[playerName].slice(0, 3);
     }
     
-    pl.tell(info + "§a已记录您的死亡点！使用 /back 查看所有死亡点。");
+    pl.tell(info + lang.get("back.helpinfo"));
 });
 
 let backcmd = mc.newCommand("back", "返回死亡点", PermType.Any)
@@ -2378,7 +2383,7 @@ function BackGUI(plname) {
     let cost = conf.get("Back")
     let fm = mc.newCustomForm()
     fm.setTitle(lang.get("back.to.point"))
-    fm.addLabel("§6请选择要传送的死亡点：")
+    fm.addLabel(lang.get("back.choose"))
     
     // 显示所有死亡点信息
     playerDeathPoints.forEach((point, index) => {
@@ -2421,14 +2426,14 @@ function BackGUI(plname) {
         
         // 修复：确保索引在有效范围内
         if (selectedIndex < 0 || selectedIndex >= currentDeathPoints.length) {
-            return pl.tell(info + "§c选择无效！");
+            return pl.tell(info + lang.get("back.choose.null"));
         }
         
         let selectedPoint = currentDeathPoints[selectedIndex];
         
         // 修复：检查选择的死亡点数据是否完整
         if (!selectedPoint || !selectedPoint.pos) {
-            return pl.tell(info + "§c死亡点数据错误！");
+            return pl.tell(info + lang.get("back.deathlog.error"));
         }
         
         // 检查金钱
@@ -2444,8 +2449,8 @@ function BackGUI(plname) {
             mc.runcmdEx("effect " + pl.realName + " resistance 15 255 true")
             pl.tell(info + `§a已传送至死亡点${selectedIndex + 1}！`);
         } catch (e) {
-            pl.tell(info + "§c传送失败！");
-            logger.error("传送失败: " + e);
+            pl.tell(info + lang.get("back.fail"));
+            logger.error("Back System Error: " + e);
         }
     })
 }
@@ -2459,7 +2464,7 @@ deathlistcmd.setCallback((cmd, ori, out, res) => {
     
     let playerDeathPoints = deathPoints[pl.realName];
     if (!playerDeathPoints || playerDeathPoints.length === 0) {
-        return pl.tell(info + "§c没有记录任何死亡点！");
+        return pl.tell(info + lang.get("back.list.Empty"));
     }
     
     pl.tell("§6=== 您的死亡点列表 ===");
@@ -2873,10 +2878,6 @@ function startTpaRequestCountdown(req, timeoutSec, bossbarMode) {
                 percent, 3
             );
         }
-        to.setBossBar(barId,
-                `§a${from.name}请求${dirText}§f${delayStr}${costStr}§s(/tpy同意 /tpn拒绝),剩余${remain}s`,
-                percent, 3
-            );
         if (remain <= 0) {
             clearInterval(timerId);
             cancelTpaRequest(to.name, info+lang.get("tpa.request.timeout"));
