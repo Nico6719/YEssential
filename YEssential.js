@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.5.0";
-const regversion =[2,5,0];
+const version = "2.5.1";
+const regversion =[2,5,1];
 const info = "§l§e[--YEssential--] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
@@ -2340,13 +2340,18 @@ mc.listen("onPlayerDie", function(pl, src) {
         deathPoints[playerName] = [];
     }
     
-    // 获取当前死亡位置
-    let deathPos = pl.lastDeathPos;
+    // 修复：使用玩家当前位置作为死亡位置，而不是lastDeathPos
+    let deathPos = pl.pos;
     if (!deathPos) return;
     
     // 创建死亡点记录
     let deathRecord = {
-        pos: deathPos,
+        pos: {
+            x: deathPos.x,
+            y: deathPos.y,
+            z: deathPos.z,
+            dimid: deathPos.dimid
+        },
         time: new Date().toLocaleString(),
         dimension: transdimid[deathPos.dimid] || "未知维度"
     };
@@ -2388,7 +2393,7 @@ function BackGUI(plname) {
     // 显示所有死亡点信息
     playerDeathPoints.forEach((point, index) => {
         let pointInfo = `§e死亡点 ${index + 1}：\n`;
-        pointInfo += `§7坐标：${point.pos.x}, ${point.pos.y}, ${point.pos.z}\n`;
+        pointInfo += `§7坐标：${Math.round(point.pos.x)}, ${Math.round(point.pos.y)}, ${Math.round(point.pos.z)}\n`;
         pointInfo += `§7维度：${point.dimension}\n`;
         pointInfo += `§7时间：${point.time}`;
         fm.addLabel(pointInfo);
@@ -2396,7 +2401,7 @@ function BackGUI(plname) {
     
     // 添加下拉选择框
     let options = playerDeathPoints.map((point, index) => 
-        `死亡点${index + 1} - ${point.dimension} (${point.pos.x}, ${point.pos.y}, ${point.pos.z})`
+        `死亡点${index + 1} - ${point.dimension} (${Math.round(point.pos.x)}, ${Math.round(point.pos.y)}, ${Math.round(point.pos.z)})`
     );
     fm.addDropdown("选择要传送的死亡点", options, 0);
     
@@ -2445,8 +2450,17 @@ function BackGUI(plname) {
         
         // 传送到选择的死亡点
         try {
-            pl.teleport(selectedPoint.pos)
+            // 修复：直接使用坐标数字传参，而不是对象
+            pl.teleport(
+                selectedPoint.pos.x, 
+                selectedPoint.pos.y, 
+                selectedPoint.pos.z, 
+                selectedPoint.pos.dimid
+            );
+            
             mc.runcmdEx("effect " + pl.realName + " resistance 15 255 true")
+            
+            
             pl.tell(info + `§a已传送至死亡点${selectedIndex + 1}！`);
         } catch (e) {
             pl.tell(info + lang.get("back.fail"));
@@ -2454,6 +2468,8 @@ function BackGUI(plname) {
         }
     })
 }
+
+
 
 // 添加一个命令来查看死亡点列表（调试用）
 let deathlistcmd = mc.newCommand("deathlog", "查看死亡历史记录", PermType.Any)
