@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.5.1";
-const regversion =[2,5,1];
+const version = "2.5.3";
+const regversion =[2,5,3];
 const info = "§l§e[--YEssential--] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
@@ -506,53 +506,6 @@ class AsyncLanguageManager {
         }
     }
 }
-
-// 异步联合封禁检查器
-class AsyncBanChecker {
-    static async checkUniteBan(realname, xuid, uuid, clientid, ip, maxRetries = 3) {
-        const postdata = {
-            ...(realname != null && { name: realname }),
-            ...(xuid != null && { xuid: xuid }),
-            ...(uuid != null && { uuid: uuid }),
-            ...(clientid != null && { clientid: clientid }),
-            ...(ip != null && { ip: ip })
-        };
-        
-        const jsonData = JSON.stringify(postdata);
-        const url = "https://uniteban.mcwaf.cn/api.php";
-        
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                const result = await AsyncNetworkManager.httpPost(url, jsonData, "application/json", 15000);
-                const response = JSON.parse(result);
-                
-                if (response.exists === true) {
-                    logger.warn(`玩家 ${realname} 联合封禁检查不通过`);
-                    const msg = "联合封禁UniteBan检查不通过\n封禁原因:" + response.reason + "\n申诉地址\nhttp://uniteban.xyz:19132/appeal.php";
-                    
-                    const player = mc.getPlayer(realname);
-                    if (player) {
-                        player.kick(msg);
-                    }
-                    return false;
-                } else {
-                    logger.log(`玩家 ${realname} 联合封禁检查通过`);
-                    return true;
-                }
-            } catch (error) {
-                logger.warn(`玩家 ${realname} 封禁检查失败 (尝试 ${attempt}/${maxRetries}): ${error.message}`);
-                
-                if (attempt === maxRetries) {
-                    logger.error(`玩家 ${realname} 联合封禁检查最终失败，跳过检查`);
-                    return true; // 检查失败时允许玩家进入
-                }
-                
-                // 重试前等待
-                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-            }
-        }
-    }
-}
 class AsyncTeleportSystem {
     static generateRandomCoordinate() {
         const config = conf.get("RTP");
@@ -1004,7 +957,7 @@ conf.init("PVPModeEnabled",1)
 conf.init("HubEnabled",0)
 conf.init("TpaEnabled",0)
 conf.init("NoticeEnabled",0)
-conf.init("CrastModuleEnabled",0)
+conf.init("CrashModuleEnabled",0)
 conf.init("TRServersEnabled", false);
 conf.init("RTPEnabled", false);
 conf.init("NoticeEnabled",false);
@@ -1074,7 +1027,6 @@ conf.init("suicide",0)
 conf.init("OptimizeXporb",0)
 conf.init("join_notice",0)
 conf.init("lastServerShutdown", 0);        // 记录服务器关闭时间
-conf.init("UniteBanCheck",0)
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -1487,28 +1439,6 @@ mc.listen("onJoin",(pl)=>{
         } else {
             let score = pl.getScore(conf.get("Scoreboard"));
             if (!score) pl.setScore(conf.get("Scoreboard"), 0);
-        }
-        
-        // 异步联合封禁检查
-        if (conf.get("UniteBanCheck") && !pl.isSimulatedPlayer() && !pl.isOP()) {
-            setTimeout(async () => {
-                if (!pl) return;
-                
-                try {
-                    let rawIp = pl.getDevice().ip;
-                    let ip = parseIpAddress(rawIp);
-                    
-                    await AsyncBanChecker.checkUniteBan(
-                        pl.realName, 
-                        pl.xuid, 
-                        pl.uuid, 
-                        pl.getDevice().clientId, 
-                        ip
-                    );
-                } catch (error) {
-                    logger.error(`玩家 ${pl.realName} 联合封禁检查异常: ${error.message}`);
-                }
-            }, 1000);
         }
         
         // 异步公告显示
@@ -2911,7 +2841,7 @@ mc.regPlayerCmd("tpano", "§c拒绝传送请求", (pl) => {
     denyTpaRequest(pl.name);
 });
 mc.regPlayerCmd("crash", "§c使玩家客户端崩溃", (player,args) => {
-    if (!conf.get("CrastModuleEnabled")) {
+    if (!conf.get("CrashModuleEnabled")) {
         player.tell(info + lang.get("module.no.Enabled"));
         return;
     }
