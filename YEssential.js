@@ -1,4 +1,4 @@
-/*--------------------------------
+ /*--------------------------------
 
     ██╗   ██╗███████╗███████╗███████╗███████╗███╗   ██╗████████╗██╗ █████╗ ██╗  
     ╚██╗ ██╔╝██╔════╝██╔════╝██╔════╝██╔════╝████╗  ██║╚══██╔══╝██║██╔══██╗██║  
@@ -23,9 +23,9 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.5.3";
-const regversion =[2,5,3];
-const info = "§l§e[--YEssential--] §r";
+const version = "2.5.4";
+const regversion =[2,5,4];
+const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
 // 创建语言文件（如果不存在）      
@@ -182,12 +182,10 @@ const defaultLangContent = {
     "crash.player.client":"§c使玩家客户端崩溃",
     "carsh.function.list":"§c崩溃功能如下",
     "weihu.msg":"服务器正在维护中，请稍后再来",
-    "clean.msg.30":"§l§a[提示] 30秒后清理掉落物",
-    "clean.msg.15":"§l§e[提示] 15秒后清理掉落物",
-    "clean.msg.10":"§l§6[提示] 10秒后清理掉落物",
-    "clean.msg.3":"§l§c[提示] 3秒后清理掉落物",
-    "clean.msg.2":"§l§c[提示] 2秒后清理掉落物",
-    "clean.msg.1":"§l§c[提示] 1秒后清理掉落物",
+    "clean.msg":"§l§e[清理系统] §f${sec}秒后清理掉落物！",
+    "clean.startto.clean":"§l§6[清理系统] §f开始清理，共发现 §e${total} §f掉落物…",
+    "clean.ok":"§l§a[清理系统] §f清理完毕，共移除 §e${total} §f个掉落物",
+    "clean.item.warn":"§c[警告] 掉落物达到 ${count} 个，触发紧急清理！",
     "stop.msg":"服务器关闭\n请稍后再来",
     "pls.input.notice":"请输入公告内容，（换行用 \\n）",
     "gamerule.KeepInventory.true":"死亡不掉落已启用",
@@ -951,7 +949,7 @@ function ranking(plname) {
         });
     }
 }
-
+conf.init("Version",254)
 conf.init("AutoUpdate",1)  //2.4.0
 conf.init("PVPModeEnabled",1)
 conf.init("HubEnabled",0)
@@ -1021,7 +1019,11 @@ conf.init("PayTaxRate",0)
 conf.init("Back",0)
 conf.init("BackTipAfterDeath",false)
 conf.init("Warp",0)
-conf.init("AutoCleanItem",-1)
+//conf.init("AutoCleanItem",-1)
+conf.init("AutoCleanItemBatch", 200);     // 每批次清理数量
+conf.init("AutoCleanItemInterval", 60);   // 清理周期（秒）
+conf.init("AutoCleanItemWarnTimes", [30,15,10,5,3,2,1]); // 倒计时提示
+conf.init("AutoCleanItemTriggerAmount", 2000); // 自动触发阈值，>0 启动爆炸防护
 conf.init("KeepInventory",false)
 conf.init("suicide",0)
 conf.init("OptimizeXporb",0)
@@ -1046,7 +1048,7 @@ setInterval(() => {
             moneyranking.set(pl.realName, moneyValue);
         }
     });
-}, 6000);
+}, 10000);
 // 跨服传送命令模块
 let Sercmd = mc.newCommand("servers", "§l§a跨服传送", PermType.Any);
 Sercmd.overload([]);
@@ -1494,62 +1496,90 @@ suicidecmd.setup()
 
 //掉落物清理模块
 
-let cleanitemcmd = mc.newCommand("cleanitem","清理掉落物",PermType.GameMasters)
-cleanitemcmd.overload([])
-cleanitemcmd.setCallback((cmd,ori,out,res)=>{
-    let count = 0
-    mc.getAllEntities().forEach((entity)=>{
-        if(entity.isItemEntity()){
-            count += 1
-            entity.despawn()
-        }
-    })
+let cleaning = false;
 
-    out.success(`清理掉落物成功，共清理掉${count}个物品`)
-})
-cleanitemcmd.setup()
-
-
-if(conf.get("AutoCleanItem") > 0){
-    function clean(){
-        let second = conf.get("AutoCleanItem")*60
-        let timer = setInterval(() => {
-            second -= 1
-            if(second == 30) mc.broadcast(info+lang.get("clean.msg.30"))
-            if(second == 15) mc.broadcast(info+lang.get("clean.msg.15"))
-            if(second == 10) mc.broadcast(info+lang.get("clean.msg.10"))
-            if(second == 3) mc.broadcast(info+lang.get("clean.msg.3"))
-            if(second == 2) mc.broadcast(info+lang.get("clean.msg.2"))
-            if(second == 1) mc.broadcast(info+lang.get("clean.msg.1"))
-            if(second <= 0) {
-                
-                let count = 0
-                mc.getAllEntities().forEach((entity)=>{
-                    if(entity.isItemEntity()) {
-                        entity.despawn()
-                        count += 1
-                    }
-                })
-                mc.broadcast(info+"[扫地机器人] 掉落物清理完毕,清理了"+count+"个掉落物")
-                clearInterval(timer)
-            }
-        }, 1000);
+function broadcastCleanCountdown(sec) {
+    let warns = conf.get("AutoCleanItemWarnTimes");
+    if (warns.includes(sec)) {
+    mc.getOnlinePlayers().forEach(pl => {
+        pl.sendToast(info, lang.get("clean.msg").replace("${sec}", sec));
+    });
+        mc.broadcast(info+lang.get("clean.msg").replace("${sec}", sec));
     }
-
-    setInterval(() => {
-        clean()
-    }, conf.get("AutoCleanItem")*1000*60);
 }
 
-mc.listen("onServerStarted",()=>{
-    let scoreboard = mc.getScoreObjective(conf.get("Scoreboard"))
-    if(scoreboard == null){
-        scoreboard = mc.newScoreObjective(conf.get("Scoreboard"),conf.get("Scoreboard"))
-        logger.warn(lang.get("money.create.score"))
+function startCleanTask() {
+    let timeLeft = conf.get("AutoCleanItemInterval");
+
+    let timer = setInterval(() => {
+        timeLeft--;
+        broadcastCleanCountdown(timeLeft);
+
+        if (timeLeft <= 0) {
+            clearInterval(timer);
+            runClean();
+            // restart next cycle
+            setTimeout(startCleanTask, 1000);
+        }
+    }, 1000);
+}
+
+async function runClean() {
+    if (cleaning) return;
+    cleaning = true;
+
+    let batchSize = conf.get("AutoCleanItemBatch");
+    let entities = mc.getAllEntities().filter(e => e.isItemEntity());
+    let total = entities.length;
+
+    if (total === 0) {
+        cleaning = false;
+        return;
     }
 
-    Motd()
-})
+    mc.broadcast(info+lang.get(`clean.startto.clean`).replace("${total}", total));//
+
+    let index = 0;
+    function cleanBatch() {
+        let end = Math.min(index + batchSize, total);
+        for (; index < end; index++) {
+            if (entities[index]) entities[index].despawn();
+        }
+
+        if (index < total) {
+            // 分帧继续
+            setTimeout(cleanBatch, 2);
+        } else {
+            mc.broadcast(info+lang.get(`clean.ok`).replace("${total}", total));
+            cleaning = false;
+        }
+    }
+    cleanBatch();
+}
+
+// 自动爆数量触发（反爆服清理）
+mc.listen("onTick", () => {
+    let trigger = conf.get("AutoCleanItemTriggerAmount");
+    if (trigger > 0 && !cleaning) {
+        let count = mc.getAllEntities().filter(e => e.isItemEntity()).length;
+        if (count >= trigger) {
+            mc.broadcast(info+lang.get(`clean.item.warn`).replace("${count}", count));
+            runClean();
+        }
+    }
+});
+
+// OP手动命令
+let cleanCmd = mc.newCommand("cleanitem", "手动清理掉落物", PermType.GameMasters);
+cleanCmd.overload([]);
+cleanCmd.setCallback(() => runClean());
+cleanCmd.setup();
+
+// 启动循环
+if (conf.get("AutoCleanItemInterval") > 0) {
+    startCleanTask();
+}
+
 //PVP模块start
 mc.listen("onServerStarted", function() {
     // 注册命令
@@ -1636,7 +1666,7 @@ function Motd(){
         let item = items[index];
         index = (index + 1) % items.length; // 计算下一个元素的索引，如果到达末尾则回到开头
         mc.setMotd(item)
-    }, 1000); // 每 1000 毫秒（即 1 秒）执行一次
+    }, 5000); // 每 5000 毫秒（即 5下· 秒）执行一次
 }
 //维护模块
 let stats = false
