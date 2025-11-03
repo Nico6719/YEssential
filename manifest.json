@@ -2,7 +2,7 @@
     "entry": "YEssential.js",
     "name": "YEssential",
     "type": "lse-quickjs",
-    "version": "2.4.7",
+    "version": "2.5.4",
     "author": "Nico6719",
     "description": "YEssential多功能基础插件 ",
     "extraInfo": {
@@ -20,4 +20,5 @@
             "name": "GMLIB"
         }
     ]
+
 }
