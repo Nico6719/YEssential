@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.5.4";
-const regversion =[2,5,4];
+const version = "2.5.5";
+const regversion =[2,5,5];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
@@ -2651,7 +2651,7 @@ function showTpaMenu(player) {
     }
     
     let form = mc.newCustomForm();
-    form.setTitle(lang.get("tpa.name.ls"));
+    form.setTitle(info + lang.get("tpa.name.ls"));
     let nameList = onlinePlayers.map(p => p.name);
     form.addDropdown(lang.get("tpa.choose.player"), nameList);
     form.addDropdown(lang.get("tpa.choose.fs"), [lang.get("tpa.to.he.she"), lang.get("tpa.to.here")]);
@@ -3011,8 +3011,8 @@ function acceptTpaRequest(targetName) {
             to.teleport(footPos);
         }
         
-        from.tell(lang.get("tpa.tp.okey"));
-        to.tell(lang.get("tpa.tp.okey"));
+        from.tell(info +lang.get("tpa.tp.okey"));
+        to.tell(info +lang.get("tpa.tp.okey"));
     }
     
     delete pendingTpaRequests[targetName];
