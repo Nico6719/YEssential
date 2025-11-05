@@ -1,5 +1,6 @@
  # YEssential
  一个基于LegacyScriptEngine制作的lse基础插件，并且支持导入TMEssential的home数据和warp数据！并且兼容LL2和LL3！
+ More Info: https://www.minebbs.com/resources/yessential-lse.10332/
 
 ## Eula
 
