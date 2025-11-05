@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.5.5";
-const regversion =[2,5,5];
+const version = "2.5.6";
+const regversion =[2,5,6];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
@@ -136,6 +136,10 @@ const defaultLangContent = {
     "bag.is.full":"§c背包已满，无法给予物品！",
     "rtp.onlycanusein.overworld":"§c只能在主世界使用随机传送！",
     "module.no.Enabled":"所选模块（功能）未开启！",
+    "fc.error":"无法对非玩家对象执行此命令",
+    "fc.error2":"你都是管理员了用这个功能干什么（）",
+    "fc.success.quit":"成功退出灵魂出窍",
+    "fc.success.getin":"成功进入灵魂出窍",
     "tpa.d":"§c拒绝",
     "tpa.d.request":"§c对方拒绝了传送请求。",
     "tpa.d.request.you":"§e你已拒绝传送请求。",
@@ -949,9 +953,10 @@ function ranking(plname) {
         });
     }
 }
-conf.init("Version",254)
+conf.init("Version",256)
 conf.init("AutoUpdate",1)  //2.4.0
-conf.init("PVPModeEnabled",1)
+conf.init("PVPEnabled",1)
+conf.init("FcamEnabled",0) //2.5.6
 conf.init("HubEnabled",0)
 conf.init("TpaEnabled",0)
 conf.init("NoticeEnabled",0)
@@ -1019,7 +1024,6 @@ conf.init("PayTaxRate",0)
 conf.init("Back",0)
 conf.init("BackTipAfterDeath",false)
 conf.init("Warp",0)
-//conf.init("AutoCleanItem",-1)
 conf.init("AutoCleanItemBatch", 200);     // 每批次清理数量
 conf.init("AutoCleanItemInterval", 60);   // 清理周期（秒）
 conf.init("AutoCleanItemWarnTimes", [30,15,10,5,3,2,1]); // 倒计时提示
@@ -1627,7 +1631,50 @@ mc.listen("onServerStarted", function() {
         }
     });
 });
-
+/////灵魂出窍 2.5.6加入
+mc.listen("onServerStarted",() => {
+  let cmd = mc.newCommand("fcam","灵魂出窍",PermType.Any)
+  cmd.overload([])
+  cmd.setCallback((_cmd,ori,out,_res) => {
+    let pl = ori.player
+    let plname = pl.realName
+    let plpos = ori.pos
+    let spl = mc.getPlayer(plname + "_sp")
+    if (conf.get("FcamEnabled") == 0){
+       pl.tell(info + lang.get("module.no.Enabled"));
+        return;  
+    }
+    if (!ori.player){
+      out.error(info+ lang.get("fc.error"))
+      return
+      }
+    if (pl.isOP()) {
+        out.error(info + lang.get("fc.error2"));
+        return;
+    }
+    if (pl.gameMode == 6 ){
+      pl.setGameMode(0)
+      mc.runcmdEx(`tp ${plname} ${plname + "_sp"}`)
+      spl.simulateDisconnect()
+      out.success(info+ lang.get("fc.success.quit"))
+    }
+      else{
+      mc.spawnSimulatedPlayer(plname + "_sp",plpos)
+      mc.runcmdEx(`gamemode spectator ${plname + "_sp"}`)
+      pl.setGameMode(6)
+      out.success(info+ lang.get("fc.success.getin"))
+    }
+})
+  })
+mc.listen("onLeft", (player) => {
+    let plname = player.realName; // 使用真实名称
+    let spl = mc.getPlayer(plname + "_sp");
+    
+    // 只有当模拟玩家存在时才断开
+    if (spl) {
+        spl.simulateDisconnect();
+    }
+});
 mc.listen("onMobHurt", function(mob, source) {
     if (!source || !source.isPlayer() || !mob.isPlayer()) return;
     
