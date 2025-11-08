@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.5.8";
-const regversion =[2,5,8];
+const version = "2.5.9";
+const regversion =[2,5,9];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
@@ -1661,9 +1661,9 @@ mc.listen("onServerStarted",() => {
       pl.setGameMode(6)
       out.success(info+ lang.get("fc.success.getin"))
       if(!conf.get("LLMoney")){
-        if(!ValueCheck(pl.realName,conf.get("Fcam").add)) return pl.sendText("使用失败！\n使用该功能需要花费 "+cost+lang.get("CoinName"))
+        if(!ValueCheck(pl.realName,conf.get("Warp"))) return pl.tell(info + lang.get("money.no.enough"));
             }else{
-        if(!LLValueCheck(pl.realName,conf.get("Fcam").add)) return pl.sendText("添加失败！\n使用该功能需要花费 "+cost+lang.get("CoinName"))
+        if(!LLValueCheck(pl.realName,conf.get("Warp"))) return pl.tell(info + lang.get("money.no.enough"));
         }
     }
 })
@@ -3179,7 +3179,6 @@ function ValueCheck(plname,value){
     if(!score){
         mc.getPlayer(plname).setScore(conf.get("Scoreboard"),0)
     }
-
     if(score < value){
         return false
     }else{
