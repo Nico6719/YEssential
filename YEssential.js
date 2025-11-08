@@ -1,4 +1,4 @@
- /*--------------------------------
+/*--------------------------------
 
     ██╗   ██╗███████╗███████╗███████╗███████╗███╗   ██╗████████╗██╗ █████╗ ██╗  
     ╚██╗ ██╔╝██╔════╝██╔════╝██╔════╝██╔════╝████╗  ██║╚══██╔══╝██║██╔══██╗██║  
@@ -16,15 +16,15 @@
 禁止二次发布插件
 ----------------------------------*/
 // LiteLoader-AIDS automatic generated
-/// <reference path="c:\Users\Admin\ku/dts/helperlib/src/index.d.ts"/> 
+/// <reference path="c:\Users\Admin/dts/helperlib/src/index.d.ts"/> 
 const { PAPI } = require('./GMLIB-LegacyRemoteCallApi/lib/BEPlaceholderAPI-JS');
 const YEST_LangDir = "./plugins/YEssential/lang/";
 const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.5.6";
-const regversion =[2,5,6];
+const version = "2.5.8";
+const regversion =[2,5,8];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
@@ -218,10 +218,6 @@ const defaultLangContent = {
     "add":"加",
     
 };
-
-
-
-
 
 ll.registerPlugin(NAME, PluginInfo,regversion, {
     Author: "Nico6719",
@@ -1021,15 +1017,16 @@ conf.init("RankingModel",1)//2.4.3
 conf.init("LLMoney",0) //2.3.1
 conf.init("Scoreboard","money")
 conf.init("PayTaxRate",0)
+conf.init("suicide",0)
+conf.init("Fcam",0)
 conf.init("Back",0)
-conf.init("BackTipAfterDeath",false)
 conf.init("Warp",0)
+conf.init("BackTipAfterDeath",false)
 conf.init("AutoCleanItemBatch", 200);     // 每批次清理数量
 conf.init("AutoCleanItemInterval", 60);   // 清理周期（秒）
 conf.init("AutoCleanItemWarnTimes", [30,15,10,5,3,2,1]); // 倒计时提示
 conf.init("AutoCleanItemTriggerAmount", 2000); // 自动触发阈值，>0 启动爆炸防护
 conf.init("KeepInventory",false)
-conf.init("suicide",0)
 conf.init("OptimizeXporb",0)
 conf.init("join_notice",0)
 conf.init("lastServerShutdown", 0);        // 记录服务器关闭时间
@@ -1663,17 +1660,32 @@ mc.listen("onServerStarted",() => {
       mc.runcmdEx(`gamemode spectator ${plname + "_sp"}`)
       pl.setGameMode(6)
       out.success(info+ lang.get("fc.success.getin"))
+      if(!conf.get("LLMoney")){
+        if(!ValueCheck(pl.realName,conf.get("Fcam").add)) return pl.sendText("使用失败！\n使用该功能需要花费 "+cost+lang.get("CoinName"))
+            }else{
+        if(!LLValueCheck(pl.realName,conf.get("Fcam").add)) return pl.sendText("添加失败！\n使用该功能需要花费 "+cost+lang.get("CoinName"))
+        }
     }
 })
   })
 mc.listen("onLeft", (player) => {
     let plname = player.realName; // 使用真实名称
     let spl = mc.getPlayer(plname + "_sp");
-    
     // 只有当模拟玩家存在时才断开
     if (spl) {
         spl.simulateDisconnect();
     }
+});
+mc.listen("onJoin", (pl) => {
+    let plname = pl.realName;
+    if (pl.isOP()) {
+        return;
+    }
+    pl.setGameMode(0)
+    setTimeout(() => {
+        mc.runcmdEx(`tp ${plname} ${plname + "_sp"}`)
+    }, 1000);
+    
 });
 mc.listen("onMobHurt", function(mob, source) {
     if (!source || !source.isPlayer() || !mob.isPlayer()) return;
