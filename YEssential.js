@@ -139,7 +139,7 @@ const defaultLangContent = {
     "fc.error":"无法对非玩家对象执行此命令",
     "fc.error2":"你都是管理员了用这个功能干什么（）",
     "fc.success.quit":"成功退出灵魂出窍",
-    "fc.success.getin":"成功进入灵魂出窍",
+    "fc.success.getin":"成功进入灵魂出窍，花费§e${Fcam}金币",
     "tpa.d":"§c拒绝",
     "tpa.d.request":"§c对方拒绝了传送请求。",
     "tpa.d.request.you":"§e你已拒绝传送请求。",
@@ -1635,6 +1635,7 @@ mc.listen("onServerStarted",() => {
   cmd.setCallback((_cmd,ori,out,_res) => {
     let pl = ori.player
     let plname = pl.realName
+    let Fcam = conf.get("Fcam")
     let plpos = ori.pos
     let spl = mc.getPlayer(plname + "_sp")
     if (conf.get("FcamEnabled") == 0){
@@ -1659,11 +1660,11 @@ mc.listen("onServerStarted",() => {
       mc.spawnSimulatedPlayer(plname + "_sp",plpos)
       mc.runcmdEx(`gamemode spectator ${plname + "_sp"}`)
       pl.setGameMode(6)
-      out.success(info+ lang.get("fc.success.getin"))
+      out.success(info+ lang.get("fc.success.getin").replace("${Fcam}", Fcam))
       if(!conf.get("LLMoney")){
-        if(!ValueCheck(pl.realName,conf.get("Warp"))) return pl.tell(info + lang.get("money.no.enough"));
+        if(!ValueCheck(pl.realName,conf.get("Fcam"))) return pl.tell(info + lang.get("money.no.enough"));
             }else{
-        if(!LLValueCheck(pl.realName,conf.get("Warp"))) return pl.tell(info + lang.get("money.no.enough"));
+        if(!LLValueCheck(pl.realName,conf.get("Fcam"))) return pl.tell(info + lang.get("money.no.enough"));
         }
     }
 })
