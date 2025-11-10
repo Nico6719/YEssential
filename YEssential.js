@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.5.9";
-const regversion =[2,5,9];
+const version = "2.6.0";
+const regversion =[2,6,0];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
@@ -1584,7 +1584,7 @@ if (conf.get("AutoCleanItemInterval") > 0) {
 //PVP模块start
 mc.listen("onServerStarted", function() {
     // 注册命令
-    if (!conf.get("PVPModeEnabled")) {
+    if (!conf.get("PVPEnabled")) {
         return;
     }
     const pvp = mc.newCommand("pvp", "设置是否 PVP。", PermType.Any);
@@ -1595,7 +1595,7 @@ mc.listen("onServerStarted", function() {
         const xuid = player.realName;
         // 获取当前状态（默认为false）
         const currentState = pvpConfig.get(xuid, false);
-        if (!conf.get("PVPModeEnabled")) {
+        if (!conf.get("PVPEnabled")) {
         player.tell(info + lang.get("module.no.Enabled"));
         return;
         }
@@ -1699,7 +1699,7 @@ mc.listen("onMobHurt", function(mob, source) {
     const victimPVP = pvpConfig.get(victim.name);
     //logger.info(attacker.name,victim.name)
     //logger.info(attackerPVP,victimPVP)
-    if (!conf.get("PVPModeEnabled")) {
+    if (!conf.get("PVPEnabled")) {
         return;
         }
     if (!attackerPVP) {
