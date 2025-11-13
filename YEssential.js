@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.6.0";
-const regversion =[2,6,0];
+const version = "2.6.1";
+const regversion =[2,6,1];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
@@ -235,11 +235,9 @@ let rtpdata = new JsonConfigFile(datapath +"/RTPData/Rtpdata.json",JSON.stringif
 
 let warpdata = new JsonConfigFile(datapath +"warpdata.json",JSON.stringify({}));
   
-let noticeconf = new JsonConfigFile(datapath + "/NoticeSettingsData/notice.json",JSON.stringify({}));
+let noticeconf = new JsonConfigFile(datapath + "/NoticeSettingsData/playersettingdata.json",JSON.stringify({}));
 
 let pvpConfig = new JsonConfigFile(datapath +"/PVPSettingsData/pvp_data.json",JSON.stringify({}));
-
-let noticetxt = new IniConfigFile(datapath +"/NoticeSettingsData/notice.txt");
 
 let MdataPath = datapath +"/Money/Moneyranking.json";
 
@@ -258,6 +256,8 @@ var c_y = JSON.stringify({
 let servertp = new JsonConfigFile(datapath +"/TrSeverData/server.json", c_y);
 
 let tpacfg = new JsonConfigFile(datapath +"/TpaSettingsData/tpaAutoRejectConfig.json",JSON.stringify({}));
+
+new IniConfigFile(datapath +"/NoticeSettingsData/notice.txt");
 
 function initRedpacketData() {
     const defaultData = {
@@ -1238,8 +1238,7 @@ cmd.setCallback((cmd, ori, out, res) => {
         }
     });
 
-    fm.addSwitch(lang.get("notice.dont.showagain"),noticeconf.get(String(pl.realName)) == 1 ? false : true)
-    
+    fm.addSwitch(lang.get("notice.dont.showagain"), noticeconf.get(String(pl.realName)) != 0)
     pl.sendForm(fm, (pl, data) => {
         if (data == null) return;
         if(data[data.length - 1] == 1){
@@ -1422,11 +1421,19 @@ mc.listen("onJoin", (pl) => {
     if (conf.get("forceNotice")) {
         conf.set("forceNotice", false);
         noticeconf.set(pl.realName, 0);
-        pl.runcmd("notice");
     }
+    // 异步公告显示
+    if (conf.get("join_notice") == 1) {
+            setTimeout(() => {
+                if (!mc.getPlayer(pl.realName)) return;
+                if (noticeconf.get(String(pl.realName)) == 1) return;
+                if (!conf.get("NoticeEnabled")) return;
+                pl.runcmd("notice");
+            }, 1000);
+        }
 });
   
-mc.listen("onJoin",(pl)=>{
+mc.listen("onPreJoin",(pl)=>{
    try {
         // 初始化玩家数据
         homedata.init(pl.realName, {});
@@ -1442,16 +1449,6 @@ mc.listen("onJoin",(pl)=>{
         } else {
             let score = pl.getScore(conf.get("Scoreboard"));
             if (!score) pl.setScore(conf.get("Scoreboard"), 0);
-        }
-        
-        // 异步公告显示
-        if (conf.get("join_notice") == 1) {
-            setTimeout(() => {
-                if (!mc.getPlayer(pl.realName)) return;
-                if (noticeconf.get(String(pl.realName)) == 1) return;
-                if (!conf.get("NoticeEnabled")) return;
-                pl.runcmd("notice");
-            }, 1000);
         }
         
     } catch (error) {
