@@ -9,12 +9,11 @@
     },
    "variants": [
         {
-            "label": "",
             "assets": [
                 {
                     "type": "zip",
                     "urls": [
-                        "https://{{tooth}}/releases/download/v{{version}}/YEssential.zip"
+                        "https://{{tooth}}/releases/download/{{version}}/YEssential.zip"
                     ],
                     "placements": [
                         {
