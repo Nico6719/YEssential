@@ -15,7 +15,7 @@
 该插件仅在[github,MineBBS,KLPBBS]发布
 禁止二次发布插件
 ----------------------------------*/
-// LiteLoader-AIDS automatic generated
+// LiteLoader-AIDS automatic generateds
 /// <reference path="c:\Users\Admin/dts/helperlib/src/index.d.ts"/> 
 const { PAPI } = require('./GMLIB-LegacyRemoteCallApi/lib/BEPlaceholderAPI-JS');
 const YEST_LangDir = "./plugins/YEssential/lang/";
@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.6.1";
-const regversion =[2,6,1];
+const version = "2.6.2";
+const regversion =[2,6,2];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
@@ -1019,6 +1019,7 @@ conf.init("Scoreboard","money")
 conf.init("PayTaxRate",0)
 conf.init("suicide",0)
 conf.init("Fcam",0)
+conf.init("FcamTimeOut",-1) //灵魂出窍超时时间
 conf.init("Back",0)
 conf.init("Warp",0)
 conf.init("BackTipAfterDeath",false)
@@ -1276,7 +1277,7 @@ mc.regPlayerCmd('hub', '打开回城菜单', (pl) => {
 // 注册 /sethub 指令
 mc.regPlayerCmd('sethub', '设置回城点', (pl) => {
     if (!pl || !pl.isOP()) {
-        output.error(info+lang.get("player.not.op"));
+        pl.tell(info+lang.get("player.not.op"));
         return;
     }
     ///const pos = pl.pos;
@@ -1626,46 +1627,212 @@ mc.listen("onServerStarted", function() {
     });
 });
 /////灵魂出窍 2.5.6加入
-mc.listen("onServerStarted",() => {
-  let cmd = mc.newCommand("fcam","灵魂出窍",PermType.Any)
-  cmd.overload([])
-  cmd.setCallback((_cmd,ori,out,_res) => {
-    let pl = ori.player
-    let plname = pl.realName
-    let Fcam = conf.get("Fcam")
-    let plpos = ori.pos
-    let spl = mc.getPlayer(plname + "_sp")
-    if (conf.get("FcamEnabled") == 0){
-       pl.tell(info + lang.get("module.no.Enabled"));
-        return;  
+// 灵魂出窍（FCAM）
+mc.listen("onServerStarted", () => {
+    let cmd = mc.newCommand("fcam", "灵魂出窍", PermType.Any);
+    cmd.overload([]);
+
+    // 存储玩家的 BossBar 数据
+    const fcamBossBars = new Map();
+
+    cmd.setCallback((_cmd, ori, out, _res) => {
+
+        let pl = ori.player;
+        if (!pl) {
+            out.error(info + lang.get("fc.error"));
+            return;
+        }
+
+        let plname = pl.realName;
+        let plpos = ori.pos;
+        let timeout = conf.get("FcamTimeOut");
+        let FcamCost = conf.get("Fcam");
+
+        if (conf.get("FcamEnabled") == 0) {
+            pl.tell(info + lang.get("module.no.Enabled"));
+            return;
+        }
+
+        // OP 不能使用
+        if (pl.isOP()) {
+            out.error(info + lang.get("fc.error2"));
+            return;
+        }
+
+        //===============================
+        // 退出灵魂出窍模式
+        //===============================
+        if (pl.gameMode == 6) {
+            // 清理 BossBar 和计时器
+            cleanupFcamBossBar(plname);
+
+            try { pl.setGameMode(0); } catch (e) {
+                logger.error("FCAM: setGameMode 恢复失败: " + e);
+            }
+
+            try { mc.runcmdEx(`tp "${plname}" "${plname}_sp"`); } catch (e) {
+                logger.error("FCAM: TP 回原位失败: " + e);
+            }
+
+            let spl = mc.getPlayer(plname + "_sp");
+            if (spl && spl.isSimulatedPlayer && spl.isSimulatedPlayer()) {
+                try { spl.simulateDisconnect(); } catch (e) {
+                    logger.error("FCAM: simulateDisconnect 失败: " + e);
+                }
+            } else {
+                logger.warn(`FCAM: 未找到模拟玩家 ${plname}_sp，跳过断开`);
+            }
+
+            out.success(info + lang.get("fc.success.quit"));
+            return;
+        }
+
+        //===============================
+        // 进入灵魂出窍模式
+        //===============================
+
+        // 费用判断
+        if (!conf.get("LLMoney")) {
+            if (!ValueCheck(pl.realName, FcamCost))
+                return pl.tell(info + lang.get("money.no.enough"));
+        } else {
+            if (!LLValueCheck(pl.realName, FcamCost))
+                return pl.tell(info + lang.get("money.no.enough"));
+        }
+
+        // 创建模拟玩家
+        mc.spawnSimulatedPlayer(plname + "_sp", plpos);
+        mc.runcmdEx(`gamemode spectator "${plname}_sp"`);
+        pl.setGameMode(6);
+
+        out.success(info + lang.get("fc.success.getin").replace("${Fcam}", FcamCost));
+
+        //===============================
+        // 灵魂出窍倒计时 BossBar  
+        //===============================
+        if (timeout > 0) {
+            startFcamBossBar(pl, plname, timeout);
+        }
+    });
+
+    cmd.setup();
+
+    // 启动 BossBar 倒计时
+    function startFcamBossBar(pl, plname, timeout) {
+        let remain = timeout;
+        const bossId = Number(`10${plname.length}${Date.now()}`); // 保证唯一
+
+        // 初次显示 BossBar
+        pl.setBossBar(
+            bossId,
+            `§e灵魂出窍剩余 §c${remain} §e秒`,
+            100,
+            3 // green
+        );
+
+        // 存储 BossBar 数据
+        fcamBossBars.set(plname, {
+            bossId: bossId,
+            timer: null,
+            remain: remain,
+            totalTime: timeout
+        });
+
+        // 设置计时器，每秒更新一次
+        const timer = setInterval(() => {
+            const data = fcamBossBars.get(plname);
+            if (!data) {
+                clearInterval(timer);
+                return;
+            }
+
+            data.remain--;
+            
+            // 检查玩家是否还在线且处于观察者模式
+            const currentPlayer = mc.getPlayer(plname);
+            if (!currentPlayer || currentPlayer.gameMode !== 6) {
+                cleanupFcamBossBar(plname);
+                return;
+            }
+
+            if (data.remain <= 0) {
+                // 时间到，自动退出灵魂出窍模式
+                cleanupFcamBossBar(plname);
+                
+                try { 
+                    currentPlayer.setGameMode(0); 
+                    mc.runcmdEx(`tp "${plname}" "${plname}_sp"`);
+                    
+                    let spl = mc.getPlayer(plname + "_sp");
+                    if (spl && spl.isSimulatedPlayer && spl.isSimulatedPlayer()) {
+                        spl.simulateDisconnect();
+                    }
+                    
+                    currentPlayer.tell(info + "§c灵魂出窍时间已到，已自动退出！");
+                } catch (e) {
+                    logger.error("FCAM: 自动退出失败: " + e);
+                }
+                return;
+            }
+
+            // 更新 BossBar
+            const progress = (data.remain / data.totalTime) * 100;
+            let color = 3; // green
+            if (data.remain <= 10) {
+                color = 4; // YELLOW 当剩余10秒时变为黄色
+            }
+            if (data.remain <= 5) {
+                color = 2; // PINK 当剩余5秒时变为粉色闪烁
+            }
+
+            try {
+                currentPlayer.setBossBar(
+                    data.bossId,
+                    `§e灵魂出窍剩余 §c${data.remain} §e秒`,
+                    progress,
+                    color
+                );
+            } catch (e) {
+                logger.error("FCAM: 更新 BossBar 失败: " + e);
+                cleanupFcamBossBar(plname);
+            }
+        }, 1000);
+
+        // 更新计时器引用
+        fcamBossBars.get(plname).timer = timer;
     }
-    if (!ori.player){
-      out.error(info+ lang.get("fc.error"))
-      return
-      }
-    if (pl.isOP()) {
-        out.error(info + lang.get("fc.error2"));
-        return;
-    }
-    if (pl.gameMode == 6 ){
-      pl.setGameMode(0)
-      mc.runcmdEx(`tp ${plname} ${plname + "_sp"}`)
-      spl.simulateDisconnect()
-      out.success(info+ lang.get("fc.success.quit"))
-    }
-      else{
-      mc.spawnSimulatedPlayer(plname + "_sp",plpos)
-      mc.runcmdEx(`gamemode spectator ${plname + "_sp"}`)
-      pl.setGameMode(6)
-      out.success(info+ lang.get("fc.success.getin").replace("${Fcam}", Fcam))
-      if(!conf.get("LLMoney")){
-        if(!ValueCheck(pl.realName,conf.get("Fcam"))) return pl.tell(info + lang.get("money.no.enough"));
-            }else{
-        if(!LLValueCheck(pl.realName,conf.get("Fcam"))) return pl.tell(info + lang.get("money.no.enough"));
+
+    // 清理 BossBar 和计时器
+    function cleanupFcamBossBar(plname) {
+        const data = fcamBossBars.get(plname);
+        if (data) {
+            // 清除计时器
+            if (data.timer) {
+                clearInterval(data.timer);
+            }
+            
+            // 移除 BossBar
+            const player = mc.getPlayer(plname);
+            if (player && data.bossId) {
+                try {
+                    player.removeBossBar(data.bossId);
+                } catch (e) {
+                    logger.error("FCAM: 移除 BossBar 失败: " + e);
+                }
+            }
+            
+            // 从 Map 中移除
+            fcamBossBars.delete(plname);
         }
     }
-})
-  })
+
+    // 监听玩家退出事件，清理对应的 BossBar
+    mc.listen("onLeft", (player) => {
+        const plname = player.realName;
+        cleanupFcamBossBar(plname);
+    });
+});
+
 mc.listen("onLeft", (player) => {
     let plname = player.realName; // 使用真实名称
     let spl = mc.getPlayer(plname + "_sp");
