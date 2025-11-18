@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.6.2";
-const regversion =[2,6,2];
+const version = "2.6.3";
+const regversion =[2,6,3];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
@@ -140,6 +140,7 @@ const defaultLangContent = {
     "fc.error2":"你都是管理员了用这个功能干什么（）",
     "fc.success.quit":"成功退出灵魂出窍",
     "fc.success.getin":"成功进入灵魂出窍，花费§e${Fcam}金币",
+    "tpa.cost":"传送将花费 ${cost} ${Scoreboard} ",
     "tpa.d":"§c拒绝",
     "tpa.d.request":"§c对方拒绝了传送请求。",
     "tpa.d.request.you":"§e你已拒绝传送请求。",
@@ -949,88 +950,225 @@ function ranking(plname) {
         });
     }
 }
-conf.init("Version",256)
-conf.init("AutoUpdate",1)  //2.4.0
-conf.init("PVPEnabled",1)
-conf.init("FcamEnabled",0) //2.5.6
-conf.init("HubEnabled",0)
-conf.init("TpaEnabled",0)
-conf.init("NoticeEnabled",0)
-conf.init("CrashModuleEnabled",0)
-conf.init("TRServersEnabled", false);
-conf.init("RTPEnabled", false);
-conf.init("NoticeEnabled",false);
-conf.init("RedPacketEnabled",false)
-conf.init("RedPacket", {
-    expireTime: 300, // 红包过期时间（秒）
-    maxAmount: 10000, // 单个红包最大金额
-    maxCount: 50, // 单个红包最大数量
-    minAmount: 1 // 单个红包最小金额
-});
-conf.init("RTP", {
-    minRadius: 100,         // 最小传送半径
-    maxRadius: 5000,        // 最大传送半径
-    cooldown: 300,          // 冷却时间（秒）
-    cost: 50,               // 传送费用
-    allowDimensions: [0, 1, 2], // 允许的维度
-    safeCheck: true,        // 安全检测（后续加入）
-    maxAttempts: 50,        // 最大尝试次数 （后续加入）
-    enableParticle: true,   // 启用粒子效果 （后续加入）
-    enableSound: true,      // 启用音效（后续加入）
-    logToFile: true         // 记录日志 
-});
-conf.init("RTPAnimation",0)
-let Hub =  {
-    x: 0,
-    y: 100,
-    z: 0,
-    dimid: 0, // 0:主世界 1:下界 2:末地
-    isSet: false  // 标记是否已设置
-}
-conf.init("Hub",{
-    "x":0,
-    "y":100,
-    "z":0,
-    "dimid": 0, // 0:主世界 1:下界 2:末地
-    "isSet": false  // 标记是否已设置
-})
-//释放配置
 let transdimid = {
     0:"主世界",
     1:"下界",
     2:"末地"
 }
-conf.init("tpa", {
-    isDelayEnabled: true,
-    maxDelay: 20,
-    requestTimeout: 60,
-    promptType: "form"
-});
-conf.init("Motd",["Bedrock_Server","Geyser"])
-conf.init("Home",{
-    "add":0,
-    "del":0,
-    "tp":0,
-    "MaxHome":10
-})
-conf.init("RankingModel",1)//2.4.3
-conf.init("LLMoney",0) //2.3.1
-conf.init("Scoreboard","money")
-conf.init("PayTaxRate",0)
-conf.init("suicide",0)
-conf.init("Fcam",0)
-conf.init("FcamTimeOut",-1) //灵魂出窍超时时间
-conf.init("Back",0)
-conf.init("Warp",0)
-conf.init("BackTipAfterDeath",false)
-conf.init("AutoCleanItemBatch", 200);     // 每批次清理数量
-conf.init("AutoCleanItemInterval", 60);   // 清理周期（秒）
-conf.init("AutoCleanItemWarnTimes", [30,15,10,5,3,2,1]); // 倒计时提示
-conf.init("AutoCleanItemTriggerAmount", 2000); // 自动触发阈值，>0 启动爆炸防护
-conf.init("KeepInventory",false)
-conf.init("OptimizeXporb",0)
-conf.init("join_notice",0)
-conf.init("lastServerShutdown", 0);        // 记录服务器关闭时间
+// 配置版本管理类
+class ConfigManager {
+    constructor() {
+        this.currentVersion = 263;
+        this.configDefaults = {
+            "Version": 263,
+            "AutoUpdate": 1,
+            "PVPEnabled": 1,
+            "FcamEnabled": 0,
+            "HubEnabled": 0,
+            "TpaEnabled": 0,
+            "NoticeEnabled": 0,
+            "CrashModuleEnabled": 0,
+            "TRServersEnabled": false,
+            "RTPEnabled": false,
+            "RedPacketEnabled": false,
+            "RTPAnimation": 0,
+            "RankingModel": 1,
+            "LLMoney": 0,
+            "Scoreboard": "money",
+            "PayTaxRate": 0,
+            "suicide": 0,
+            "Fcam": 0,
+            "FcamTimeOut": -1,
+            "Back": 0,
+            "Warp": 0,
+            "BackTipAfterDeath": false,
+            "AutoCleanItemBatch": 200,
+            "AutoCleanItemInterval": 60,
+            "KeepInventory": false,
+            "OptimizeXporb": 0,
+            "join_notice": 0,
+            "lastServerShutdown": 0,
+            "Motd": ["Bedrock_Server", "Geyser"],
+            "RedPacket": {
+                expireTime: 300,
+                maxAmount: 10000,
+                maxCount: 50,
+                minAmount: 1
+            },
+            "RTP": {
+                minRadius: 100,
+                maxRadius: 5000,
+                cooldown: 300,
+                cost: 50,
+                allowDimensions: [0, 1, 2],
+                safeCheck: true,
+                maxAttempts: 50,
+                enableParticle: true,
+                enableSound: true,
+                logToFile: true
+            },
+            "Hub": {
+                x: 0,
+                y: 100,
+                z: 0,
+                dimid: 0,
+                isSet: false
+            },
+            "tpa": {
+                isDelayEnabled: true,
+                cost: 1,
+                maxDelay: 20,
+                requestTimeout: 60,
+                promptType: "form"
+            },
+            "Home": {
+                add: 0,
+                del: 0,
+                tp: 0,
+                MaxHome: 10
+            },
+            "AutoCleanItemWarnTimes": [30, 15, 10, 5, 3, 2, 1],
+            "AutoCleanItemTriggerAmount": 2000
+        };
+    }
+
+    // 初始化配置迁移
+    initConfigMigration() {
+        let savedVersion = conf.get("Version") || 0;
+        
+        if (savedVersion < this.currentVersion) {
+            logger.info(`检测到配置版本更新: ${savedVersion} -> ${this.currentVersion}, 开始迁移配置...`);
+            this.migrateConfig(savedVersion);
+            conf.set("Version", this.currentVersion);
+            logger.info("配置迁移完成！");
+        }
+        
+        // 确保所有配置项都存在
+        this.ensureAllConfigs();
+    }
+
+    // 迁移配置
+    migrateConfig(oldVersion) {
+        // 版本特定的迁移逻辑
+        if (oldVersion < 260) {
+            this.migrateTo260();
+        }
+        if (oldVersion < 261) {
+            this.migrateTo261();
+        }
+        if (oldVersion < 262) {
+            this.migrateTo262();
+        }
+        if (oldVersion < 263) {
+            this.migrateTo263();
+        }
+    }
+
+    // 迁移到版本260
+    migrateTo260() {
+        logger.info("迁移到版本260...");
+        // 添加版本260的新配置项
+        this.setIfMissing("RedPacketEnabled", 0);
+        this.setIfMissing("RTPEnabled", false);
+    }
+
+    // 迁移到版本261
+    migrateTo261() {
+        logger.info("迁移到版本261...");
+        // 添加版本261的新配置项
+        this.setIfMissing("RTPAnimation", 0);
+        this.setIfMissing("BackTipAfterDeath", false);
+    }
+
+    // 迁移到版本262
+    migrateTo262() {
+        logger.info("迁移到版本262...");
+        // 添加版本262的新配置项
+        this.setIfMissing("AutoCleanItemBatch", 200);
+        this.setIfMissing("AutoCleanItemInterval", 60);
+        this.setIfMissing("AutoCleanItemTriggerAmount", 2000);
+    }
+
+    // 迁移到版本263
+    migrateTo263() {
+        logger.info("迁移到版本263...");
+        // 确保tpa配置存在并包含cost
+        this.ensureObjectConfig("tpa", this.configDefaults.tpa);
+    }
+
+    // 设置配置项（如果不存在）
+    setIfMissing(key, defaultValue) {
+        if (conf.get(key) === undefined) {
+            conf.set(key, defaultValue);
+            logger.info(`添加缺失配置: ${key} = ${JSON.stringify(defaultValue)}`);
+        }
+    }
+
+    // 确保对象配置存在并包含所有必要的属性
+    ensureObjectConfig(key, defaultConfig) {
+        let currentConfig = conf.get(key);
+        
+        if (currentConfig === undefined) {
+            // 配置不存在，直接设置默认值
+            conf.set(key, defaultConfig);
+            logger.info(`创建对象配置: ${key}`);
+            return;
+        }
+
+        // 合并配置，保留现有值，添加缺失的属性
+        let merged = this.mergeConfigs(defaultConfig, currentConfig);
+        conf.set(key, merged);
+        
+        // 检查是否有新增的属性
+        let addedProps = this.getAddedProperties(defaultConfig, currentConfig);
+        if (addedProps.length > 0) {
+            logger.info(`配置 ${key} 新增属性: ${addedProps.join(", ")}`);
+        }
+    }
+
+    // 合并配置对象
+    mergeConfigs(defaultConfig, currentConfig) {
+        let merged = JSON.parse(JSON.stringify(currentConfig));
+        
+        for (let key in defaultConfig) {
+            if (merged[key] === undefined) {
+                merged[key] = defaultConfig[key];
+            } else if (typeof defaultConfig[key] === 'object' && defaultConfig[key] !== null && !Array.isArray(defaultConfig[key])) {
+                // 递归合并嵌套对象
+                merged[key] = this.mergeConfigs(defaultConfig[key], merged[key]);
+            }
+        }
+        
+        return merged;
+    }
+
+    // 获取新增的属性
+    getAddedProperties(defaultConfig, currentConfig) {
+        let added = [];
+        for (let key in defaultConfig) {
+            if (currentConfig[key] === undefined) {
+                added.push(key);
+            }
+        }
+        return added;
+    }
+
+    // 确保所有配置项都存在
+    ensureAllConfigs() {
+        logger.info("检查所有配置项...");
+        
+        for (let key in this.configDefaults) {
+            if (typeof this.configDefaults[key] === 'object' && this.configDefaults[key] !== null && !Array.isArray(this.configDefaults[key])) {
+                this.ensureObjectConfig(key, this.configDefaults[key]);
+            } else {
+                this.setIfMissing(key, this.configDefaults[key]);
+            }
+        }
+    }
+}
+
+// 创建配置管理器实例
+let configManager = new ConfigManager();
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -1344,52 +1482,57 @@ function compareVersions(v1, v2) {
 // ======================
 // 服务器启动时自动检测公告更新
 // ======================
-mc.listen("onServerStarted", async () => { 
+mc.listen("onServerStarted", async () => {     
     isSending = false;
-    
     try {
-        // 注册PAPI
-    PAPI.registerPlayerPlaceholder(getScoreMoney, "YEssential", "player_money");//注册玩家的金钱PAPI
-    PAPI.registerPlayerPlaceholder(getLLMoney, "YEssential", "player_LLmoney");//注册玩家的LLMoney金钱PAPI
-    logger.info(PluginInfo+lang.get("Version.Chinese")+version+",作者：Nico6719") 
-    logger.info("--------------------------------------------------------------------------------")
-    logger.info(" ██╗   ██╗███████╗███████╗███████╗███████╗███╗   ██╗████████╗██╗ █████╗ ██╗  ")
-    logger.info(" ╚██╗ ██╔╝██╔════╝██╔════╝██╔════╝██╔════╝████╗  ██║╚══██╔══╝██║██╔══██╗██║  ")
-    logger.info("  ╚████╔╝ █████╗  ███████╗███████╗█████╗  ██╔██╗ ██║   ██║   ██║███████║██║     ")
-    logger.info("   ╚██╔╝  ██╔══╝  ╚════██║╚════██║██╔══╝  ██║╚██╗██║   ██║   ██║██╔══██║██║     ")
-    logger.info("    ██║   ███████╗███████║███████║███████╗██║ ╚████║   ██║   ██║██║  ██║███████╗")
-    logger.info("    ╚═╝   ╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚═╝  ╚═╝╚══════╝")
-    logger.info("--------------------------------------------------------------------------------")
-    logger.info("在线config编辑器：https://jzrxh.work/projects/yessential/config.html")
-    colorLog("blue","感谢PHEyeji提供技术支持和指导！感谢ender罗小黑提供在线网页支持！")
- // logger.warn("这是一个测试版本，请勿用于生产环境！！！")
-    colorLog("blue",lang.get("Tip1"))
-     // 异步合并语言文件
-        await AsyncLanguageManager.mergeLangFiles();
+        // 第一步：注册PAPI
+        PAPI.registerPlayerPlaceholder(getScoreMoney, "YEssential", "player_money");//注册玩家的金钱PAPI
+        PAPI.registerPlayerPlaceholder(getLLMoney, "YEssential", "player_LLmoney");//注册玩家的LLMoney金钱PAPI
+        // 第二步：初始化配置系统
+        logger.info("正在初始化配置系统...");
+        configManager.initConfigMigration();
+        logger.info("配置系统初始化完成！");
+        // 第三步：打印Logo和Info
+        logger.info(PluginInfo+lang.get("Version.Chinese")+version+",作者：Nico6719") 
+        logger.info("--------------------------------------------------------------------------------")
+        logger.info(" ██╗   ██╗███████╗███████╗███████╗███████╗███╗   ██╗████████╗██╗ █████╗ ██╗  ")
+        logger.info(" ╚██╗ ██╔╝██╔════╝██╔════╝██╔════╝██╔════╝████╗  ██║╚══██╔══╝██║██╔══██╗██║  ")
+        logger.info("  ╚████╔╝ █████╗  ███████╗███████╗█████╗  ██╔██╗ ██║   ██║   ██║███████║██║     ")
+        logger.info("   ╚██╔╝  ██╔══╝  ╚════██║╚════██║██╔══╝  ██║╚██╗██║   ██║   ██║██╔══██║██║     ")
+        logger.info("    ██║   ███████╗███████║███████║███████╗██║ ╚████║   ██║   ██║██║  ██║███████╗")
+        logger.info("    ╚═╝   ╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚═╝  ╚═╝╚══════╝")
+        logger.info("--------------------------------------------------------------------------------")
+        logger.info("在线config编辑器：https://jzrxh.work/projects/yessential/config.html")
+        colorLog("blue","感谢PHEyeji提供技术支持和指导！感谢ender罗小黑提供在线网页支持！")
+    // logger.warn("这是一个测试版本，请勿用于生产环境！！！")
+        colorLog("blue",lang.get("Tip1"))
         
-        // 启用死亡不掉落
-        if (conf.get("KeepInventory")) {
-            mc.runcmdEx("gamerule KeepInventory true");
-            colorLog("green", lang.get("gamerule.KeepInventory.true"));
-        }
-        
-        // 异步检查更新
-        if (conf.get("AutoUpdate")) {
-            // 不等待更新完成，让其在后台进行
-            AsyncUpdateChecker.checkForUpdates(version).catch(error => {
-                logger.error("后台更新检查失败: " + error.message);
-            });
-        }
-        
-        // 检查公告更新
-        const lastShutdown = conf.get("lastServerShutdown") || 0;
-        conf.set("lastServerShutdown", Date.now());
-        const lastUpdate = noticeconf.get("lastNoticeUpdate") || 0;
-        if (lastUpdate > lastShutdown) {
-            conf.set("forceNotice", true);
-            logger.info(lang.get("notice.is.changed"));
-        }
-        
+         // 异步合并语言文件
+            await AsyncLanguageManager.mergeLangFiles();
+            
+            // 启用死亡不掉落
+            if (conf.get("KeepInventory")) {
+                mc.runcmdEx("gamerule KeepInventory true");
+                colorLog("green", lang.get("gamerule.KeepInventory.true"));
+            }
+            
+            // 异步检查更新
+            if (conf.get("AutoUpdate")) {
+                // 不等待更新完成，让其在后台进行
+                AsyncUpdateChecker.checkForUpdates(version).catch(error => {
+                    logger.error("后台更新检查失败: " + error.message);
+                });
+            }
+            
+            // 检查公告更新
+            const lastShutdown = conf.get("lastServerShutdown") || 0;
+            conf.set("lastServerShutdown", Date.now());
+            const lastUpdate = noticeconf.get("lastNoticeUpdate") || 0;
+            if (lastUpdate > lastShutdown) {
+                conf.set("forceNotice", true);
+                logger.info(lang.get("notice.is.changed"));
+            }
+            
     } catch (error) {
         logger.error("服务器启动初始化失败: " + error.message);
     }
@@ -2864,6 +3007,8 @@ mc.regPlayerCmd("tpa","传送系统", (player, args) => {
 });
 const pendingTpaRequests = {};
 function showTpaMenu(player) {
+    let cost = conf.get("tpa").cost;
+    let Scoreboard = conf.get("Scoreboard");
     let onlinePlayers = mc.getOnlinePlayers().filter(p => p.name !== player.name);
     if (!conf.get("TpaEnabled")) {
         player.tell(info + lang.get("module.no.Enabled"));
@@ -2873,19 +3018,22 @@ function showTpaMenu(player) {
         player.tell(info + lang.get("tpa.noplayer.online"));
         return;
     }
-    
     let form = mc.newCustomForm();
     form.setTitle(info + lang.get("tpa.name.ls"));
     let nameList = onlinePlayers.map(p => p.name);
     form.addDropdown(lang.get("tpa.choose.player"), nameList);
     form.addDropdown(lang.get("tpa.choose.fs"), [lang.get("tpa.to.he.she"), lang.get("tpa.to.here")]);
+    form.addLabel(lang.get("tpa.cost").replace("${cost}", cost).replace("${Scoreboard}", Scoreboard));
     const tpaConfig = conf.get("tpa") || {}; // 获取tpa配置节
     let isDelayEnabled = tpaConfig.isDelayEnabled !== false;
     let maxD = Number(tpaConfig.maxDelay) || 20;
     let timeoutSec = tpaConfig.requestTimeout || 60;
+    
+    // 修复：使用局部变量跟踪是否添加了延迟滑块
+    let hasDelaySlider = false;
     if (isDelayEnabled) {
         form.addSlider(`§e传送延迟(0~${maxD}秒)`, 0, maxD, 1, 0);
-        addedDelaySlider = true;
+        hasDelaySlider = true;
     }
     
     let isOp = player.isOP();
@@ -2898,13 +3046,15 @@ function showTpaMenu(player) {
             pl.tell(info + lang.get("tpa.exit"));
             return;
         }
-        
         let idx = 0;
         let targetIndex = data[idx++];
         let modeIndex = data[idx++];
         
+        // 跳过标签字段（标签不返回数据）
+        idx++; // 跳过标签
+        
         let delaySec = 0;
-        if (addedDelaySlider) {
+        if (hasDelaySlider) {
             delaySec = data[idx++];
         }
         
@@ -2927,7 +3077,6 @@ function showTpaMenu(player) {
 function showTpaManageForm(player) {
     // 修复：从配置文件获取 tpa 配置节
     const tpaConfig = conf.get("tpa") || {}; // <-- 添加这行
-
     let form = mc.newCustomForm();
     form.setTitle(lang.get("tpa.op.menu"));
     form.addInput(lang.get("tpa.send.time"),lang.get("number"), "" + tpaConfig.requestTimeout);
@@ -2971,13 +3120,17 @@ function showTpaManageForm(player) {
     });
 }
 
-function sendTpaRequest(fromPlayer, toPlayerName, direction, delaySec,pl) {
+function sendTpaRequest(fromPlayer, toPlayerName, direction, delaySec) {
+    // 确保 delaySec 是数字，如果不是则设为默认值 0
+    if (isNaN(delaySec) || delaySec === undefined) {
+        delaySec = 0;
+    }
+    
     let toPlayer = mc.getPlayer(toPlayerName);
     if (!toPlayer) {
         fromPlayer.tell(info + lang.get("tpa.send.fail"));
         return;
     }
-
     // 检查目标玩家是否接受传送请求
     const acceptTpaRequests = tpacfg.get(toPlayerName)?.acceptTpaRequests;
     if (acceptTpaRequests === false) {
@@ -2996,7 +3149,6 @@ function sendTpaRequest(fromPlayer, toPlayerName, direction, delaySec,pl) {
         bossbarId: uid,
         startTime: Date.now()
     };
-    
     pendingTpaRequests[toPlayerName] = req;
     const tpaConfig = conf.get("tpa") || {}; // 安全获取 tpa 配置
     let pType = tpaConfig.promptType || "form";
@@ -3129,6 +3281,7 @@ mc.regPlayerCmd("crash", "§c使玩家客户端崩溃", (player,args) => {
 },1);
 
 function acceptTpaRequest(targetName) {
+    let cost = conf.get("tpa").cost;
     let req = pendingTpaRequests[targetName];
     if (!req) {
         let p = mc.getPlayer(targetName);
@@ -3144,7 +3297,21 @@ function acceptTpaRequest(targetName) {
     
     to.tell(info +lang.get("tpa.accpet.request"));
     from.tell(`${info}§a对方已同意请求，` + (delay > 0 ? `将在${delay}秒后传送...` : "正在传送..."));
-    
+    if (cost > 0) {
+                const balance = conf.get("LLMoney") ? from.getMoney() : from.getScore(conf.get("Scoreboard"));
+                if (balance < cost) {
+                    from.sendText(info + `§c您需要 ${cost}${lang.get("CoinName")} 才能传送！`);
+                    return false;
+                }
+            }
+    if (cost > 0) {
+                if (conf.get("LLMoney")) {
+                    from.reduceMoney(cost);
+                } else {
+                    from.reduceScore(conf.get("Scoreboard"), cost);
+                }
+                from.sendText(info + `§e传送花费 ${cost}${lang.get("CoinName")}`);
+    }
     if (delay > 0) {
         let secondBarId = Math.floor(Math.random() * 1e9);
         let remain = delay;
