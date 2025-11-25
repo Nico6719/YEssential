@@ -23,14 +23,15 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.6.3";
-const regversion =[2,6,3];
+const version = "2.6.4";
+const regversion =[2,6,4];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
 // 创建语言文件（如果不存在）      
 const langFilePath = YEST_LangDir + "zh_cn.json";
 const defaultLangContent = {
+    "wh.warn":"服务器启动时维护模式已启用，非OP玩家将无法加入!!!!!",
     "Upd.check":"正在检查新版本中.... 您可在config.json禁用自动更新",
     "Upd.success":"更新成功！稍后将重载插件",
     "Upd.fail":"更新失败",
@@ -958,12 +959,11 @@ let transdimid = {
 // 配置版本管理类
 class ConfigManager {
     constructor() {
-        this.currentVersion = 263;
+        this.currentVersion = 264;
         this.configDefaults = {
-            "Version": 263,
+            "Version": 264,
             "AutoUpdate": 1,
             "PVPEnabled": 1,
-            "FcamEnabled": 0,
             "HubEnabled": 0,
             "TpaEnabled": 0,
             "NoticeEnabled": 0,
@@ -977,8 +977,6 @@ class ConfigManager {
             "Scoreboard": "money",
             "PayTaxRate": 0,
             "suicide": 0,
-            "Fcam": 0,
-            "FcamTimeOut": -1,
             "Back": 0,
             "Warp": 0,
             "BackTipAfterDeath": false,
@@ -989,43 +987,52 @@ class ConfigManager {
             "join_notice": 0,
             "lastServerShutdown": 0,
             "Motd": ["Bedrock_Server", "Geyser"],
+            "Fcam": {
+                "EnableModule": false,
+                "CostMoney": 0,
+                "TimeOut": 0
+            },
             "RedPacket": {
-                expireTime: 300,
-                maxAmount: 10000,
-                maxCount: 50,
-                minAmount: 1
+                "expireTime": 300,
+                "maxAmount": 10000,
+                "maxCount": 50,
+                "minAmount": 1
             },
             "RTP": {
-                minRadius: 100,
-                maxRadius: 5000,
-                cooldown: 300,
-                cost: 50,
-                allowDimensions: [0, 1, 2],
-                safeCheck: true,
-                maxAttempts: 50,
-                enableParticle: true,
-                enableSound: true,
-                logToFile: true
+                "minRadius": 100,
+                "maxRadius": 5000,
+                "cooldown": 300,
+                "cost": 50,
+                "allowDimensions": [0, 1, 2],
+                "safeCheck": true,
+                "maxAttempts": 50,
+                "enableParticle": true,
+                "enableSound": true,
+                "logToFile": true
             },
             "Hub": {
-                x: 0,
-                y: 100,
-                z: 0,
-                dimid: 0,
-                isSet: false
+                "x": 0,
+                "y": 100,
+                "z": 0,
+                "dimid": 0,
+                "isSet": false
             },
             "tpa": {
-                isDelayEnabled: true,
-                cost: 1,
-                maxDelay: 20,
-                requestTimeout: 60,
-                promptType: "form"
+                "isDelayEnabled": true,
+                "cost": 1,
+                "maxDelay": 20,
+                "requestTimeout": 60,
+                "promptType": "form"
             },
             "Home": {
-                add: 0,
-                del: 0,
-                tp: 0,
-                MaxHome: 10
+                "add": 0,
+                "del": 0,
+                "tp": 0,
+                "MaxHome": 10
+            },
+            "wh": {
+                "EnableModule": true,
+                "status": 0
             },
             "AutoCleanItemWarnTimes": [30, 15, 10, 5, 3, 2, 1],
             "AutoCleanItemTriggerAmount": 2000
@@ -1050,9 +1057,6 @@ class ConfigManager {
     // 迁移配置
     migrateConfig(oldVersion) {
         // 版本特定的迁移逻辑
-        if (oldVersion < 260) {
-            this.migrateTo260();
-        }
         if (oldVersion < 261) {
             this.migrateTo261();
         }
@@ -1062,28 +1066,21 @@ class ConfigManager {
         if (oldVersion < 263) {
             this.migrateTo263();
         }
-    }
-
-    // 迁移到版本260
-    migrateTo260() {
-        logger.info("迁移到版本260...");
-        // 添加版本260的新配置项
-        this.setIfMissing("RedPacketEnabled", 0);
-        this.setIfMissing("RTPEnabled", false);
+        if (oldVersion < 264) {
+            this.migrateTo264();
+        }
     }
 
     // 迁移到版本261
     migrateTo261() {
-        logger.info("迁移到版本261...");
-        // 添加版本261的新配置项
+        logger.info("迁移到版本2.6.1...");
         this.setIfMissing("RTPAnimation", 0);
         this.setIfMissing("BackTipAfterDeath", false);
     }
 
     // 迁移到版本262
     migrateTo262() {
-        logger.info("迁移到版本262...");
-        // 添加版本262的新配置项
+        logger.info("迁移到版本2.6.2...");
         this.setIfMissing("AutoCleanItemBatch", 200);
         this.setIfMissing("AutoCleanItemInterval", 60);
         this.setIfMissing("AutoCleanItemTriggerAmount", 2000);
@@ -1091,9 +1088,17 @@ class ConfigManager {
 
     // 迁移到版本263
     migrateTo263() {
-        logger.info("迁移到版本263...");
-        // 确保tpa配置存在并包含cost
+        logger.info("迁移到版本2.6.3...");
         this.ensureObjectConfig("tpa", this.configDefaults.tpa);
+    }
+
+    // 迁移到版本264
+    migrateTo264() {
+        logger.info("迁移到版本2.6.4...");
+        // 添加 Fcam 配置
+        this.ensureObjectConfig("Fcam", this.configDefaults.Fcam);
+        // 添加 wh 配置
+        this.ensureObjectConfig("wh", this.configDefaults.wh);
     }
 
     // 设置配置项（如果不存在）
@@ -1108,8 +1113,12 @@ class ConfigManager {
     ensureObjectConfig(key, defaultConfig) {
         let currentConfig = conf.get(key);
         
-        if (currentConfig === undefined) {
-            // 配置不存在，直接设置默认值
+        // 修复：检查当前配置是否为有效的对象
+        if (currentConfig === undefined || 
+            currentConfig === null || 
+            typeof currentConfig !== 'object' || 
+            Array.isArray(currentConfig)) {
+            // 如果当前配置不是有效对象，则使用默认配置
             conf.set(key, defaultConfig);
             logger.info(`创建对象配置: ${key}`);
             return;
@@ -1169,7 +1178,6 @@ class ConfigManager {
 
 // 创建配置管理器实例
 let configManager = new ConfigManager();
-
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 // 定时更新玩家金币排行榜
@@ -1483,16 +1491,13 @@ function compareVersions(v1, v2) {
 // 服务器启动时自动检测公告更新
 // ======================
 mc.listen("onServerStarted", async () => {     
-    isSending = false;
+    let whConfig = conf.get("wh") || { EnableModule: true, status: 0 };
+    stats = whConfig.status === 1;
     try {
         // 第一步：注册PAPI
         PAPI.registerPlayerPlaceholder(getScoreMoney, "YEssential", "player_money");//注册玩家的金钱PAPI
-        PAPI.registerPlayerPlaceholder(getLLMoney, "YEssential", "player_LLmoney");//注册玩家的LLMoney金钱PAPI
-        // 第二步：初始化配置系统
-        logger.info("正在初始化配置系统...");
-        configManager.initConfigMigration();
-        logger.info("配置系统初始化完成！");
-        // 第三步：打印Logo和Info
+        PAPI.registerPlayerPlaceholder(getLLMoney, "YEssential", "player_LLmoney");//注册玩家的LLMoney金钱PAPI 
+        // 第二步：打印Logo和Info
         logger.info(PluginInfo+lang.get("Version.Chinese")+version+",作者：Nico6719") 
         logger.info("--------------------------------------------------------------------------------")
         logger.info(" ██╗   ██╗███████╗███████╗███████╗███████╗███╗   ██╗████████╗██╗ █████╗ ██╗  ")
@@ -1504,7 +1509,15 @@ mc.listen("onServerStarted", async () => {
         logger.info("--------------------------------------------------------------------------------")
         logger.info("在线config编辑器：https://jzrxh.work/projects/yessential/config.html")
         colorLog("blue","感谢PHEyeji提供技术支持和指导！感谢ender罗小黑提供在线网页支持！")
-    // logger.warn("这是一个测试版本，请勿用于生产环境！！！")
+        // 第三步：初始化配置系统
+        logger.info("正在初始化配置系统...");
+        configManager.initConfigMigration();
+        logger.info("配置系统初始化完成！");
+        // 第四步：提示维护功能是否开启
+        if (stats) {
+            logger.warn(lang.get("wh.warn"));
+        }
+        // logger.warn("这是一个测试版本，请勿用于生产环境！！！")
         colorLog("blue",lang.get("Tip1"))
         
          // 异步合并语言文件
@@ -1535,6 +1548,8 @@ mc.listen("onServerStarted", async () => {
             
     } catch (error) {
         logger.error("服务器启动初始化失败: " + error.message);
+        // 添加更详细的错误信息
+        logger.error("错误堆栈: " + error.stack);
     }
 });
 function getScoreMoney(pl) {
@@ -1788,10 +1803,10 @@ mc.listen("onServerStarted", () => {
 
         let plname = pl.realName;
         let plpos = ori.pos;
-        let timeout = conf.get("FcamTimeOut");
-        let FcamCost = conf.get("Fcam");
+        let timeout = conf.get("Fcam").TimeOut;
+        let FcamCost = conf.get("Fcam").cost;
 
-        if (conf.get("FcamEnabled") == 0) {
+        if (conf.get("Fcam").EnableModule == 0) {
             pl.tell(info + lang.get("module.no.Enabled"));
             return;
         }
@@ -2036,31 +2051,53 @@ function Motd(){
     }, 5000); // 每 5000 毫秒（即 5下· 秒）执行一次
 }
 //维护模块
-let stats = false
-let whcmd = mc.newCommand("wh","维护模式",PermType.GameMasters)
-whcmd.overload([])
-whcmd.setCallback((cmd,ori,out,res)=>{
-    stats = !stats
-    let pl = ori.player
-    out.success(`维护模式已${stats?"开启":"关闭"}`)
+// 初始化维护状态变量，从配置读取
+let whConfig = conf.get("wh") || { EnableModule: true, status: 0 };
+let stats = whConfig.status === 1;
 
-    if(stats){
-        mc.getOnlinePlayers().forEach((player)=>{
-            if(player.isSimulatedPlayer()) return
-            if(player.isOP()) return
+let whcmd = mc.newCommand("wh", "维护模式", PermType.GameMasters)
+whcmd.overload([])
+whcmd.setCallback((cmd, ori, out, res) => {
+    // 检查模块是否启用
+    let currentConfig = conf.get("wh") || { EnableModule: true, status: 0 };
+    if (!currentConfig.EnableModule) {
+        out.error("维护模式模块未启用");
+        return;
+    }
+    
+    // 切换状态
+    stats = !stats;
+    let newStatus = stats ? 1 : 0;
+    
+    // 更新配置
+    currentConfig.status = newStatus;
+    conf.set("wh", currentConfig);
+    
+    let pl = ori.player;
+    out.success(`维护模式已${stats ? "开启" : "关闭"}`);
+
+    if (stats) {
+        mc.getOnlinePlayers().forEach((player) => {
+            if (player.isSimulatedPlayer()) return;
+            if (player.isOP()) return;
             player.kick(lang.get("weihu.msg"));
-        })
+        });
     }
 })
 whcmd.setup()
 
-mc.listen("onPreJoin",(pl)=>{
-    if(pl.isSimulatedPlayer()) return
-    if(pl.isOP()) return
-    if(stats){
-        pl.kick(lang.get("weihu.msg"))
+mc.listen("onPreJoin", (pl) => {
+    // 检查模块是否启用
+    let currentConfig = conf.get("wh") || { EnableModule: true, status: 0 };
+    if (!currentConfig.EnableModule) return;
+    
+    if (pl.isSimulatedPlayer()) return;
+    if (pl.isOP()) return;
+    if (stats) {
+        pl.kick(lang.get("weihu.msg"));
     }
 })
+
 function getRandomLetter() {
     // 获取当前时间的毫秒数
     let ms = new Date().getTime();
