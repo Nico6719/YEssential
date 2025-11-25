@@ -1804,7 +1804,7 @@ mc.listen("onServerStarted", () => {
         let plname = pl.realName;
         let plpos = ori.pos;
         let timeout = conf.get("Fcam").TimeOut;
-        let FcamCost = conf.get("Fcam").cost;
+        let FcamCost = conf.get("Fcam").CostMoney;
 
         if (conf.get("Fcam").EnableModule == 0) {
             pl.tell(info + lang.get("module.no.Enabled"));
