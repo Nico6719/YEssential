@@ -280,9 +280,13 @@ function initRedpacketData() {
 }
 
 // 创建红包数据对象
+// Utility to block prototype-polluting keys
+function isPollutingKey(key) {
+    return key === '__proto__' || key === 'constructor' || key === 'prototype';
+}
+
 const redpacketData = {
     data: initRedpacketData(),
-    
     get(key) {
         const keys = key.split('.');
         let value = this.data;
@@ -298,6 +302,10 @@ const redpacketData = {
         const keys = key.split('.');
         let obj = this.data;
         
+            if (isPollutingKey(k)) {
+                // Abort on prototype pollution attempt
+                return;
+            }
         for (let i = 0; i < keys.length - 1; i++) {
             const k = keys[i];
             if (obj[k] === undefined || typeof obj[k] !== 'object') {
@@ -305,12 +313,20 @@ const redpacketData = {
             }
             obj = obj[k];
         }
-        
-        obj[keys[keys.length - 1]] = value;
+        // Block pollution at the leaf as well
+        const lastKey = keys[keys.length - 1];
+        if (isPollutingKey(lastKey)) {
+            return;
+        }
+        obj[lastKey] = value;
         this.save();
     },
     deletePacket: function(id) {
         const key = `packets.${id}`;
+                if (isPollutingKey(k)) {
+                    // Abort on prototype pollution attempt
+                    return false;
+                }
         if (this.get(key)) {
             // 使用点路径删除红包
             const keys = key.split('.');
@@ -324,7 +340,15 @@ const redpacketData = {
                 obj = obj[k];
             }
             
-            delete obj[keys[keys.length - 1]];
+            const lastKey = keys[keys.length - 1];
+            if (isPollutingKey(lastKey)) {
+                return false;
+            }
+            delete obj[lastKey];
+            if (isPollutingKey(k)) {
+                // Abort on prototype pollution attempt
+                return;
+            }
             this.save();
             return true;
         }
@@ -342,7 +366,11 @@ const redpacketData = {
             obj = obj[k];
         }
         
-        delete obj[keys[keys.length - 1]];
+        const lastKey = keys[keys.length - 1];
+        if (isPollutingKey(lastKey)) {
+            return;
+        }
+        delete obj[lastKey];
         this.save();
     },
     
