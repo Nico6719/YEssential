@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.6.4";
-const regversion =[2,6,4];
+const version = "2.6.5";
+const regversion =[2,6,5];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
@@ -36,6 +36,8 @@ const defaultLangContent = {
     "Upd.success":"更新成功！稍后将重载插件",
     "Upd.fail":"更新失败",
     "Tip1":"如有Bug请联系作者反馈！！！！",
+    "Tip2":"感谢PHEyeji提供技术支持和指导！感谢ender罗小黑提供在线网页支持！",
+    "Tip3":"在线config编辑器：https://jzrxh.work/projects/yessential/config.html",
     "Version.Chinese":"版本:",
     "notice.editor":"§l§e公告编辑器",
     "notice.no.change": "§e公告内容未更改！",
@@ -249,18 +251,18 @@ let MoneyHistory = new JsonConfigFile(datapath +"/Money/MoneyHistory.json",JSON.
 
 let moneyranking = new JsonConfigFile(MdataPath, "{}");
 
-var c_y = JSON.stringify({
+const defaultServerConfig = JSON.stringify({
     servers: [
       { server_name: "生存服", server_ip: "127.0.0.1", server_port: 19132 }
     ]
-  });
+});
 
-let servertp = new JsonConfigFile(datapath +"/TrSeverData/server.json", c_y);
+let servertp = new JsonConfigFile(datapath +"/TrSeverData/server.json", defaultServerConfig);
 
 let tpacfg = new JsonConfigFile(datapath +"/TpaSettingsData/tpaAutoRejectConfig.json",JSON.stringify({}));
 
 new IniConfigFile(datapath +"/NoticeSettingsData/notice.txt");
-
+let isSending = false;
 function initRedpacketData() {
     const defaultData = {
         nextId: 1,
@@ -548,25 +550,35 @@ class AsyncTeleportSystem {
 
     // 其他方法保持不变...
     static getSurfaceHeight(x, z, dimension) {
-        for (let y = 60; y <= 120; y++) {
-            try {
-                const currentBlock = mc.getBlock(x, y, z, dimension);
-                const aboveBlock = mc.getBlock(x, y + 1, z, dimension);
-                const above2Block = mc.getBlock(x, y + 2, z, dimension);
+    // 从高空向下扫描，适应各种地形。主世界从 Y=319 开始。
+    // 下界(dimid 1)限制在 Y=120 开始。
+    const startY = dimension === 1 ? 120 : 319; 
+    const endY = dimension === 1 ? 30 : -60; // 扫描到基岩层
+
+    for (let y = startY; y >= endY; y--) {
+        try {
+            // 获取当前方块
+            const block = mc.getBlock(x, y, z, dimension);
+
+            // 检查是否是非空气方块 (或非液体)
+            if (block && block.type !== "minecraft:air" && !block.isLiquid()) {
                 
-                if (currentBlock && aboveBlock && above2Block) {
-                    if (currentBlock.type !== "minecraft:air" && 
-                        aboveBlock.type === "minecraft:air" && 
-                        above2Block.type === "minecraft:air") {
-                        return y + 1;
-                    }
+                // 确保上方两格是空气（供玩家站立）
+                const up1 = mc.getBlock(x, y + 1, z, dimension);
+                const up2 = mc.getBlock(x, y + 2, z, dimension);
+                
+                if (up1 && up1.type === "minecraft:air" && up2 && up2.type === "minecraft:air") {
+                    // 找到了安全落脚点
+                    return y + 1;
                 }
-            } catch (error) {
-                continue;
             }
+        } catch (error) {
+            continue;
         }
-        return 70;
     }
+    // 未找到安全高度时的默认值
+    return 70; 
+}
 
     static isLocationSafe(x, y, z, dimension) {
         try {
@@ -635,7 +647,7 @@ class AsyncTeleportSystem {
     static async performRTPAnimationAsync(player, x, z, y) {
         
         return new Promise((resolve) => {
-            if (conf.get("RTPAnimation") == 1) {
+            if (conf.get("RTP").Animation == 1) {
                 // 动画模式传送
                 player.sendText(info + lang.get("rtp.search.chunks"));
                 mc.runcmdEx(`effect "${player.realName}" resistance 30 255 true`);
@@ -746,7 +758,7 @@ class AsyncTeleportSystem {
                 } else {
                     player.sendText(`§c坐标 (${x}, ${z}) 附近未找到安全位置，尝试新坐标...`);
                     // 如果没找到安全位置，清除可能的动画效果
-                    if (conf.get("RTPAnimation") == 1) {
+                    if (conf.get("RTP").Animation == 1) {
                         setTimeout(() => {
                             mc.runcmdEx(`camera "${player.realName}" clear`);
                         }, 1000);
@@ -800,7 +812,7 @@ class AsyncTeleportSystem {
             player.sendText(info + lang.get("rtp.error"));
             
             // 清除可能的动画效果
-            if (conf.get("RTPAnimation") == 1) {
+            if (conf.get("RTP").Animation == 1) {
                 try {
                     mc.runcmdEx(`camera "${player.realName}" clear`);
                 } catch (e) {}
@@ -959,19 +971,15 @@ let transdimid = {
 // 配置版本管理类
 class ConfigManager {
     constructor() {
-        this.currentVersion = 264;
+        this.currentVersion = 265;
         this.configDefaults = {
-            "Version": 264,
+            "Version": 265,
             "AutoUpdate": 1,
             "PVPEnabled": 1,
             "HubEnabled": 0,
-            "TpaEnabled": 0,
             "NoticeEnabled": 0,
             "CrashModuleEnabled": 0,
             "TRServersEnabled": false,
-            "RTPEnabled": false,
-            "RedPacketEnabled": false,
-            "RTPAnimation": 0,
             "RankingModel": 1,
             "LLMoney": 0,
             "Scoreboard": "money",
@@ -993,12 +1001,14 @@ class ConfigManager {
                 "TimeOut": 0
             },
             "RedPacket": {
+                "EnabledModule": false,
                 "expireTime": 300,
                 "maxAmount": 10000,
                 "maxCount": 50,
                 "minAmount": 1
             },
             "RTP": {
+                "EnabledModule": false,
                 "minRadius": 100,
                 "maxRadius": 5000,
                 "cooldown": 300,
@@ -1006,11 +1016,13 @@ class ConfigManager {
                 "allowDimensions": [0, 1, 2],
                 "safeCheck": true,
                 "maxAttempts": 50,
+                "Animation": 0,
                 "enableParticle": true,
                 "enableSound": true,
                 "logToFile": true
             },
             "Hub": {
+                "EnabledModule": false,
                 "x": 0,
                 "y": 100,
                 "z": 0,
@@ -1018,6 +1030,7 @@ class ConfigManager {
                 "isSet": false
             },
             "tpa": {
+                "EnabledModule": false,
                 "isDelayEnabled": true,
                 "cost": 1,
                 "maxDelay": 20,
@@ -1074,7 +1087,6 @@ class ConfigManager {
     // 迁移到版本261
     migrateTo261() {
         logger.info("迁移到版本2.6.1...");
-        this.setIfMissing("RTPAnimation", 0);
         this.setIfMissing("BackTipAfterDeath", false);
     }
 
@@ -1398,7 +1410,7 @@ cmd.setCallback((cmd, ori, out, res) => {
 cmd.setup()
 //Hub
 mc.regPlayerCmd('hub', '打开回城菜单', (pl) => {
-    if (conf.get("HubEnabled") == 0) {
+    if (conf.get("Hub").EnabledModule == 0) {
         pl.tell(info + lang.get("module.no.Enabled"));
         return;
     }
@@ -1487,8 +1499,9 @@ function compareVersions(v1, v2) {
     }
     return 0;  // 版本相同
 }
+initAllModules();
 // ======================
-// 服务器启动时自动检测公告更新
+// 服务器启动
 // ======================
 mc.listen("onServerStarted", async () => {     
     let whConfig = conf.get("wh") || { EnableModule: true, status: 0 };
@@ -1497,7 +1510,7 @@ mc.listen("onServerStarted", async () => {
         // 第一步：注册PAPI
         PAPI.registerPlayerPlaceholder(getScoreMoney, "YEssential", "player_money");//注册玩家的金钱PAPI
         PAPI.registerPlayerPlaceholder(getLLMoney, "YEssential", "player_LLmoney");//注册玩家的LLMoney金钱PAPI 
-        // 第二步：打印Logo和Info
+        // 第二步：打印Logo
         logger.info(PluginInfo+lang.get("Version.Chinese")+version+",作者：Nico6719") 
         logger.info("--------------------------------------------------------------------------------")
         logger.info(" ██╗   ██╗███████╗███████╗███████╗███████╗███╗   ██╗████████╗██╗ █████╗ ██╗  ")
@@ -1507,36 +1520,35 @@ mc.listen("onServerStarted", async () => {
         logger.info("    ██║   ███████╗███████║███████║███████╗██║ ╚████║   ██║   ██║██║  ██║███████╗")
         logger.info("    ╚═╝   ╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚═╝  ╚═╝╚══════╝")
         logger.info("--------------------------------------------------------------------------------")
-        logger.info("在线config编辑器：https://jzrxh.work/projects/yessential/config.html")
-        colorLog("blue","感谢PHEyeji提供技术支持和指导！感谢ender罗小黑提供在线网页支持！")
-        // 第三步：初始化配置系统
+        // 第三步：初始化系统
         logger.info("正在初始化配置系统...");
         configManager.initConfigMigration();
         logger.info("配置系统初始化完成！");
-        // 第四步：提示维护功能是否开启
-        if (stats) {
-            logger.warn(lang.get("wh.warn"));
-        }
-        // logger.warn("这是一个测试版本，请勿用于生产环境！！！")
-        colorLog("blue",lang.get("Tip1"))
-        
-         // 异步合并语言文件
-            await AsyncLanguageManager.mergeLangFiles();
-            
-            // 启用死亡不掉落
-            if (conf.get("KeepInventory")) {
-                mc.runcmdEx("gamerule KeepInventory true");
-                colorLog("green", lang.get("gamerule.KeepInventory.true"));
-            }
-            
-            // 异步检查更新
+         // 异步检查更新
             if (conf.get("AutoUpdate")) {
                 // 不等待更新完成，让其在后台进行
                 AsyncUpdateChecker.checkForUpdates(version).catch(error => {
                     logger.error("后台更新检查失败: " + error.message);
                 });
             }
-            
+             // 异步合并语言文件
+            await AsyncLanguageManager.mergeLangFiles();
+        // 第四步：提示维护功能是否开启
+        if (stats) {
+            setTimeout(() => {
+                 logger.warn(lang.get("wh.warn"));
+            }, 3000);
+        }
+        // 第五步：打印Info
+        // logger.warn("这是一个测试版本，请勿用于生产环境！！！")
+        colorLog("blue",lang.get("Tip3"))
+        colorLog("blue",lang.get("Tip2"))
+        colorLog("blue",lang.get("Tip1"))    
+            // 启用死亡不掉落
+            if (conf.get("KeepInventory")) {
+                mc.runcmdEx("gamerule KeepInventory true");
+                colorLog("green", lang.get("gamerule.KeepInventory.true"));
+            }
             // 检查公告更新
             const lastShutdown = conf.get("lastServerShutdown") || 0;
             conf.set("lastServerShutdown", Date.now());
@@ -1545,7 +1557,15 @@ mc.listen("onServerStarted", async () => {
                 conf.set("forceNotice", true);
                 logger.info(lang.get("notice.is.changed"));
             }
-            
+            // 新增：清理残留的灵魂出窍模拟玩家
+            const allPlayers = mc.getOnlinePlayers();
+            allPlayers.forEach(p => {
+            // FCAM 创建的模拟玩家通常以 _sp 结尾
+                if (p.isSimulatedPlayer() && p.name.endsWith("_sp")) {
+                    logger.warn(`[FCAM] 清理残留的模拟玩家: ${p.name}`);
+                 p.simulateDisconnect();
+            }
+    });
     } catch (error) {
         logger.error("服务器启动初始化失败: " + error.message);
         // 添加更详细的错误信息
@@ -1614,7 +1634,35 @@ mc.listen("onPreJoin",(pl)=>{
         logger.error(`玩家 ${pl.realName} 加入事件处理失败: ${error.message}`);
     }
 });
+// ====== 新增 Helper 函数：限制金币历史记录数量 ======
 
+/**
+ * 写入金币历史记录，并确保每位玩家的记录不超过 50 条，防止数据文件过度膨胀。
+ * @param {string} playerName 
+ * @param {string} recordText 
+ */
+function addMoneyHistory(playerName, recordText) {
+    let historyData = MoneyHistory.get(playerName) || {};
+    
+    // 生成 Key (保持原有逻辑)
+    const key = String(system.getTimeStr()) + "§" + getRandomLetter();
+    historyData[key] = recordText;
+
+    const keys = Object.keys(historyData);
+    const maxRecords = 50; // 限制最多50条历史记录
+
+    if (keys.length > maxRecords) {
+        // 删除最旧的记录
+        const keysToDelete = keys.length - maxRecords;
+        for (let i = 0; i < keysToDelete; i++) {
+            delete historyData[keys[i]];
+        }
+    }
+    
+    MoneyHistory.set(playerName, historyData);
+}
+
+// ===================================================
 
 mc.listen("onConsoleCmd",(cmd)=>{
     if(cmd.toLowerCase() != "stop" || lang.get("stop.msg") == 0 ) return
@@ -1736,9 +1784,8 @@ cleanCmd.setup();
 if (conf.get("AutoCleanItemInterval") > 0) {
     startCleanTask();
 }
-
-//PVP模块start
-mc.listen("onServerStarted", function() {
+//PVP模块
+function initPvpModule() {
     // 注册命令
     if (!conf.get("PVPEnabled")) {
         return;
@@ -1773,7 +1820,7 @@ mc.listen("onServerStarted", function() {
     });
     pvp.setup();
 
-    // 监听玩家加入事件 - 修复了此处的问题
+    // 监听玩家加入事件
     mc.listen("onJoin", function(player) {
        const xuid = player.realName;
         // 检查玩家是否已有记录
@@ -1783,10 +1830,37 @@ mc.listen("onServerStarted", function() {
         //    pvpConfig.save();
         }
     });
-});
-/////灵魂出窍 2.5.6加入
+
+    // PVP伤害监听
+    mc.listen("onMobHurt", function(mob, source) {
+        if (!source || !source.isPlayer() || !mob.isPlayer()) return;
+        
+        const attacker = source.toPlayer();
+        const victim = mob.toPlayer();
+        
+        // 获取PVP状态（默认为false）
+        const attackerPVP = pvpConfig.get(attacker.name);
+        const victimPVP = pvpConfig.get(victim.name);
+        
+        if (!conf.get("PVPEnabled")) {
+            return;
+        }
+        if (!attackerPVP) {
+            attacker.tell(lang.get("your.pvp.isoff"), 4);
+        } else if (!victimPVP) {
+            attacker.tell(lang.get("then.pvp.isoff"), 4);
+        } else {
+            return; // 双方开启PVP，允许伤害
+        }
+        
+        mob.stopFire();
+        return false;
+    });
+}
+
 // 灵魂出窍（FCAM）
-mc.listen("onServerStarted", () => {
+function initFcamModule() {
+    // 注册命令
     let cmd = mc.newCommand("fcam", "灵魂出窍", PermType.Any);
     cmd.overload([]);
 
@@ -1794,7 +1868,6 @@ mc.listen("onServerStarted", () => {
     const fcamBossBars = new Map();
 
     cmd.setCallback((_cmd, ori, out, _res) => {
-
         let pl = ori.player;
         if (!pl) {
             out.error(info + lang.get("fc.error"));
@@ -1988,54 +2061,32 @@ mc.listen("onServerStarted", () => {
     mc.listen("onLeft", (player) => {
         const plname = player.realName;
         cleanupFcamBossBar(plname);
-    });
-});
-
-mc.listen("onLeft", (player) => {
-    let plname = player.realName; // 使用真实名称
-    let spl = mc.getPlayer(plname + "_sp");
-    // 只有当模拟玩家存在时才断开
-    if (spl) {
-        spl.simulateDisconnect();
-    }
-});
-mc.listen("onJoin", (pl) => {
-    let plname = pl.realName;
-    if (pl.isOP()) {
-        return;
-    }
-    pl.setGameMode(0)
-    setTimeout(() => {
-        mc.runcmdEx(`tp ${plname} ${plname + "_sp"}`)
-    }, 1000);
-    
-});
-mc.listen("onMobHurt", function(mob, source) {
-    if (!source || !source.isPlayer() || !mob.isPlayer()) return;
-    
-    const attacker = source.toPlayer();
-    const victim = mob.toPlayer();
-    
-    // 获取PVP状态（默认为false）
-    const attackerPVP = pvpConfig.get(attacker.name);
-    const victimPVP = pvpConfig.get(victim.name);
-    //logger.info(attacker.name,victim.name)
-    //logger.info(attackerPVP,victimPVP)
-    if (!conf.get("PVPEnabled")) {
-        return;
+        
+        // 断开模拟玩家
+        let spl = mc.getPlayer(plname + "_sp");
+        if (spl) {
+            spl.simulateDisconnect();
         }
-    if (!attackerPVP) {
-        attacker.tell(lang.get("your.pvp.isoff"), 4);
-    } else if (!victimPVP) {
-        attacker.tell(lang.get("then.pvp.isoff"), 4);
-    } else {
-        return; // 双方开启PVP，允许伤害
-    }
-    
-    mob.stopFire();
-    return false;
-});
-//PVP模块end
+    });
+
+    // 监听玩家加入事件
+    mc.listen("onJoin", (pl) => {
+        let plname = pl.realName;
+        if (pl.isOP()) {
+            return;
+        }
+        pl.setGameMode(0)
+        setTimeout(() => {
+            mc.runcmdEx(`tp ${plname} ${plname + "_sp"}`)
+        }, 1000);
+    });
+}
+
+// 初始化所有模块
+function initAllModules() {
+    initPvpModule();
+    initFcamModule();
+}
 function Motd(){
     let motds = conf.get("Motd")
     if(motds == []) return
@@ -2206,7 +2257,7 @@ function MoneyGui(plname){
     fm.addButton(lang.get("money.transfer")+lang.get("CoinName"), "textures/ui/trade_icon")
     fm.addButton(lang.get("moeny.view")+lang.get("CoinName")+lang.get("money.history"), "textures/ui/book_addtextpage_default")
     fm.addButton(lang.get("CoinName")+lang.get("money.player.list"), "textures/ui/icon_book_writable")
-    if (conf.get("RedPacketEnabled")== 1){
+    if (conf.get("RedPacket").EnabledModule== 1){
     fm.addButton(lang.get("rp.menu.1"),"textures/ui/gift_square")
     } else {}
     pl.sendForm(fm,(pl,id)=>{
@@ -2387,7 +2438,7 @@ function OPMoneyGui(plname){
     fm.addButton("查看玩家的"+lang.get("CoinName")+"历史记录", "textures/ui/book_addtextpage_default")
     fm.addButton("全服"+lang.get("CoinName")+"排行榜", "textures/ui/icon_book_writable")
     fm.addButton("使用玩家的金钱菜单", "textures/ui/icon_multiplayer")
-    if (conf.get("RedPacketEnabled")== 1){
+    if (conf.get("RedPacket").EnabledModule== 1){
     fm.addButton(lang.get("rp.menu.1"),"textures/ui/gift_square")
     } else {}
     pl.sendForm(fm,(pl,id)=>{
@@ -3047,7 +3098,7 @@ function showTpaMenu(player) {
     let cost = conf.get("tpa").cost;
     let Scoreboard = conf.get("Scoreboard");
     let onlinePlayers = mc.getOnlinePlayers().filter(p => p.name !== player.name);
-    if (!conf.get("TpaEnabled")) {
+    if (!conf.get("tpa").EnabledModule) {
         player.tell(info + lang.get("module.no.Enabled"));
         return;
     }
@@ -3530,7 +3581,7 @@ asyncRtpCmd.setCallback(async (cmd, ori, out, res) => {
     const pl = ori.player;
     if (!pl) return out.error("仅限玩家执行");
     
-    if (!conf.get("RTPEnabled")) {
+    if (!conf.get("RTP").EnabledModule) {
         pl.tell(info + lang.get("module.no.Enabled"));
         return;
     }
@@ -3601,7 +3652,7 @@ redpacketCmd.overload(["subcommand"]);
 redpacketCmd.setCallback((cmd, ori, out, res) => {
     const pl = ori.player;
     if (!pl) return;
-    if (!conf.get("RedPacketEnabled")) {
+    if (!conf.get("RedPacket").EnabledModule) {
         pl.tell(info + lang.get("module.no.Enabled"));
         return;
     }
@@ -3665,7 +3716,7 @@ function handleSendRedPacket(pl, amount, count, targetPlayer, message, packetTyp
     // 设置默认值
     if (!packetType) packetType = "random"; // 默认拼手气红包
     
-    if (!conf.get("RedPacketEnabled")) {
+    if (!conf.get("RedPacket").EnabledModule) {
         pl.tell(info + lang.get("module.no.Enabled")); 
         return;    
     }
@@ -3996,7 +4047,7 @@ setInterval(() => {
 
 // 在插件初始化后添加红包帮助命令
 mc.listen("onServerStarted", () => {
-    if (!conf.get("RedPacketEnabled")) {
+    if (!conf.get("RedPacket").EnabledModule) {
         return;
     } else {
         mc.regPlayerCmd("redpackethelp", "红包帮助", (pl) => {
