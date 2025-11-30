@@ -187,4 +187,4 @@ MoneyHistory.json
 
 ## 许可证
 
-本项目的非闭源部分采用 LGPL-3.0 许可证发行 - 阅读 [COPYING](COPYING) 和 [COPYING.LESSER](COPYING.LESSER) 文件获取更多信息。
+本项目的非闭源部分采用 MIT 许可证发行 - 阅读 [LICENSE](LICENSE) 文件获取更多信息。
