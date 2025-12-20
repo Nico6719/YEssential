@@ -11,13 +11,13 @@
 - **类型**：基础插件 / 多功能前置  
 - **平台**：LegacyScriptEngine (LSE)  
 - **主要功能**：提供服务器基础指令与功能支持  
-- **支持迁移**：TMEssential 的 home 和 warp 数据（可迁移到本插件） :contentReference[oaicite:1]{index=1}
+- **支持迁移**：TMEssential 的 home 和 warp 数据（可迁移到本插件）
 
 ---
 
 ## ⚙️ 功能亮点
 
-具体功能会随着版本迭代而更新，已知功能包括： :contentReference[oaicite:2]{index=2}
+具体功能会随着版本迭代而更新，已知功能包括：
 
 ### 🆕 新增 / 修改功能  
 
@@ -26,35 +26,34 @@
   - 可通过 GUI 修改公告内容  
   - 重启服务器后会对所有玩家强制弹出公告  
 - 添加随机传送指令：`/rtp`  
-- 更多基础功能完善与指令优化 :contentReference[oaicite:3]{index=3}
-
+- 更多基础功能完善与指令优化 
 ---
 
 ## 📈 版本更新
 
-插件已持续迭代更新以适应不同 LSE 与 LeviLamina 版本。示例更新版本： :contentReference[oaicite:4]{index=4}
-
+插件已持续迭代更新以适应不同 LSE 与 LeviLamina 版本。示例更新版本： 
 | 版本   | 更新内容                   | 日期        |
 |--------|----------------------------|-------------|
 | 1.0.6  | 适配最新 LSE 和 LeviLamina | 2025/01/26  |
 | 2.6.6  | 多项功能更新               | 2025/12/20  |
 | 3.0.0  | GitHub 下载新版           | 未注明      |
 
-⚠️ *以上为部分版本信息，具体以最新资源页 / GitHub 为准。* :contentReference[oaicite:5]{index=5}
+⚠️ *以上为部分版本信息，具体以最新资源页 / GitHub 为准。* 
 
 ---
 
 ## 📥 下载 / 安装
 
 1. 登录 MineBBS 下载资源文件（可能需要权限查看/下载）。  
-2. 将插件文件解压后放入服务器的 `./plugins/` 目录即可运行。 :contentReference[oaicite:6]{index=6}
-
+2. 将插件文件解压后放入服务器的 `./plugins/` 目录即可运行。
 ---
 
 ## 🛠 依赖要求
 
 - 需要 **LegacyScriptEngine** 平台支持  
-- 兼容并能够导入部分 **TMEssential** 的数据 :contentReference[oaicite:7]{index=7}
+- 兼容并能够导入部分 **TMEssential** 的数据
+- 把 服务端目录\plugins\Timiya\data内的homelist.json和warplist.json
+- 移动到服务端目录\plugins\YEssential\data内并且分别重命名为homedata.json和warpdata.json然后保存
 
 ---
 
@@ -62,16 +61,15 @@
 
 适合基岩版 Minecraft 服务器使用，特别是：
 
-- 想从 TMEssential 迁移到更轻量、多功能的基础插件  
-- 需要增强默认指令与服务器管理功能 :contentReference[oaicite:8]{index=8}
-
+- 想从 TMEssential 迁移到新基础插件  
+- 需要增强默认指令与服务器管理功能 
 ---
 
 ## 🧩 与 LeviLamina 关系说明
 
-YEssential 在版本 1.0.6 起已开始兼容 **LeviLamina** 平台，与 LSE 平台配合可以用于更强的服务器模组环境支持。 :contentReference[oaicite:9]{index=9}
+YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE 平台配合可以用于更强的服务器模组环境支持。
 
-*LeviLamina 是一个轻量、模块化的 Minecraft Bedrock Edition 模组加载器，为插件/模组提供基础 API 和事件系统支持。* :contentReference[oaicite:10]{index=10}
+*LeviLamina 是一个轻量、模块化的 Minecraft Bedrock Edition 模组加载器，为插件/模组提供基础 API 和事件系统支持。* 
 
 ---
 
