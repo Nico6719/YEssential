@@ -27,6 +27,7 @@ var CleanMgr = (function () {
       cleanup_start: "§a开始清理实体...",
       cleanup_in_progress: "§c清理任务进行中！",
       cleanup_notice: "§e请注意 ！ {0} 秒后清理实体，请捡起贵重物品！",
+      cleanup_notice2: "§c请注意 ！ {0} 秒后清理实体，请捡起贵重物品！",
       cleanup_complete: "§a已清理 {0} 个实体",
       cleanup_stats: "§a清理统计 - 总计: {0}, 保留: {1}, 清理: {2}",
       low_tps_clean: "§cTPS 过低({0})，已自动清理",
@@ -341,8 +342,21 @@ var CleanMgr = (function () {
     
     return false;
   }
+  /* ================= Toast通知 ================= */
+  function sendToastToAll(title, message) {
+    var players = mc.getOnlinePlayers();
+    for (var i = 0; i < players.length; i++) {
+      try {
+        players[i].sendToast(title, message);
+      } catch (e) {
+        if (config.debug) {
+          logger.warn("发送Toast通知失败: " + e);
+        }
+      }
+    }
+  }
 
-  /* ================= 清理 ================= */
+ /* ================= 清理 ================= */
   function executeClean() {
     state.phase = "cleaning";
     var removed = 0;
@@ -375,6 +389,7 @@ var CleanMgr = (function () {
     }
     
     mc.broadcast(lang.prefix + t("messages.cleanup_complete", removed));
+    sendToastToAll(t("toast_title"), t("messages.cleanup_complete", removed));
     if (config.debug) {
      mc.broadcast(lang.prefix + t("messages.cleanup_stats", total, kept, removed));
      logger.info("清理完成 - 总计: " + total + ", 保留: " + kept + ", 清理: " + removed);
@@ -403,10 +418,11 @@ var CleanMgr = (function () {
     }
 
     mc.broadcast(lang.prefix + t("messages.cleanup_notice", n1));
-
+    sendToastToAll(t("toast_title"), t("messages.cleanup_notice", n1));
     if (n2 > 0 && n2 < n1) {
       state.scheduledTimeouts.push(setTimeout(function () {
-        mc.broadcast(lang.prefix + t("messages.cleanup_notice", n2));
+        mc.broadcast(lang.prefix + t("messages.cleanup_notice2", n2));
+        sendToastToAll(t("toast_title"), t("messages.cleanup_notice2", n2));
       }, (n1 - n2) * 1000));
     }
 
