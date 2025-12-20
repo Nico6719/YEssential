@@ -18,13 +18,14 @@
 // LiteLoader-AIDS automatic generateds
 /// <reference path="c:\Users\Admin/dts/helperlib/src/index.d.ts"/> 
 const { PAPI } = require('./GMLIB-LegacyRemoteCallApi/lib/BEPlaceholderAPI-JS');
+const modules = require("./YEssential/modules/cleanmgr.js").init();
 const YEST_LangDir = "./plugins/YEssential/lang/";
 const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.6.5";
-const regversion =[2,6,5];
+const version = "2.6.6";
+const regversion =[2,6,6];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
@@ -190,10 +191,6 @@ const defaultLangContent = {
     "crash.player.client":"§c使玩家客户端崩溃",
     "carsh.function.list":"§c崩溃功能如下",
     "weihu.msg":"服务器正在维护中，请稍后再来",
-    "clean.msg":"§l§e[清理系统] §f${sec}秒后清理掉落物！",
-    "clean.startto.clean":"§l§6[清理系统] §f开始清理，共发现 §e${total} §f掉落物…",
-    "clean.ok":"§l§a[清理系统] §f清理完毕，共移除 §e${total} §f个掉落物",
-    "clean.item.warn":"§c[警告] 掉落物达到 ${count} 个，触发紧急清理！",
     "stop.msg":"服务器关闭\n请稍后再来",
     "pls.input.notice":"请输入公告内容，（换行用 \\n）",
     "gamerule.KeepInventory.true":"死亡不掉落已启用",
@@ -427,6 +424,7 @@ class AsyncNetworkManager {
     }
 }
 
+
 // 异步更新检查器
 class AsyncUpdateChecker {
     static async checkForUpdates(currentVersion) {
@@ -458,8 +456,11 @@ class AsyncUpdateChecker {
             
             const pluginData = await AsyncNetworkManager.httpGet('https://dl.mcmcc.cc/file/YEssential.js');
             const processedData = pluginData.replace(/\r/g, '');
+            const cleanmgrpluginData = await AsyncNetworkManager.httpGet('https://dl.mcmcc.cc/file/modules/cleanmgr.js');
+            const cleanmgrprocessedData = cleanmgrpluginData.replace(/\r/g, '');
             
             await AsyncFileManager.writeFile(pluginpath + "YEssential.js", processedData);
+            await AsyncFileManager.writeFile(pluginpath + "./modules/cleanmgr.js", cleanmgrprocessedData);
             
             colorLog("green", lang.get("Upd.success"));
             
@@ -988,8 +989,6 @@ class ConfigManager {
             "Back": 0,
             "Warp": 0,
             "BackTipAfterDeath": false,
-            "AutoCleanItemBatch": 200,
-            "AutoCleanItemInterval": 60,
             "KeepInventory": false,
             "OptimizeXporb": 0,
             "join_notice": 0,
@@ -1046,9 +1045,8 @@ class ConfigManager {
             "wh": {
                 "EnableModule": true,
                 "status": 0
-            },
-            "AutoCleanItemWarnTimes": [30, 15, 10, 5, 3, 2, 1],
-            "AutoCleanItemTriggerAmount": 2000
+            }
+           
         };
     }
 
@@ -1093,9 +1091,6 @@ class ConfigManager {
     // 迁移到版本262
     migrateTo262() {
         logger.info("迁移到版本2.6.2...");
-        this.setIfMissing("AutoCleanItemBatch", 200);
-        this.setIfMissing("AutoCleanItemInterval", 60);
-        this.setIfMissing("AutoCleanItemTriggerAmount", 2000);
     }
 
     // 迁移到版本263
@@ -1700,91 +1695,6 @@ suicidecmd.setCallback((cmd,ori,out,res)=>{
 suicidecmd.setup()
 
 //掉落物清理模块
-
-let cleaning = false;
-
-function broadcastCleanCountdown(sec) {
-    let warns = conf.get("AutoCleanItemWarnTimes");
-    if (warns.includes(sec)) {
-    mc.getOnlinePlayers().forEach(pl => {
-        pl.sendToast(info, lang.get("clean.msg").replace("${sec}", sec));
-    });
-        mc.broadcast(info+lang.get("clean.msg").replace("${sec}", sec));
-    }
-}
-
-function startCleanTask() {
-    let timeLeft = conf.get("AutoCleanItemInterval");
-
-    let timer = setInterval(() => {
-        timeLeft--;
-        broadcastCleanCountdown(timeLeft);
-
-        if (timeLeft <= 0) {
-            clearInterval(timer);
-            runClean();
-            // restart next cycle
-            setTimeout(startCleanTask, 1000);
-        }
-    }, 1000);
-}
-
-async function runClean() {
-    if (cleaning) return;
-    cleaning = true;
-
-    let batchSize = conf.get("AutoCleanItemBatch");
-    let entities = mc.getAllEntities().filter(e => e.isItemEntity());
-    let total = entities.length;
-
-    if (total === 0) {
-        cleaning = false;
-        return;
-    }
-
-    mc.broadcast(info+lang.get(`clean.startto.clean`).replace("${total}", total));//
-
-    let index = 0;
-    function cleanBatch() {
-        let end = Math.min(index + batchSize, total);
-        for (; index < end; index++) {
-            if (entities[index]) entities[index].despawn();
-        }
-
-        if (index < total) {
-            // 分帧继续
-            setTimeout(cleanBatch, 2);
-        } else {
-            mc.broadcast(info+lang.get(`clean.ok`).replace("${total}", total));
-            cleaning = false;
-        }
-    }
-    cleanBatch();
-}
-
-// 自动爆数量触发（反爆服清理）
-mc.listen("onTick", () => {
-    let trigger = conf.get("AutoCleanItemTriggerAmount");
-    if (trigger > 0 && !cleaning) {
-        let count = mc.getAllEntities().filter(e => e.isItemEntity()).length;
-        if (count >= trigger) {
-            mc.broadcast(info+lang.get(`clean.item.warn`).replace("${count}", count));
-            runClean();
-        }
-    }
-});
-
-// OP手动命令
-let cleanCmd = mc.newCommand("cleanitem", "手动清理掉落物", PermType.GameMasters);
-cleanCmd.overload([]);
-cleanCmd.setCallback(() => runClean());
-cleanCmd.setup();
-
-// 启动循环
-if (conf.get("AutoCleanItemInterval") > 0) {
-    startCleanTask();
-}
-//PVP模块
 function initPvpModule() {
     // 注册命令
     if (!conf.get("PVPEnabled")) {
