@@ -104,3 +104,11 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
 /redpacket history && list && open && send	 #红包功能（长指令版）
 /rp history && list && open && send	 #红包功能（短指令版）
 /redpackethelp	 #红包功能详解（GUI界面）
+```
+## 贡献
+
+欢迎提交 Issue 和 Pull Request，共同完善 YEssential。
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=Nico6719/YEssential-For-Levilamina&type=Date)](https://star-history.com/#Nico6719/YEssential-For-Levilamina&Date)
