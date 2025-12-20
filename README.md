@@ -2,7 +2,7 @@
 
 **基于 LSE 的多功能基础插件**
 
-> 一个简洁、实用的基础插件，适用于基岩版服务器。支持 LegacyScriptEngine (LSE) 平台，并可迁移 TMEssential 的部分数据（如 home 和 warp）📌。 ([minebbs.com](https://www.minebbs.com/resources/yessential-lse.10332/?utm_source=chatgpt.com))
+> 一个简洁、实用的基础插件，适用于基岩版服务器。支持 LegacyScriptEngine (LSE) 平台，并可迁移 TMEssential 的部分数据（如 home 和 warp）📌。 ([minebbs.com](https://www.minebbs.com/resources/yessential-lse.10332/))
 
 ---
 
@@ -12,7 +12,7 @@
 * **类型**：基础插件 / 多功能前置
 * **平台**：LegacyScriptEngine (LSE)
 * **主要功能**：提供服务器基础指令与功能支持
-* **支持迁移**：TMEssential 的 home 和 warp 数据（可迁移到本插件） ([minebbs.com](https://www.minebbs.com/resources/yessential-lse.10332/?utm_source=chatgpt.com))
+* **支持迁移**：TMEssential 的 home 和 warp 数据（可迁移到本插件） ([minebbs.com](https://www.minebbs.com/resources/yessential-lse.10332/))
 
 ---
 
@@ -22,7 +22,7 @@
 
 ### 🆕 新增 / 修改功能
 
-以下来自历史更新记录摘要： ([minebbs.com](https://www.minebbs.com/resources/yessential-lse.10332/updates?page=5&utm_source=chatgpt.com))
+以下来自历史更新记录摘要： (
 
 * 添加了公告设置功能
 
@@ -44,14 +44,14 @@
 | 2.6.1 | 多项功能更新                | 2025/11/13 |
 | 3.0.0 | 去 GitHub 下载新版         | 未注明        |
 
-*以上为部分版本信息，具体以最新资源页为准。* ([minebbs.com](https://www.minebbs.com/resources/yessential-lse.10332/history?utm_source=chatgpt.com))
+*以上为部分版本信息，具体以最新资源页为准。*
 
 ---
 
 ## 📥 下载 / 安装
 
 请登录 MineBBS 下载资源（资源需要权限查看/下载）。
-插件文件解压后放入服务器的 `./plugins/` 目录即可运行。 ([minebbs.com](https://www.minebbs.com/resources/yessential-lse.10332/?utm_source=chatgpt.com))
+插件文件解压后放入服务器的 `./plugins/` 目录即可运行。
 
 ---
 
