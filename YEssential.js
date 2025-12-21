@@ -686,7 +686,7 @@ class AsyncUpdateChecker {
             const processedData = pluginData.replace(/\r/g, '');
             const cleanmgrpluginData = await AsyncNetworkManager.httpGet('https://dl.mcmcc.cc/file/modules/cleanmgr.js');
             const cleanmgrprocessedData = cleanmgrpluginData.replace(/\r/g, '');
-            const ConfigManagerpluginData = await AsyncNetworkManager.httpGet('https://dl.mcmcc.cc/file/modules/ConfigManagerjs');
+            const ConfigManagerpluginData = await AsyncNetworkManager.httpGet('https://dl.mcmcc.cc/file/modules/ConfigManager.js');
             const ConfigManagerprocessedData = ConfigManagerpluginData.replace(/\r/g, '');
             await AsyncFileManager.writeFile(pluginpath + "YEssential.js", processedData);
             await AsyncFileManager.writeFile(pluginpath + "./modules/cleanmgr.js", cleanmgrprocessedData);
