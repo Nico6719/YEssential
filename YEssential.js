@@ -18,14 +18,13 @@
 // LiteLoader-AIDS automatic generateds
 /// <reference path="c:\Users\Admin/dts/helperlib/src/index.d.ts"/> 
 const { PAPI } = require('./GMLIB-LegacyRemoteCallApi/lib/BEPlaceholderAPI-JS');
-const modules = require("./YEssential/modules/cleanmgr.js").init();
 const YEST_LangDir = "./plugins/YEssential/lang/";
 const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.6.7";
-const regversion =[2,6,7];
+const version = "2.6.8";
+const regversion =[2,6,8];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
@@ -423,8 +422,238 @@ class AsyncNetworkManager {
         });
     }
 }
+/**
+ * YEssential - 模块初始化管理器
+ * 自动加载并初始化 modules 文件夹中的所有模块
+ */
 
+(function() {
+  
+  // 注意：require() 会自动添加 plugins/ 前缀，所以路径不需要 ./plugins/
+  var BASE_PATH = "./YEssential/modules/";
+  
+  // 定义需要加载的模块列表
+  var modules = [
+    { 
+      path: BASE_PATH + "cleanmgr.js",
+      name: "CleanMgr"
+    },
+    { 
+      path: BASE_PATH + "ConfigManager.js",
+      name: "ConfigManager"
+    }
+    // 在这里继续添加其他模块
+    // { path: BASE_PATH + "xxx.js", name: "ModuleName" }
+  ];
+  
+  /**
+   * 初始化所有模块
+   */
+  function initModules() {
 
+    var loadedCount = 0;
+    var failedCount = 0;
+    var currentIndex = 0;
+    
+    // 递归加载模块，每个模块之间延迟
+    function loadNextModule() {
+      if (currentIndex >= modules.length) {
+        if (failedCount > 0) {
+        initPvpModule();
+        initFcamModule();
+        let whConfig = conf.get("wh") || { EnableModule: true, status: 0 };
+        stats = whConfig.status === 1;
+        try {
+        // 第一步：注册PAPI
+        PAPI.registerPlayerPlaceholder(getScoreMoney, "YEssential", "player_money");//注册玩家的金钱PAPI
+        PAPI.registerPlayerPlaceholder(getLLMoney, "YEssential", "player_LLmoney");//注册玩家的LLMoney金钱PAPI 
+        // 第二步：打印Logo
+        logger.info(PluginInfo+lang.get("Version.Chinese")+version+",作者：Nico6719") 
+        logger.info("=".repeat(80)); 
+        logger.info(" ██╗   ██╗███████╗███████╗███████╗███████╗███╗   ██╗████████╗██╗ █████╗ ██╗  ")
+        logger.info(" ╚██╗ ██╔╝██╔════╝██╔════╝██╔════╝██╔════╝████╗  ██║╚══██╔══╝██║██╔══██╗██║  ")
+        logger.info("  ╚████╔╝ █████╗  ███████╗███████╗█████╗  ██╔██╗ ██║   ██║   ██║███████║██║     ")
+        logger.info("   ╚██╔╝  ██╔══╝  ╚════██║╚════██║██╔══╝  ██║╚██╗██║   ██║   ██║██╔══██║██║     ")
+        logger.info("    ██║   ███████╗███████║███████║███████╗██║ ╚████║   ██║   ██║██║  ██║███████╗")
+        logger.info("    ╚═╝   ╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚═╝  ╚═╝╚══════╝")
+        logger.info("=".repeat(80)); 
+        // 异步合并语言文件
+        AsyncLanguageManager.mergeLangFiles();
+          // 第四步：提示维护功能是否开启
+         if (stats) {
+               setTimeout(() => {
+                  logger.warn(lang.get("wh.warn"));
+             }, 3000);
+            }
+           // 第五步：打印Info
+           // logger.warn("这是一个测试版本，请勿用于生产环境！！！")
+            colorLog("blue",lang.get("Tip3"))
+            colorLog("blue",lang.get("Tip2"))
+            colorLog("blue",lang.get("Tip1"))    
+            // 启用死亡不掉落
+            if (conf.get("KeepInventory")) {
+                mc.runcmdEx("gamerule KeepInventory true");
+                colorLog("green", lang.get("gamerule.KeepInventory.true"));
+            }
+            // 检查公告更新
+            const lastShutdown = conf.get("lastServerShutdown") || 0;
+            conf.set("lastServerShutdown", Date.now());
+            const lastUpdate = noticeconf.get("lastNoticeUpdate") || 0;
+            if (lastUpdate > lastShutdown) {
+                conf.set("forceNotice", true);
+                logger.info(lang.get("notice.is.changed"));
+            }
+            // 新增：清理残留的灵魂出窍模拟玩家
+            const allPlayers = mc.getOnlinePlayers();
+            allPlayers.forEach(p => {
+            // FCAM 创建的模拟玩家通常以 _sp 结尾
+                if (p.isSimulatedPlayer() && p.name.endsWith("_sp")) {
+                    logger.warn(`[FCAM] 清理残留的模拟玩家: ${p.name}`);
+                 p.simulateDisconnect();
+              }
+              logger.warn("部分模块加载失败，请检查日志");
+              if (conf.get("AutoUpdate")) {
+                // 不等待更新完成，让其在后台进行
+                AsyncUpdateChecker.checkForUpdates(version).catch(error => {
+                    logger.error("后台更新检查失败: " + error.message);
+                });
+            }
+          });
+       } catch (error) {   
+          logger.error("服务器启动初始化失败: " + error.message);
+          // 添加更详细的错误信息
+         logger.error("错误堆栈: " + error.stack);
+        }
+        } else {
+          initPvpModule();
+          initFcamModule();
+        let whConfig = conf.get("wh") || { EnableModule: true, status: 0 };
+        stats = whConfig.status === 1;
+        try {
+        // 第一步：注册PAPI
+        PAPI.registerPlayerPlaceholder(getScoreMoney, "YEssential", "player_money");//注册玩家的金钱PAPI
+        PAPI.registerPlayerPlaceholder(getLLMoney, "YEssential", "player_LLmoney");//注册玩家的LLMoney金钱PAPI 
+        // 第二步：打印Logo
+        logger.info(PluginInfo+lang.get("Version.Chinese")+version+",作者：Nico6719") 
+        logger.info("=".repeat(80)); 
+        logger.info(" ██╗   ██╗███████╗███████╗███████╗███████╗███╗   ██╗████████╗██╗ █████╗ ██╗  ")
+        logger.info(" ╚██╗ ██╔╝██╔════╝██╔════╝██╔════╝██╔════╝████╗  ██║╚══██╔══╝██║██╔══██╗██║  ")
+        logger.info("  ╚████╔╝ █████╗  ███████╗███████╗█████╗  ██╔██╗ ██║   ██║   ██║███████║██║     ")
+        logger.info("   ╚██╔╝  ██╔══╝  ╚════██║╚════██║██╔══╝  ██║╚██╗██║   ██║   ██║██╔══██║██║     ")
+        logger.info("    ██║   ███████╗███████║███████║███████╗██║ ╚████║   ██║   ██║██║  ██║███████╗")
+        logger.info("    ╚═╝   ╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚═╝  ╚═╝╚══════╝")
+        logger.info("=".repeat(80)); 
+         // 异步合并语言文件
+        AsyncLanguageManager.mergeLangFiles();
+            // 第四步：提示维护功能是否开启
+            if (stats) {
+            setTimeout(() => {
+                 logger.warn(lang.get("wh.warn"));
+            }, 3000);
+            }
+            // 第五步：打印Info
+            // logger.warn("这是一个测试版本，请勿用于生产环境！！！")
+          colorLog("blue",lang.get("Tip3"))
+           colorLog("blue",lang.get("Tip2"))
+            colorLog("blue",lang.get("Tip1"))    
+              // 启用死亡不掉落
+            if (conf.get("KeepInventory")) {
+                mc.runcmdEx("gamerule KeepInventory true");
+                colorLog("green", lang.get("gamerule.KeepInventory.true"));
+            }
+            // 检查公告更新
+            const lastShutdown = conf.get("lastServerShutdown") || 0;
+            conf.set("lastServerShutdown", Date.now());
+            const lastUpdate = noticeconf.get("lastNoticeUpdate") || 0;
+            if (lastUpdate > lastShutdown) {
+                conf.set("forceNotice", true);
+                logger.info(lang.get("notice.is.changed"));
+            }
+            // 新增：清理残留的灵魂出窍模拟玩家
+            const allPlayers = mc.getOnlinePlayers();
+            allPlayers.forEach(p => {
+            // FCAM 创建的模拟玩家通常以 _sp 结尾
+            if (p.isSimulatedPlayer() && p.name.endsWith("_sp")) {
+                    logger.warn(`[FCAM] 清理残留的模拟玩家: ${p.name}`);
+                 p.simulateDisconnect();
+              }
+          });
+          colorLog("green","所有模块加载成功！");
+          // 异步检查更新
+            if (conf.get("AutoUpdate")) {
+                // 不等待更新完成，让其在后台进行
+                AsyncUpdateChecker.checkForUpdates(version).catch(error => {
+                    logger.error("后台更新检查失败: " + error.message);
+                });
+            }
+            } catch (error) {   
+          logger.error("服务器启动初始化失败: " + error.message);
+          // 添加更详细的错误信息
+         logger.error("错误堆栈: " + error.stack);
+        }
+        }
+        return;
+      }
+      var moduleInfo = modules[currentIndex];
+      currentIndex++;
+      
+      try {
+        logger.info("正在加载模块: " + moduleInfo.name + " (" + moduleInfo.path + ")");
+        
+        // 使用 require 加载模块
+        var module = require(moduleInfo.path);
+        
+        if (!module) {
+          logger.warn("模块 " + moduleInfo.name + " 加载失败: 返回值为空");
+          failedCount++;
+          // 延迟后加载下一个模块
+          setTimeout(loadNextModule, 500);
+          return;
+        }
+        
+        // 尝试调用模块的 init 方法
+        if (typeof module.init === "function") {
+          //logger.info("执行模块初始化: " + moduleInfo.name + ".init()");
+          module.init();
+          loadedCount++;
+          //logger.info("✓ 模块 " + moduleInfo.name + " 初始化成功");
+        } 
+        // 如果模块本身是一个对象，检查是否需要初始化
+        else if (typeof module.initializeConfig === "function") {
+          //logger.info("执行模块初始化: " + moduleInfo.name + ".initializeConfig()");
+          module.initializeConfig();
+          loadedCount++;
+          //logger.info("✓ 模块 " + moduleInfo.name + " 初始化成功");
+        }
+        // 如果模块导出的是对象且包含 ConfigManager
+        else if (module.ConfigManager && typeof module.init === "function") {
+          logger.info("执行模块初始化: " + moduleInfo.name + ".init()");
+          module.init();
+          loadedCount++;
+          //logger.info("✓ 模块 " + moduleInfo.name + " 初始化成功");
+        }
+        else {
+          //logger.info("✓ 模块 " + moduleInfo.name + " 加载成功 (无需初始化)");
+          loadedCount++;
+        }
+        
+      } catch (err) {
+        logger.error("✗ 模块 " + moduleInfo.name + " 加载失败: " + err);
+        logger.error("错误堆栈: " + (err.stack || "无堆栈信息"));
+        failedCount++;
+      }
+      
+      // 延迟1秒后加载下一个模块
+      setTimeout(loadNextModule, 10);
+    }
+    // 开始加载第一个模块
+    loadNextModule();
+  }
+  // 延迟执行初始化，确保所有依赖已加载
+  setTimeout(function() {
+    initModules();
+  }, 10);
+})();
 // 异步更新检查器
 class AsyncUpdateChecker {
     static async checkForUpdates(currentVersion) {
@@ -453,17 +682,16 @@ class AsyncUpdateChecker {
     static async downloadUpdate(version) {
         try {
             logger.warn(`正在更新到 ${version} 中.....`);
-            
             const pluginData = await AsyncNetworkManager.httpGet('https://dl.mcmcc.cc/file/YEssential.js');
             const processedData = pluginData.replace(/\r/g, '');
             const cleanmgrpluginData = await AsyncNetworkManager.httpGet('https://dl.mcmcc.cc/file/modules/cleanmgr.js');
             const cleanmgrprocessedData = cleanmgrpluginData.replace(/\r/g, '');
-            
+            const ConfigManagerpluginData = await AsyncNetworkManager.httpGet('https://dl.mcmcc.cc/file/modules/ConfigManager.js');
+            const ConfigManagerprocessedData = ConfigManagerpluginData.replace(/\r/g, '');
             await AsyncFileManager.writeFile(pluginpath + "YEssential.js", processedData);
             await AsyncFileManager.writeFile(pluginpath + "./modules/cleanmgr.js", cleanmgrprocessedData);
-            
+            await AsyncFileManager.writeFile(pluginpath + "./modules/ConfigManager.js", ConfigManagerprocessedData);
             colorLog("green", lang.get("Upd.success"));
-            
             setTimeout(() => {
                 mc.runcmdEx("ll reload YEssential");
             }, 1000);
@@ -969,223 +1197,6 @@ let transdimid = {
     1:"下界",
     2:"末地"
 }
-// 配置版本管理类
-class ConfigManager {
-    constructor() {
-        this.currentVersion = 265;
-        this.configDefaults = {
-            "Version": 265,
-            "AutoUpdate": 1,
-            "PVPEnabled": 1,
-            "HubEnabled": 0,
-            "NoticeEnabled": 0,
-            "CrashModuleEnabled": 0,
-            "TRServersEnabled": false,
-            "RankingModel": 1,
-            "LLMoney": 0,
-            "Scoreboard": "money",
-            "PayTaxRate": 0,
-            "suicide": 0,
-            "Back": 0,
-            "Warp": 0,
-            "BackTipAfterDeath": false,
-            "KeepInventory": false,
-            "OptimizeXporb": 0,
-            "join_notice": 0,
-            "lastServerShutdown": 0,
-            "Motd": ["Bedrock_Server", "Geyser"],
-            "Fcam": {
-                "EnableModule": false,
-                "CostMoney": 0,
-                "TimeOut": 0
-            },
-            "RedPacket": {
-                "EnabledModule": false,
-                "expireTime": 300,
-                "maxAmount": 10000,
-                "maxCount": 50,
-                "minAmount": 1
-            },
-            "RTP": {
-                "EnabledModule": false,
-                "minRadius": 100,
-                "maxRadius": 5000,
-                "cooldown": 300,
-                "cost": 50,
-                "allowDimensions": [0, 1, 2],
-                "safeCheck": true,
-                "maxAttempts": 50,
-                "Animation": 0,
-                "enableParticle": true,
-                "enableSound": true,
-                "logToFile": true
-            },
-            "Hub": {
-                "EnabledModule": false,
-                "x": 0,
-                "y": 100,
-                "z": 0,
-                "dimid": 0,
-                "isSet": false
-            },
-            "tpa": {
-                "EnabledModule": false,
-                "isDelayEnabled": true,
-                "cost": 1,
-                "maxDelay": 20,
-                "requestTimeout": 60,
-                "promptType": "form"
-            },
-            "Home": {
-                "add": 0,
-                "del": 0,
-                "tp": 0,
-                "MaxHome": 10
-            },
-            "wh": {
-                "EnableModule": true,
-                "status": 0
-            }
-           
-        };
-    }
-
-    // 初始化配置迁移
-    initConfigMigration() {
-        let savedVersion = conf.get("Version") || 0;
-        
-        if (savedVersion < this.currentVersion) {
-            logger.info(`检测到配置版本更新: ${savedVersion} -> ${this.currentVersion}, 开始迁移配置...`);
-            this.migrateConfig(savedVersion);
-            conf.set("Version", this.currentVersion);
-            logger.info("配置迁移完成！");
-        }
-        
-        // 确保所有配置项都存在
-        this.ensureAllConfigs();
-    }
-
-    // 迁移配置
-    migrateConfig(oldVersion) {
-        // 版本特定的迁移逻辑
-        if (oldVersion < 261) {
-            this.migrateTo261();
-        }
-        if (oldVersion < 262) {
-            this.migrateTo262();
-        }
-        if (oldVersion < 263) {
-            this.migrateTo263();
-        }
-        if (oldVersion < 264) {
-            this.migrateTo264();
-        }
-    }
-
-    // 迁移到版本261
-    migrateTo261() {
-        logger.info("迁移到版本2.6.1...");
-        this.setIfMissing("BackTipAfterDeath", false);
-    }
-
-    // 迁移到版本262
-    migrateTo262() {
-        logger.info("迁移到版本2.6.2...");
-    }
-
-    // 迁移到版本263
-    migrateTo263() {
-        logger.info("迁移到版本2.6.3...");
-        this.ensureObjectConfig("tpa", this.configDefaults.tpa);
-    }
-
-    // 迁移到版本264
-    migrateTo264() {
-        logger.info("迁移到版本2.6.4...");
-        // 添加 Fcam 配置
-        this.ensureObjectConfig("Fcam", this.configDefaults.Fcam);
-        // 添加 wh 配置
-        this.ensureObjectConfig("wh", this.configDefaults.wh);
-    }
-
-    // 设置配置项（如果不存在）
-    setIfMissing(key, defaultValue) {
-        if (conf.get(key) === undefined) {
-            conf.set(key, defaultValue);
-            logger.info(`添加缺失配置: ${key} = ${JSON.stringify(defaultValue)}`);
-        }
-    }
-
-    // 确保对象配置存在并包含所有必要的属性
-    ensureObjectConfig(key, defaultConfig) {
-        let currentConfig = conf.get(key);
-        
-        // 修复：检查当前配置是否为有效的对象
-        if (currentConfig === undefined || 
-            currentConfig === null || 
-            typeof currentConfig !== 'object' || 
-            Array.isArray(currentConfig)) {
-            // 如果当前配置不是有效对象，则使用默认配置
-            conf.set(key, defaultConfig);
-            logger.info(`创建对象配置: ${key}`);
-            return;
-        }
-
-        // 合并配置，保留现有值，添加缺失的属性
-        let merged = this.mergeConfigs(defaultConfig, currentConfig);
-        conf.set(key, merged);
-        
-        // 检查是否有新增的属性
-        let addedProps = this.getAddedProperties(defaultConfig, currentConfig);
-        if (addedProps.length > 0) {
-            logger.info(`配置 ${key} 新增属性: ${addedProps.join(", ")}`);
-        }
-    }
-
-    // 合并配置对象
-    mergeConfigs(defaultConfig, currentConfig) {
-        let merged = JSON.parse(JSON.stringify(currentConfig));
-        
-        for (let key in defaultConfig) {
-            if (merged[key] === undefined) {
-                merged[key] = defaultConfig[key];
-            } else if (typeof defaultConfig[key] === 'object' && defaultConfig[key] !== null && !Array.isArray(defaultConfig[key])) {
-                // 递归合并嵌套对象
-                merged[key] = this.mergeConfigs(defaultConfig[key], merged[key]);
-            }
-        }
-        
-        return merged;
-    }
-
-    // 获取新增的属性
-    getAddedProperties(defaultConfig, currentConfig) {
-        let added = [];
-        for (let key in defaultConfig) {
-            if (currentConfig[key] === undefined) {
-                added.push(key);
-            }
-        }
-        return added;
-    }
-
-    // 确保所有配置项都存在
-    ensureAllConfigs() {
-        logger.info("检查所有配置项...");
-        
-        for (let key in this.configDefaults) {
-            if (typeof this.configDefaults[key] === 'object' && this.configDefaults[key] !== null && !Array.isArray(this.configDefaults[key])) {
-                this.ensureObjectConfig(key, this.configDefaults[key]);
-            } else {
-                this.setIfMissing(key, this.configDefaults[key]);
-            }
-        }
-    }
-}
-
-// 创建配置管理器实例
-let configManager = new ConfigManager();
-
 /////////////////////////////////////////////////////////////////////////////////////////////
 // 定时更新玩家金币排行榜
 setInterval(() => {
@@ -1494,79 +1505,6 @@ function compareVersions(v1, v2) {
     }
     return 0;  // 版本相同
 }
-initAllModules();
-// ======================
-// 服务器启动
-// ======================
-mc.listen("onServerStarted", async () => {     
-    let whConfig = conf.get("wh") || { EnableModule: true, status: 0 };
-    stats = whConfig.status === 1;
-    try {
-        // 第一步：注册PAPI
-        PAPI.registerPlayerPlaceholder(getScoreMoney, "YEssential", "player_money");//注册玩家的金钱PAPI
-        PAPI.registerPlayerPlaceholder(getLLMoney, "YEssential", "player_LLmoney");//注册玩家的LLMoney金钱PAPI 
-        // 第二步：打印Logo
-        logger.info(PluginInfo+lang.get("Version.Chinese")+version+",作者：Nico6719") 
-        logger.info("--------------------------------------------------------------------------------")
-        logger.info(" ██╗   ██╗███████╗███████╗███████╗███████╗███╗   ██╗████████╗██╗ █████╗ ██╗  ")
-        logger.info(" ╚██╗ ██╔╝██╔════╝██╔════╝██╔════╝██╔════╝████╗  ██║╚══██╔══╝██║██╔══██╗██║  ")
-        logger.info("  ╚████╔╝ █████╗  ███████╗███████╗█████╗  ██╔██╗ ██║   ██║   ██║███████║██║     ")
-        logger.info("   ╚██╔╝  ██╔══╝  ╚════██║╚════██║██╔══╝  ██║╚██╗██║   ██║   ██║██╔══██║██║     ")
-        logger.info("    ██║   ███████╗███████║███████║███████╗██║ ╚████║   ██║   ██║██║  ██║███████╗")
-        logger.info("    ╚═╝   ╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚═╝  ╚═╝╚══════╝")
-        logger.info("--------------------------------------------------------------------------------")
-        // 第三步：初始化系统
-        logger.info("正在初始化配置系统...");
-        configManager.initConfigMigration();
-        logger.info("配置系统初始化完成！");
-         // 异步检查更新
-            if (conf.get("AutoUpdate")) {
-                // 不等待更新完成，让其在后台进行
-                AsyncUpdateChecker.checkForUpdates(version).catch(error => {
-                    logger.error("后台更新检查失败: " + error.message);
-                });
-            }
-             // 异步合并语言文件
-            await AsyncLanguageManager.mergeLangFiles();
-        // 第四步：提示维护功能是否开启
-        if (stats) {
-            setTimeout(() => {
-                 logger.warn(lang.get("wh.warn"));
-            }, 3000);
-        }
-        // 第五步：打印Info
-        // logger.warn("这是一个测试版本，请勿用于生产环境！！！")
-        colorLog("blue",lang.get("Tip3"))
-        colorLog("blue",lang.get("Tip2"))
-        colorLog("blue",lang.get("Tip1"))    
-            // 启用死亡不掉落
-            if (conf.get("KeepInventory")) {
-                mc.runcmdEx("gamerule KeepInventory true");
-                colorLog("green", lang.get("gamerule.KeepInventory.true"));
-            }
-            // 检查公告更新
-            const lastShutdown = conf.get("lastServerShutdown") || 0;
-            conf.set("lastServerShutdown", Date.now());
-            const lastUpdate = noticeconf.get("lastNoticeUpdate") || 0;
-            if (lastUpdate > lastShutdown) {
-                conf.set("forceNotice", true);
-                logger.info(lang.get("notice.is.changed"));
-            }
-            // 新增：清理残留的灵魂出窍模拟玩家
-            const allPlayers = mc.getOnlinePlayers();
-            allPlayers.forEach(p => {
-            // FCAM 创建的模拟玩家通常以 _sp 结尾
-                if (p.isSimulatedPlayer() && p.name.endsWith("_sp")) {
-                    logger.warn(`[FCAM] 清理残留的模拟玩家: ${p.name}`);
-                 p.simulateDisconnect();
-            }
-    });
-    } catch (error) {
-        logger.error("服务器启动初始化失败: " + error.message);
-        // 添加更详细的错误信息
-        logger.error("错误堆栈: " + error.stack);
-    }
-});
 function getScoreMoney(pl) {
     let ScoreMoney = pl.getScore(conf.get("Scoreboard"))
     return  ScoreMoney.toString();
@@ -1992,11 +1930,6 @@ function initFcamModule() {
     });
 }
 
-// 初始化所有模块
-function initAllModules() {
-    initPvpModule();
-    initFcamModule();
-}
 function Motd(){
     let motds = conf.get("Motd")
     if(motds == []) return
