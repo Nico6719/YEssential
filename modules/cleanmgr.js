@@ -187,10 +187,10 @@ var CleanMgr = (function () {
     // 尝试加载语言文件
     try { 
       var content = File.readFrom(LANG_PATH);
-      logger.info("读取语言文件，长度: " + content.length);
+     // logger.info("读取语言文件，长度: " + content.length);
       
       var loaded = JSON.parse(content);
-      logger.info("JSON解析成功");
+      //logger.info("JSON解析成功");
       
       // 深度合并
       var merged = merge(DEFAULT_LANG, loaded);
@@ -214,7 +214,7 @@ var CleanMgr = (function () {
         }
       }
       
-      logger.info("语言文件加载并验证成功");
+      //logger.info("语言文件加载并验证成功");
       return merged;
     } catch (e) { 
       logger.error("加载语言文件失败: " + e);
@@ -520,8 +520,6 @@ var CleanMgr = (function () {
       });
       
       cmd.setup();
-      logger.info("清理命令 /" + config.clean_Cmd + " 注册成功 (方案1: 枚举参数)");
-      logger.info("可用子命令: now(默认), status, cancel, tps, help");
       return;
     } catch (e) {
       if (config.debug) {
@@ -588,15 +586,12 @@ var CleanMgr = (function () {
 
   /* ================= 初始化 ================= */
   function init() {
-    setTimeout(() => {  
-    logger.info("=".repeat(50));
+
     logger.info("CleanMgr 模块初始化中…");
-    logger.info("LSE版本兼容模式已启用");
-    logger.info("=".repeat(50));
+
     
     // 先加载配置（用于debug设置）
     config = loadConfig();
-    logger.info("配置文件加载完成");
     
     // 显示调试模式状态
     if (config.debug) {
@@ -643,21 +638,12 @@ var CleanMgr = (function () {
     compileWhitelist();
     
     initTpsSampler();
-    logger.info("TPS采样器已启动");
     
     registerCommand();
     
     startTimers();
-    logger.info("定时器已启动 - 间隔: " + config.interval + " 秒");
-    
-    mc.broadcast(lang.prefix + t("messages.system_started"));
-    mc.broadcast(lang.prefix + t("messages.command_help_tip"));
-   
-    logger.info("=".repeat(50));
-    logger.info("CleanMgr 启动完成");
-    logger.info("=".repeat(50));  
-    }, 2000);
-    
+  
+    logger.info("CleanMgr 启动完成"); 
   }
 
   return { init: init };
