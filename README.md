@@ -70,7 +70,12 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
 *LeviLamina 是一个轻量、模块化的 Minecraft Bedrock Edition 模组加载器，为插件/模组提供基础 API 和事件系统支持。* 
 
 ---
-
+## 📦 配置文件
+```json
+{
+ test
+}
+---
 ## 📦 示例指令
 
 以下是部分常用指令示例（视插件版本可能会有所变动）：
