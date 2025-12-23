@@ -42,9 +42,8 @@
 
 ## 📥 下载 / 安装
 
-1. 前往 [MineBBS](https://www.minebbs.com/resources/yessential-lse.10332/) & [何意味网盘](https://xn--vzyr4p.xn--vqqq8jxym.com/disk/s/pVEv2fyRnFB?domainId=bj27706) & [Releases](https://github.com/Nico6719/YEssential-For-Levilamina/releases) [Y系列插件下载站](dl.mcmcc.cc)下载本插件
-   
-4. 将插件文件解压后放入服务器的 `./plugins/` 目录即可运行。
+1. 前往 [MineBBS](https://www.minebbs.com/resources/yessential-lse.10332/) & [何意味网盘](https://xn--vzyr4p.xn--vqqq8jxym.com/disk/s/pVEv2fyRnFB?domainId=bj27706) & [Releases](https://github.com/Nico6719/YEssential-For-Levilamina/releases) & [Y系列插件下载站](dl.mcmcc.cc)下载本插件
+2. 将插件文件解压后放入服务器的 `./plugins/` 目录即可运行。
 ---
 
 ## 🛠 依赖要求
