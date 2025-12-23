@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.6.9";
-const regversion =[2,6,9];
+const version = "2.7.0";
+const regversion =[2,7,0];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("1.1"));
@@ -455,185 +455,58 @@ class AsyncNetworkManager {
     var failedCount = 0;
     var currentIndex = 0;
     
-    // 递归加载模块，每个模块之间延迟
-    function loadNextModule() {
+ function loadNextModule() {
       if (currentIndex >= modules.length) {
-        if (failedCount > 0) {
         initPvpModule();
         initFcamModule();
         let whConfig = conf.get("wh") || { EnableModule: true, status: 0 };
         stats = whConfig.status === 1;
+        
         try {
-        // 第一步：注册PAPI
-        PAPI.registerPlayerPlaceholder(getScoreMoney, "YEssential", "player_money");//注册玩家的金钱PAPI
-        PAPI.registerPlayerPlaceholder(getLLMoney, "YEssential", "player_LLmoney");//注册玩家的LLMoney金钱PAPI 
-        // 第二步：打印Logo
-        logger.info(PluginInfo+lang.get("Version.Chinese")+version+",作者：Nico6719") 
-        logger.info("=".repeat(80)); 
-        logger.info(" ██╗   ██╗███████╗███████╗███████╗███████╗███╗   ██╗████████╗██╗ █████╗ ██╗  ")
-        logger.info(" ╚██╗ ██╔╝██╔════╝██╔════╝██╔════╝██╔════╝████╗  ██║╚══██╔══╝██║██╔══██╗██║  ")
-        logger.info("  ╚████╔╝ █████╗  ███████╗███████╗█████╗  ██╔██╗ ██║   ██║   ██║███████║██║     ")
-        logger.info("   ╚██╔╝  ██╔══╝  ╚════██║╚════██║██╔══╝  ██║╚██╗██║   ██║   ██║██╔══██║██║     ")
-        logger.info("    ██║   ███████╗███████║███████║███████╗██║ ╚████║   ██║   ██║██║  ██║███████╗")
-        logger.info("    ╚═╝   ╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚═╝  ╚═╝╚══════╝")
-        logger.info("=".repeat(80)); 
-        // 异步合并语言文件
-        AsyncLanguageManager.mergeLangFiles();
-          // 第四步：提示维护功能是否开启
-         if (stats) {
-               setTimeout(() => {
-                  logger.warn(lang.get("wh.warn"));
-             }, 3000);
+            initializePlugin();
+            
+            if (failedCount > 0) {
+                logger.warn("部分模块加载失败，请检查日志");
+            } else {
+                colorLog("green","所有模块加载成功！");
             }
-           // 第五步：打印Info
-           // logger.warn("这是一个测试版本，请勿用于生产环境！！！")
-            colorLog("blue",lang.get("Tip3"))
-            colorLog("blue",lang.get("Tip2"))
-            colorLog("blue",lang.get("Tip1"))    
-            // 启用死亡不掉落
-            if (conf.get("KeepInventory")) {
-                mc.runcmdEx("gamerule KeepInventory true");
-                colorLog("green", lang.get("gamerule.KeepInventory.true"));
-            }
-            // 检查公告更新
-            const lastShutdown = conf.get("lastServerShutdown") || 0;
-            conf.set("lastServerShutdown", Date.now());
-            const lastUpdate = noticeconf.get("lastNoticeUpdate") || 0;
-            if (lastUpdate > lastShutdown) {
-                conf.set("forceNotice", true);
-                logger.info(lang.get("notice.is.changed"));
-            }
-            // 新增：清理残留的灵魂出窍模拟玩家
-            const allPlayers = mc.getOnlinePlayers();
-            allPlayers.forEach(p => {
-            // FCAM 创建的模拟玩家通常以 _sp 结尾
-                if (p.isSimulatedPlayer() && p.name.endsWith("_sp")) {
-                    logger.warn(`[FCAM] 清理残留的模拟玩家: ${p.name}`);
-                 p.simulateDisconnect();
-              }
-              logger.warn("部分模块加载失败，请检查日志");
-              if (conf.get("AutoUpdate")) {
-                // 不等待更新完成，让其在后台进行
-                AsyncUpdateChecker.checkForUpdates(version).catch(error => {
-                    logger.error("后台更新检查失败: " + error.message);
-                });
-            }
-          });
-       } catch (error) {   
-          logger.error("服务器启动初始化失败: " + error.message);
-          // 添加更详细的错误信息
-         logger.error("错误堆栈: " + error.stack);
+        } catch (error) {   
+            logger.error("服务器启动初始化失败: " + error.message);
+            logger.error("错误堆栈: " + error.stack);
         }
-        } else {
-          initPvpModule();
-          initFcamModule();
-        let whConfig = conf.get("wh") || { EnableModule: true, status: 0 };
-        stats = whConfig.status === 1;
-        try {
-        // 第一步：注册PAPI
-        PAPI.registerPlayerPlaceholder(getScoreMoney, "YEssential", "player_money");//注册玩家的金钱PAPI
-        PAPI.registerPlayerPlaceholder(getLLMoney, "YEssential", "player_LLmoney");//注册玩家的LLMoney金钱PAPI 
-        // 第二步：打印Logo
-        logger.info(PluginInfo+lang.get("Version.Chinese")+version+",作者：Nico6719") 
-        logger.info("=".repeat(80)); 
-        logger.info(" ██╗   ██╗███████╗███████╗███████╗███████╗███╗   ██╗████████╗██╗ █████╗ ██╗  ")
-        logger.info(" ╚██╗ ██╔╝██╔════╝██╔════╝██╔════╝██╔════╝████╗  ██║╚══██╔══╝██║██╔══██╗██║  ")
-        logger.info("  ╚████╔╝ █████╗  ███████╗███████╗█████╗  ██╔██╗ ██║   ██║   ██║███████║██║     ")
-        logger.info("   ╚██╔╝  ██╔══╝  ╚════██║╚════██║██╔══╝  ██║╚██╗██║   ██║   ██║██╔══██║██║     ")
-        logger.info("    ██║   ███████╗███████║███████║███████╗██║ ╚████║   ██║   ██║██║  ██║███████╗")
-        logger.info("    ╚═╝   ╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚═╝  ╚═╝╚══════╝")
-        logger.info("=".repeat(80)); 
-         // 异步合并语言文件
-        AsyncLanguageManager.mergeLangFiles();
-            // 第四步：提示维护功能是否开启
-            if (stats) {
-            setTimeout(() => {
-                 logger.warn(lang.get("wh.warn"));
-            }, 3000);
-            }
-            // 第五步：打印Info
-            // logger.warn("这是一个测试版本，请勿用于生产环境！！！")
-          colorLog("blue",lang.get("Tip3"))
-           colorLog("blue",lang.get("Tip2"))
-            colorLog("blue",lang.get("Tip1"))    
-              // 启用死亡不掉落
-            if (conf.get("KeepInventory")) {
-                mc.runcmdEx("gamerule KeepInventory true");
-                colorLog("green", lang.get("gamerule.KeepInventory.true"));
-            }
-            // 检查公告更新
-            const lastShutdown = conf.get("lastServerShutdown") || 0;
-            conf.set("lastServerShutdown", Date.now());
-            const lastUpdate = noticeconf.get("lastNoticeUpdate") || 0;
-            if (lastUpdate > lastShutdown) {
-                conf.set("forceNotice", true);
-                logger.info(lang.get("notice.is.changed"));
-            }
-            // 新增：清理残留的灵魂出窍模拟玩家
-            const allPlayers = mc.getOnlinePlayers();
-            allPlayers.forEach(p => {
-            // FCAM 创建的模拟玩家通常以 _sp 结尾
-            if (p.isSimulatedPlayer() && p.name.endsWith("_sp")) {
-                    logger.warn(`[FCAM] 清理残留的模拟玩家: ${p.name}`);
-                 p.simulateDisconnect();
-              }
-          });
-          colorLog("green","所有模块加载成功！");
-          // 异步检查更新
-            if (conf.get("AutoUpdate")) {
-                // 不等待更新完成，让其在后台进行
-                AsyncUpdateChecker.checkForUpdates(version).catch(error => {
-                    logger.error("后台更新检查失败: " + error.message);
-                });
-            }
-            } catch (error) {   
-          logger.error("服务器启动初始化失败: " + error.message);
-          // 添加更详细的错误信息
-         logger.error("错误堆栈: " + error.stack);
-        }
-        }
+        
         return;
       }
+      
       var moduleInfo = modules[currentIndex];
       currentIndex++;
       
       try {
         logger.info("正在加载模块: " + moduleInfo.name + " (" + moduleInfo.path + ")");
         
-        // 使用 require 加载模块
         var module = require(moduleInfo.path);
         
         if (!module) {
           logger.warn("模块 " + moduleInfo.name + " 加载失败: 返回值为空");
           failedCount++;
-          // 延迟后加载下一个模块
           setTimeout(loadNextModule, 500);
           return;
         }
         
-        // 尝试调用模块的 init 方法
         if (typeof module.init === "function") {
-          //logger.info("执行模块初始化: " + moduleInfo.name + ".init()");
           module.init();
           loadedCount++;
-          //logger.info("✓ 模块 " + moduleInfo.name + " 初始化成功");
         } 
-        // 如果模块本身是一个对象，检查是否需要初始化
         else if (typeof module.initializeConfig === "function") {
-          //logger.info("执行模块初始化: " + moduleInfo.name + ".initializeConfig()");
           module.initializeConfig();
           loadedCount++;
-          //logger.info("✓ 模块 " + moduleInfo.name + " 初始化成功");
         }
-        // 如果模块导出的是对象且包含 ConfigManager
         else if (module.ConfigManager && typeof module.init === "function") {
           logger.info("执行模块初始化: " + moduleInfo.name + ".init()");
           module.init();
           loadedCount++;
-          //logger.info("✓ 模块 " + moduleInfo.name + " 初始化成功");
         }
         else {
-          //logger.info("✓ 模块 " + moduleInfo.name + " 加载成功 (无需初始化)");
           loadedCount++;
         }
         
@@ -643,17 +516,84 @@ class AsyncNetworkManager {
         failedCount++;
       }
       
-      // 延迟1秒后加载下一个模块
       setTimeout(loadNextModule, 10);
     }
-    // 开始加载第一个模块
+    
+    // 在开始加载模块前先打印Logo和基本信息
+    printPluginHeader();
+    
     loadNextModule();
   }
-  // 延迟执行初始化，确保所有依赖已加载
+  
   setTimeout(function() {
     initModules();
   }, 10);
 })();
+
+function printPluginHeader() {
+    // 打印Logo和版本信息
+    logger.info(PluginInfo + lang.get("Version.Chinese") + version + ",作者：Nico6719");
+    logger.info("=".repeat(80));
+    logger.info(" ██╗   ██╗███████╗███████╗███████╗███████╗███╗   ██╗████████╗██╗ █████╗ ██╗  ");
+    logger.info(" ╚██╗ ██╔╝██╔════╝██╔════╝██╔════╝██╔════╝████╗  ██║╚══██╔══╝██║██╔══██╗██║  ");
+    logger.info("  ╚████╔╝ █████╗  ███████╗███████╗█████╗  ██╔██╗ ██║   ██║   ██║███████║██║     ");
+    logger.info("   ╚██╔╝  ██╔══╝  ╚════██║╚════██║██╔══╝  ██║╚██╗██║   ██║   ██║██╔══██║██║     ");
+    logger.info("    ██║   ███████╗███████║███████║███████╗██║ ╚████║   ██║   ██║██║  ██║███████╗");
+    logger.info("    ╚═╝   ╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚═╝  ╚═╝╚══════╝");
+    logger.info("=".repeat(80));
+    colorLog("blue", lang.get("Tip3"));
+    colorLog("blue", lang.get("Tip2"));
+    colorLog("blue", lang.get("Tip1"));
+}
+
+function initializePlugin() {
+    // 第一步：注册PAPI
+    PAPI.registerPlayerPlaceholder(getScoreMoney, "YEssential", "player_money");
+    PAPI.registerPlayerPlaceholder(getLLMoney, "YEssential", "player_LLmoney");
+    
+    // 第二步：异步合并语言文件
+    AsyncLanguageManager.mergeLangFiles();
+    
+    // 第三步：提示维护功能是否开启
+    if (stats) {
+        setTimeout(() => {
+            logger.warn(lang.get("wh.warn"));
+        }, 3000);
+    }
+    
+    // 第四步：启用死亡不掉落
+    if (conf.get("KeepInventory")) {
+        mc.runcmdEx("gamerule KeepInventory true");
+        colorLog("green", lang.get("gamerule.KeepInventory.true"));
+    }
+    
+    // 第五步：检查公告更新
+    const lastShutdown = conf.get("lastServerShutdown") || 0;
+    conf.set("lastServerShutdown", Date.now());
+    const lastUpdate = noticeconf.get("lastNoticeUpdate") || 0;
+    if (lastUpdate > lastShutdown) {
+        conf.set("forceNotice", true);
+        logger.info(lang.get("notice.is.changed"));
+    }
+    
+    // 第六步：清理残留的灵魂出窍模拟玩家
+    const allPlayers = mc.getOnlinePlayers();
+    allPlayers.forEach(p => {
+        // FCAM 创建的模拟玩家通常以 _sp 结尾
+        if (p.isSimulatedPlayer() && p.name.endsWith("_sp")) {
+            logger.warn(`[FCAM] 清理残留的模拟玩家: ${p.name}`);
+            p.simulateDisconnect();
+        }
+    });
+    
+    // 第七步：异步检查更新
+    if (conf.get("AutoUpdate")) {
+        AsyncUpdateChecker.checkForUpdates(version).catch(error => {
+            logger.error("后台更新检查失败: " + error.message);
+        });
+    }
+}
+
 // 异步更新检查器
 class AsyncUpdateChecker {
     static async checkForUpdates(currentVersion) {
@@ -3890,6 +3830,7 @@ setInterval(() => {
 
 // 在插件初始化后添加红包帮助命令
 mc.listen("onServerStarted", () => {
+    setTimeout(() => {
     if (!conf.get("RedPacket").EnabledModule) {
         return;
     } else {
@@ -3963,5 +3904,5 @@ mc.listen("onServerStarted", () => {
                 pl.sendForm(detailForm, () => {});
             });
         });
-    }
-});     
+    }}, 1000);
+});         
