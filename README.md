@@ -71,6 +71,7 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
 
 ---
 ## 📦 配置文件
+- ./Config/config.json
 ```json
 {
     "AutoUpdate": 1,  //自动更新，默认为开启
@@ -156,6 +157,67 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
 }
 ```
 > 懒怎么办？？ 试试[网页配置编辑器](https://jzrxh.work/projects/yessential/config.html)吧！
+- ./Config/cleanmgr/config.json
+```json
+{
+  "cleanmgr": {
+    "enable": true,  //是否开启清理模块
+    "interval": 600,  //定时清理（单位： 秒）
+    "debug": false,  //debug模式
+    "whitelist": [  //清理白名单
+      "^minecraft:netherite_",
+      "^minecraft:ancient_debris$",
+      "^minecraft:dragon_egg$",
+      "^minecraft:nether_star$",
+      "^minecraft:elytra$",
+      "^minecraft:emerald$",
+      "^minecraft:beacon$",
+      "^minecraft:ender_eye$",
+      "^minecraft:shulker_box$",
+      "^minecraft:sea_lantern$",
+      "^minecraft:enchanted_book$",
+      "^minecraft:diamond",
+      "^minecraft:totem_of_undying$",
+      "^minecraft:ender_pearl$",
+      "^minecraft:villager_v2$",
+      "^minecraft:ender_crystal$",
+      "^minecraft:ender_dragon$",
+      "^minecraft:parrot$",
+      "^minecraft:chest_minecart$",
+      "^minecraft:minecart$",
+      "^minecraft:hopper_minecart$",
+      "^minecraft:armor_stand$",
+      "^minecraft:boat$",
+      "^minecraft:sheep$",
+      "^minecraft:cow$",
+      "^minecraft:pig$",
+      "^minecraft:painting$"
+    ],
+    "notice": {  //倒计时提示
+      "notice1": 30,
+      "notice2": 10
+    },
+    "LowTpsClean": {  //低tps自动清理
+      "enable": true,
+      "minimum": 15
+    },
+    "clean_Cmd": "clean",  //清理命令自定义
+    "playerCooldown": 300  //玩家执行清理冷却时长（单位/秒）
+  }
+}
+```
+- ./data/TrSeverData/server.json
+```json
+{
+    "servers": [
+      {"server_name":"下北泽服务器","server_ip":"1.14.5.14","server_port":19181}
+    ],
+    "servers1": [
+      {"server_name":"下北泽服务器","server_ip":"1.14.5.14","server_port":11451}
+    ]
+  }
+```
+
 ---
 ## 📦 示例指令
 
