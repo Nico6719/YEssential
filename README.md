@@ -5,7 +5,7 @@
 <h3>🔄 插件重构进度</h3>
 <p><strong>当前进度：35%</strong></p>
 <progress value="35" max="100" style="width: 300px; height: 20px;"></progress>
-<p><code>已完成：35% | 剩余：65%</code></p>
+<p><code>已完成：35% </code></p>
 
 ## 📌 基本信息
 
