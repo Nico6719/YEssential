@@ -2,7 +2,15 @@
 **基于 LSE 的多功能基础插件**  
 
 > 一个简洁、实用的基础插件，适用于基岩版服务器。支持 LegacyScriptEngine (LSE) 平台，并可迁移 TMEssential 的部分数据（如 home 和 warp）。 
+```mermaid
+gantt
+    title 插件重构进度
+    dateFormat  X
+    axisFormat  %s%
+    
+    已完成 :done, 35, 100
 
+```
 ---
 
 ## 📌 基本信息
