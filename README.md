@@ -2,11 +2,12 @@
 **基于 LSE 的多功能基础插件**  
 
 > 一个简洁、实用的基础插件，适用于基岩版服务器。支持 LegacyScriptEngine (LSE) 平台，并可迁移 TMEssential 的部分数据（如 home 和 warp）。 
-<h3>🔄 插件重构进度</h3>
-<p><strong>当前进度：35%</strong></p>
-<progress value="35" max="100" style="width: 300px; height: 20px;"></progress>
-<p><code>已完成：35% </code></p>
-
+<div style="background: #e0e0e0; border-radius: 10px; width: 300px; height: 20px; margin: 10px 0;">
+  <div style="background: #4CAF50; border-radius: 10px; width: 35%; height: 100%; text-align: center; color: white; line-height: 20px;">
+    35%
+  </div>
+</div>
+**插件重构** · 预计完成: 未知
 ## 📌 基本信息
 
 - **名称**：YEssential  
