@@ -42,7 +42,7 @@
 
 ## 📥 下载 / 安装
 
-1. 登录 MineBBS 下载资源文件（可能需要权限查看/下载）。  
+1. 前往 [MineBBS](https://www.minebbs.com/resources/yessential-lse.10332/) 下载资源文件（可能需要权限查看/下载）。  
 2. 将插件文件解压后放入服务器的 `./plugins/` 目录即可运行。
 ---
 
