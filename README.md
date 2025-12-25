@@ -48,7 +48,7 @@
 |%player_money% |显示玩家的计分板经济|
 |%player_llmoney%|显示玩家的LLMoney经济|
 
-### 🆕 新增 / 修改功能  
+### 🆕 新增 / 修改过的功能  
 <details>
 <summary>点击这里展开/折叠</summary>
   
