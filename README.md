@@ -19,30 +19,30 @@
 
 |功能  	 |描述	                      |状态 |
 |--------|----------------------------|-------------|
-Economic	经济核心，对接 PAPI。变量：%player_money% 和 %player_llmoney%，可以显示当前玩家金币数量。	✅
-Hub	一键回城，可通过指令设置传送点。	✅
-Rtp	随机传送，附带动画。	✅
-Tpa	传送系统，借鉴了子邪大佬写的 TeleportMaster。	✅
-Home&Warp	家系统和公共传送点系统。	✅
-Fcam	灵魂出窍（旁观者）。	✅
-Back&DeathLog	回死亡点以及记录玩家死亡点。	✅
-DMotd	动态 Motd 功能。	✅
-WeiHu	维护服务器功能，禁止其他非管理成员进入服务器。	✅
-Clean	自动清理掉落物和实体，掉落物过多时 & 定时自动清理，支持白名单。	✅
-Suicide	玩家紫砂（kill myself）。	✅
-BStopMsg	自定义关服提示。	✅
-MoreLangSupport	多语言支持。	✅
-Notice	自定义公告，支持颜色符号，\n换行，支持游戏内在线编辑！	✅
-FixExpLag	防止经验球卡服。	✅
-Crash	崩溃玩家客户端（慎用！）。	✅
-RedPacket	玩家可以自行发红包。	✅
-ServersTP	一键传送到其他服务器。	✅
-PVP	PVP 功能，防止玩家恶意攻击。	✅
-Keepinventory	开服自动开启死亡不掉落。	✅
-AutoUpdate	自动更新插件本体并重载。	✅
-Gui修改插件配置	网页编辑器。	✅
-Plugin for Endstone	Endstone 版本的 YEssential。	🚧 开发中
-SideBar	支持自定义侧边栏以及支持 PAPI 变量。	📅 计划中
+ |Economic	 |经济核心，对接 PAPI。变量：%player_money% 和 %player_llmoney%，可以显示当前玩家金币数量。 |	✅|
+ |Hub	 |一键回城，可通过指令设置传送点。 |	✅|
+ |Rtp	 |随机传送，附带动画。	 |✅|
+ |Tpa	 |传送系统，借鉴了子邪大佬写的 TeleportMaster。 |	✅|
+|Home&Warp	 |家系统和公共传送点系统。 |	✅|
+|Fcam	 |灵魂出窍（旁观者）。 |✅|
+|Back&DeathLog |回死亡点以及记录玩家死亡点。 |	✅|
+|DMotd	 |动态 Motd 功能。	 |✅|
+|WeiHu |	维护服务器功能，禁止其他非管理成员进入服务器。	 |✅|
+|Clean	 |自动清理掉落物和实体，掉落物过多时 & 定时自动清理，支持白名单。	 |✅|
+|Suicide	 |玩家紫砂（kill myself）。	 |✅|
+|BStopMsg |	自定义关服提示。	 |✅|
+|MoreLangSupport |	多语言支持。	 |✅|
+|Notice |	自定义公告，支持颜色符号，\n换行，支持游戏内在线编辑！	 |✅|
+|FixExpLag	 |防止经验球卡服。 |	✅|
+|Crash	 |崩溃玩家客户端（慎用！）。	 |✅|
+|RedPacket |	玩家可以自行发红包。	 |✅|
+|ServersTP |	一键传送到其他服务器。 |	✅|
+|PVP	PVP 功能， |防止玩家恶意攻击。	 |✅|
+|Keepinventory	 |开服自动开启死亡不掉落。 |	✅|
+|AutoUpdate	 |自动更新插件本体并重载。	 |✅|
+|Gui修改插件配置	 |网页编辑器。 |	✅|
+|Plugin for Endstone	Endstone |版本的 YEssential。|	🚧 开发中|
+|SideBar|	支持自定义侧边栏以及支持 PAPI 变量。|	📅 计划中|
 
 ### 🆕 新增 / 修改功能  
 <details>
