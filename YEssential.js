@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.7.2";
-const regversion =[2,7,2];
+const version = "2.7.3";
+const regversion =[2,7,3];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("x.x"));
@@ -272,7 +272,28 @@ ll.registerPlugin(NAME, PluginInfo,regversion, {
 let lang = new JsonConfigFile(langFilePath, JSON.stringify(defaultLangContent));
 
 let conf = new JsonConfigFile(pluginpath +"/Config/config.json",JSON.stringify({}));
-  
+
+let modulelist = new JsonConfigFile(pluginpath +"/modules/modulelist.json",JSON.stringify({
+  "modules": [
+    {
+      "path": "cleanmgr.js",
+      "name": "CleanMgr"
+    },
+    {
+      "path": "ConfigManager.js",
+      "name": "ConfigManager"
+    },
+    {
+      "path": "AsyncUpdateChecker.js",
+      "name": "AsyncUpdateChecker"
+    },
+    {
+      "path": "RadomTeleportSystem.js",
+      "name": "RadomTeleportSystem"
+    }
+  ]
+}));
+
 let homedata = new JsonConfigFile(datapath +"homedata.json",JSON.stringify({}));
   
 let rtpdata = new JsonConfigFile(datapath +"/RTPData/Rtpdata.json",JSON.stringify({}));
@@ -387,32 +408,45 @@ class AsyncFileManager {
  * 自动加载并初始化 modules 文件夹中的所有模块
  */
 
+
 (function() {
   
   // 注意：require() 会自动添加 plugins/ 前缀，所以路径不需要 ./plugins/
-  var BASE_PATH = "./YEssential/modules/";
-  
-  // 定义需要加载的模块列表
-  var modules = [
-    { 
-      path: BASE_PATH + "cleanmgr.js",
-      name: "CleanMgr"
-    },
-    { 
-      path: BASE_PATH + "ConfigManager.js",
-      name: "ConfigManager"
-    },
-    {
-      path: BASE_PATH + "AsyncUpdateChecker.js",
-      name: "AsyncUpdateChecker"
-    },
-    {
-      path: BASE_PATH + "RadomTeleportSystem.js",
-      name: "RadomTeleportSystem"
+  var BASE_PATH = "plugins/YEssential/modules/";
+ 
+  // 从 JSON 文件读取模块列表
+  var modules = [];
+ try {
+    var fullPath = BASE_PATH + "modulelist.json";
+    
+    // 1. 打印试图读取的完整路径，检查拼写和层级
+    //logger.info("正在尝试读取路径: " + fullPath);
+    
+    var moduleListData = file.readFrom(fullPath);
+    
+    // 2. 打印读取到的内容类型
+    //logger.info("读取到的数据类型: " + typeof moduleListData);
+    
+    // 3. 如果是 undefined，手动抛出更清晰的错误
+    if (moduleListData == null || moduleListData == undefined) {
+        throw new Error("文件存在但读取内容为空！请检查路径是否正确: " + fullPath);
     }
-    // 在这里继续添加其他模块
-    // { path: BASE_PATH + "xxx.js", name: "ModuleName" }
-  ];
+
+    var moduleList = JSON.parse(moduleListData);
+    
+    // ... 后续原有代码 ...
+    modules = moduleList.modules.map(function(module) {
+      return {
+        path: BASE_PATH + module.path,
+        name: module.name
+      };
+    });
+    
+  } catch (err) {
+    // ...
+    logger.error("读取模块列表失败: " + err);
+    logger.error("请确保 " + BASE_PATH + "modulelist.json 文件存在且格式正确");
+  }
   
   /**
    * 初始化所有模块
@@ -423,7 +457,7 @@ class AsyncFileManager {
     var failedCount = 0;
     var currentIndex = 0;
     
- function loadNextModule() {
+    function loadNextModule() {
       if (currentIndex >= modules.length) {
         initPvpModule();
         initFcamModule();
@@ -533,6 +567,9 @@ function printGradientLogo() {
     });
     
     logger.info("=".repeat(80));
+    colorLog("blue",lang.get("Tip1"));
+    colorLog("blue",lang.get("Tip2"));
+    colorLog("blue",lang.get("Tip3"));
 }
 function initializePlugin() {
     // 第零步：获取并创建计分板
@@ -592,11 +629,12 @@ function initializePlugin() {
     });
     
     // 第七步：异步检查更新
+    setTimeout(() => {
     if (conf.get("AutoUpdate")) {
         AsyncUpdateChecker.checkForUpdates(version).catch(error => {
             logger.error("后台更新检查失败: " + error.message);
         });
-    }
+    }  }, 1000);
 }
 // 异步语言文件管理器
 class AsyncLanguageManager {
@@ -1075,13 +1113,13 @@ mc.listen("onJoin", (pl) => {
         }
 });
   
-mc.listen("onPreJoin",(pl)=>{
+mc.listen("onJoin",(pl)=>{
    try {
         // 初始化玩家数据
         homedata.init(pl.realName, {});
         rtpdata.init(pl.realName, {});
         MoneyHistory.init(pl.realName, {});
-        
+        setTimeout(() => {
         // 初始化金币
         if (conf.get("LLMoney") == 1) {
             let currentMoney = pl.getMoney();
@@ -1092,7 +1130,7 @@ mc.listen("onPreJoin",(pl)=>{
             let score = pl.getScore(conf.get("Scoreboard"));
             if (!score) pl.setScore(conf.get("Scoreboard"), 0);
         }
-        
+    }, 2000);
     } catch (error) {
         logger.error(`玩家 ${pl.realName} 加入事件处理失败: ${error.message}`);
     }
