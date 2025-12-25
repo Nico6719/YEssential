@@ -23,44 +23,55 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.7.1";
-const regversion =[2,7,1];
+const version = "2.7.2";
+const regversion =[2,7,2];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("x.x"));
 // 创建语言文件（如果不存在）      
 const langFilePath = YEST_LangDir + "zh_cn.json";
 const defaultLangContent = {
-    "wh.warn":"服务器启动时维护模式已启用，非OP玩家将无法加入!!!!!",
-    "Upd.check":"正在检查新版本中.... 您可在config.json禁用自动更新",
-    "Upd.success":"更新成功！稍后将重载插件",
-    "Upd.fail":"更新失败",
-    "Tip1":"如有Bug请联系作者反馈！！！！",
-    "Tip2":"感谢PHEyeji提供技术支持和指导！感谢ender罗小黑提供在线网页支持！",
-    "Tip3":"在线config编辑器：https://jzrxh.work/projects/yessential/config.html",
-    "Version.Chinese":"版本:",
-    "notice.editor":"§l§e公告编辑器",
-    "notice.no.change": "§e公告内容未更改！",
-    "notice.exit.edit":"已取消编辑",
-    "notice.for.server":"§l§e服务器公告",
-    "notice.dont.showagain":"以后进服不自动弹出(除非公告更新或停用此开关)",
-    "notice.is.changed":"检测到新公告，玩家下次加入将强制显示",
-    "player.not.op":"§c权限不足！",
-    "gui.exit": "表单已关闭,未收到操作",
-    "server.tp.ok": "传送成功！",
-    "no.server.can.tp": "暂无可传送服务器!",
-    "ranking.list":"排行榜",
-    "no.ranking.data": "§c暂无排行榜数据！",
-    "server.load.error": "服务器配置加载失败，请联系管理员！",
-    "server.no.select": "§c服务器选择无效！",
-    "server.from.title":"跨服传送列表",
-    "choose.a.server":"请选择一个服务器",
-    "server.tp.fail": "§c跨服传送失败，请检查目标服务器状态！",
-    "no.server.cantpto":"server.json 内容为空或 servers 键不存在！",
-    "save.notice.ok": "保存公告成功！",
-    "suicide.kill.ok": "自杀执行成功！",
-    "pls.input.number":"请输入增加数量!",
-    "key.not.number":"请输入数字！",
+    
+    // moneys指令相关
+    "moneys.set.success": "成功将玩家 ${player} 的${coin}设置为 ${amount}",
+    "moneys.add.success": "成功将玩家 ${player} 的${coin}增加 ${amount}",
+    "moneys.del.success": "成功将玩家 ${player} 的${coin}减少 ${amount}",
+    "moneys.get.result": "玩家 ${player} 的${coin}为 ${amount}",
+    "moneys.history.title": "玩家 ${player} 的${coin}历史记录",
+    
+    // warp相关
+    "warp.command.desc": "公共传送点",
+    "warp.only.player": "仅限玩家执行",
+    "warp.teleport.name": "传送点名称：",
+    "warp.teleport.coord": "坐标：",
+    "warp.teleport.cost": "传送花费：",
+    "warp.teleported": "已前往传送点 ${name}",
+    "warp.del.success": "删除公共传送点 ${name} 成功！",
+    "warp.add.success": "添加公共传送点 ${name} 成功！",
+    "warp.menu.public":"公共传送点",
+    "warp.menu.public.op":"(OP)公共传送点",
+    "warp.go.to":"前往传送点",
+    "warp.add":"添加传送点",
+    "warp.add.point":"添加公共传送点",
+    "warp.del":"删除传送点",
+    "warp.del.point":"删除公共传送点",
+    "warp.input.name":"请输入传送点名称",
+    "warp.name":"传送点名称",
+    "warp.list":"传送点列表",
+    "warp.add.point.xyz":"添加当前坐标为公共传送点",
+    "warp.noinput.name":"传送点名称不能为空！",
+    "warp.name.repetitive":"传送点名称已存在！",
+
+    // 转账相关
+    "money.transfer.title": "转账",
+    "money.transfer.balance": "您的余额为: ${balance} ${coin}",
+    "money.transfer.tax": "当前转账税率: ${rate}%",
+    "money.transfer.input.amount": "输入数量或 'all'",
+    "money.transfer.success.sender": "转账成功！您支出了 ${amount}，对方收到 ${received}。",
+    "money.transfer.success.receiver": "您收到来自 ${sender} 的 ${amount} ${coin}。",
+    "money.transfer.log.send": "转账给 ${target}, 数量:${amount}, 到账:${received}, 手续费:${tax}",
+    "money.transfer.log.receive": "收到 ${sender} 转账, 数量:${amount}, 到账:${received}, 手续费:${tax}",
+    "money.transfer.tax.notenough": "转账金额不足以支付手续费！",
     "money.create.score":"计分板项目不存在，以为您自动创建",
     "money.callback.menu":"§a正在返回经济系统主界面...",
     "money.player.list":"排行榜",
@@ -82,6 +93,7 @@ const defaultLangContent = {
     "money.tr.beizhu":"转账的备注（可以留空）",
     "money.tr.amount":"输入转账数量(all为全部)",
     "money.del.number":"请输入减少数量!",
+    "money.cannotpay.totax":"转账金额不足以支付手续费！",
     "moeny.setting.number":"请输入设置数量",
     "money.must.bigger0":"转账数量必须大于0！",
     "money.cannot.smaller0":"§c实际到账金额不能为负数！",
@@ -89,60 +101,8 @@ const defaultLangContent = {
     "money.op.remove":"减少玩家的",
     "money.op.set":"设置玩家的",
     "money.op.look":"查看玩家的",
-    "rp.menu.1":"红包",
-    "rp.send.packet":"发送红包",
-    "rp.open.packet":"领取红包",
-    "rp.all.help":"红包使用帮助",
-    "rp.send.amount":"要发送的红包数量：",
-    "rp.send.count":"红包金额：",
-    "rp.count.bigger.yourmoney":"红包总额度不能大于你的",
-    "redpacket.type":"红包类型：",
-    "rp.random.packet":"拼手气红包",
-    "rp.average.packet":"普通红包",
-    "warp.menu.public":"公共传送点",
-    "warp.menu.public.op":"(OP)公共传送点",
-    "warp.go.to":"前往传送点",
-    "warp.add":"添加传送点",
-    "warp.add.point":"添加公共传送点",
-    "warp.del":"删除传送点",
-    "warp.del.point":"删除公共传送点",
-    "warp.input.name":"请输入传送点名称",
-    "warp.name":"传送点名称",
-    "warp.list":"传送点列表",
-    "warp.add.point.xyz":"添加当前坐标为公共传送点",
-    "warp.noinput.name":"传送点名称不能为空！",
-    "warp.name.repetitive":"传送点名称已存在！",
-    "back.to.point":"返回死亡点",
-    "back.helpinfo":"§a已记录您的死亡点！使用 /back 查看所有死亡点。",
-    "back.to.point.sure":"确认返回死亡点？",
-    "back.choose":"§6请选择要传送的死亡点：",
-    "back.list.Empty":"您没有死亡历史记录!",
-    "back.successful":"返回成功！",
-    "back.fail":"§c传送失败！",
-    "back.choose.null":"§c选择无效！",
-    "back.deathlog.error":"§c死亡点数据错误！",
-    "home.tp.system":"§6§l家园传送系统",
-    "home.add":"§l§a添加家",
-    "home.add.input":"请输入您的家名称",
-    "home.del":"§c§l删除家",
-    "home.del.choose":"请选择要删除的家",
-    "home.tp":"§b§l传送家",
-    "home.tp.choose":"请选择要传送的家",
-    "home.name.repetitive":"家名称已存在!",
-    "home.name.noinput":"请输入家名称!",
-    "shop.no.Eabled":"§c商店功能已关闭！",
-    "shop.is.nothing" :"§c暂无商品可购买！",
-    "shop.conf.error":"§c商品配置错误！",
-    "shop.choose.errorthings":"§c商品选择无效！",
-    "home.input.name":"请输入您的家名称",
-    "home.create.new":"添加家",
-    "bag.is.full":"§c背包已满，无法给予物品！",
-    "rtp.onlycanusein.overworld":"§c只能在主世界使用随机传送！",
-    "module.no.Enabled":"所选模块（功能）未开启！",
-    "fc.error":"无法对非玩家对象执行此命令",
-    "fc.error2":"你都是管理员了用这个功能干什么（）",
-    "fc.success.quit":"成功退出灵魂出窍",
-    "fc.success.getin":"成功进入灵魂出窍，花费§e${Fcam}金币",
+    
+     //TPA相关
     "tpa.cost":"传送将花费 ${cost} ${Scoreboard} ",
     "tpa.d":"§c拒绝",
     "tpa.d.request":"§c对方拒绝了传送请求。",
@@ -181,6 +141,88 @@ const defaultLangContent = {
     "tpa.to.he.she":"§a传送到对方",
     "tpa.to.here":"§e传送到我",
     "tpa.noplayer.online":"§c当前没有其他在线玩家",
+
+    "wh.warn":"服务器启动时维护模式已启用，非OP玩家将无法加入!!!!!",
+    "Upd.check":"正在检查新版本中.... 您可在config.json禁用自动更新！",
+    "Upd.success":"更新成功！稍后将重载插件",
+    "Upd.timeout":"获取版本信息超时，请检查网络连接",
+    "Upd.json.error":"版本信息格式错误，无法解析JSON",
+    "Upd.backup.now":"正在创建备份...",
+    "No.backup.canuse":"没有可用的备份",
+    "Upd.fail.backing":"更新失败，正在恢复备份...",
+    "Upd.back.success":"已恢复到更新前的版本",
+    "Upd.fail":"更新失败",
+    "network.error.1":"网络连接失败，请检查网络设置或稍后重试",
+    "file.permission.error'":"文件写入权限不足，请检查插件目录权限",
+    "file.parse.error.":"数据解析失败，可能是服务器返回格式错误",
+    "Tip1":"如有Bug请联系作者反馈！！！！",
+    "Tip2":"感谢PHEyeji和小黑可爱喵提供技术支持和指导！感谢ender罗小黑提供在线网页支持！",
+    "Tip3":"在线config编辑器：https://jzrxh.work/projects/yessential/config.html",
+    "Version.Chinese":"版本:",
+    "notice.editor":"§l§e公告编辑器",
+    "notice.no.change": "§e公告内容未更改！",
+    "notice.exit.edit":"已取消编辑",
+    "notice.for.server":"§l§e服务器公告",
+    "notice.dont.showagain":"以后进服不自动弹出(除非公告更新或停用此开关)",
+    "notice.is.changed":"检测到新公告，玩家下次加入将强制显示",
+    "player.not.op":"§c权限不足！",
+    "gui.exit": "表单已关闭,未收到操作",
+    "server.tp.ok": "传送成功！",
+    "no.server.can.tp": "暂无可传送服务器!",
+    "ranking.list":"排行榜",
+    "no.ranking.data": "§c暂无排行榜数据！",
+    "server.load.error": "服务器配置加载失败，请联系管理员！",
+    "server.no.select": "§c服务器选择无效！",
+    "server.from.title":"跨服传送列表",
+    "choose.a.server":"请选择一个服务器",
+    "server.tp.fail": "§c跨服传送失败，请检查目标服务器状态！",
+    "no.server.cantpto":"server.json 内容为空或 servers 键不存在！",
+    "save.notice.ok": "保存公告成功！",
+    "suicide.kill.ok": "自杀执行成功！",
+    "pls.input.number":"请输入增加数量!",
+    "key.not.number":"请输入数字！",
+    "rp.loading.error":"加载红包数据失败",
+    "rp.menu.1":"红包",
+    "rp.send.packet":"发送红包",
+    "rp.open.packet":"领取红包",
+    "rp.all.help":"红包使用帮助",
+    "rp.send.amount":"要发送的红包数量：",
+    "rp.send.count":"红包金额：",
+    "rp.count.bigger.yourmoney":"红包总额度不能大于你的",
+    "redpacket.type":"红包类型：",
+    "rp.random.packet":"拼手气红包",
+    "rp.average.packet":"普通红包",
+    "back.to.point":"返回死亡点",
+    "back.helpinfo":"§a已记录您的死亡点！使用 /back 查看所有死亡点。",
+    "back.to.point.sure":"确认返回死亡点？",
+    "back.choose":"§6请选择要传送的死亡点：",
+    "back.list.Empty":"您没有死亡历史记录!",
+    "back.successful":"返回成功！",
+    "back.fail":"§c传送失败！",
+    "back.choose.null":"§c选择无效！",
+    "back.deathlog.error":"§c死亡点数据错误！",
+    "home.tp.system":"§6§l家园传送系统",
+    "home.add":"§l§a添加家",
+    "home.add.input":"请输入您的家名称",
+    "home.del":"§c§l删除家",
+    "home.del.choose":"请选择要删除的家",
+    "home.tp":"§b§l传送家",
+    "home.tp.choose":"请选择要传送的家",
+    "home.name.repetitive":"家名称已存在!",
+    "home.name.noinput":"请输入家名称!",
+    "shop.no.Eabled":"§c商店功能已关闭！",
+    "shop.is.nothing" :"§c暂无商品可购买！",
+    "shop.conf.error":"§c商品配置错误！",
+    "shop.choose.errorthings":"§c商品选择无效！",
+    "home.input.name":"请输入您的家名称",
+    "home.create.new":"添加家",
+    "bag.is.full":"§c背包已满，无法给予物品！",
+    "rtp.onlycanusein.overworld":"§c只能在主世界使用随机传送！",
+    "module.no.Enabled":"所选模块（功能）未开启！",
+    "fc.error":"无法对非玩家对象执行此命令",
+    "fc.error2":"你都是管理员了用这个功能干什么（）",
+    "fc.success.quit":"成功退出灵魂出窍",
+    "fc.success.getin":"成功进入灵魂出窍，花费§e${Fcam}金币",
     "hub.tp.check":"§l§a回城确认",
     "hub.tp.now":"§a✔ 立即传送",
     "hub.tp.notnow":"§c✘ 不是现在",
@@ -208,6 +250,8 @@ const defaultLangContent = {
     "pvp.is.off":"§6PVP 已关闭。",
     "your.pvp.isoff":"§l§b你关闭了 PVP。",
     "then.pvp.isoff":"§l§b对方关闭了 PVP。",
+    "init.success":"所有模块加载成功！",
+    "init.fail":"部分模块加载失败，请检查日志",
     "choose":"选择",
     "success":"成功",
     "one":"一个",
@@ -257,102 +301,55 @@ let servertp = new JsonConfigFile(datapath +"/TrSeverData/server.json", defaultS
 
 let tpacfg = new JsonConfigFile(datapath +"/TpaSettingsData/tpaAutoRejectConfig.json",JSON.stringify({}));
 
-new IniConfigFile(datapath +"/NoticeSettingsData/notice.txt");
-let isSending = false;
-function initRedpacketData() {
-    const defaultData = {
-        nextId: 1,
-        packets: {}
-    };
-    
-    try {
-        // 尝试读取现有数据
-        const existingData = file.readFrom(datapath + "/Redpacketdata/Redpacket.json");
-        if (existingData) {
-            return JSON.parse(existingData);
-        }
-    } catch (e) {
-        logger.error("读取红包数据失败，使用默认数据:", e);
-    }
-    return defaultData;
-}
+let isSending = false
 
+new IniConfigFile(datapath +"/NoticeSettingsData/notice.txt");
+
+;
 // 创建红包数据对象
+// --- 红包系统底层优化 ---
 const redpacketData = {
-    data: initRedpacketData(),
-    
-    get(key) {
-        const keys = key.split('.');
-        let value = this.data;
-        
-        for (const k of keys) {
-            if (value === undefined || value === null) return undefined;
-            value = value[k];
-        }
-        return value;
-    },
-    
-    set(key, value) {
-        const keys = key.split('.');
-        let obj = this.data;
-        
-        for (let i = 0; i < keys.length - 1; i++) {
-            const k = keys[i];
-            if (obj[k] === undefined || typeof obj[k] !== 'object') {
-                obj[k] = {};
-            }
-            obj = obj[k];
-        }
-        
-        obj[keys[keys.length - 1]] = value;
-        this.save();
-    },
-    deletePacket: function(id) {
-        const key = `packets.${id}`;
-        if (this.get(key)) {
-            // 使用点路径删除红包
-            const keys = key.split('.');
-            let obj = this.data;
-            
-            for (let i = 0; i < keys.length - 1; i++) {
-                const k = keys[i];
-                if (obj[k] === undefined || typeof obj[k] !== 'object') {
-                    return false;
-                }
-                obj = obj[k];
-            }
-            
-            delete obj[keys[keys.length - 1]];
-            this.save();
-            return true;
-        }
-        return false;
-    },
-    delete(key) {
-        const keys = key.split('.');
-        let obj = this.data;
-        
-        for (let i = 0; i < keys.length - 1; i++) {
-            const k = keys[i];
-            if (obj[k] === undefined || typeof obj[k] !== 'object') {
-                return;
-            }
-            obj = obj[k];
-        }
-        
-        delete obj[keys[keys.length - 1]];
-        this.save();
-    },
-    
-    save() {
+    path: datapath + "Redpacketdata/Redpacket.json",
+    data: { nextId: 1, packets: {} },
+
+    init() {
         try {
-            file.writeTo(datapath + "/Redpacketdata/Redpacket.json", JSON.stringify(this.data, null, 2));
-        } catch (e) {
-            logger.error("保存红包数据失败:", e);
+            const content = file.readFrom(this.path);
+            if (content) this.data = JSON.parse(content);
+        } catch (e) { logger.error(lang.get("rp.loading.error") + e); }
+    },
+
+    get(path) {
+        return path.split('.').reduce((obj, key) => (obj && obj[key] !== undefined) ? obj[key] : undefined, this.data);
+    },
+
+    set(path, value) {
+        const keys = path.split('.');
+        let curr = this.data;
+        keys.slice(0, -1).forEach(key => {
+            if (!curr[key]) curr[key] = {};
+            curr = curr[key];
+        });
+        curr[keys[keys.length - 1]] = value;
+        this.save();
+    },
+
+    delete(path) {
+        const keys = path.split('.');
+        let curr = this.data;
+        for (let i = 0; i < keys.length - 1; i++) {
+            if (!curr[keys[i]]) return;
+            curr = curr[keys[i]];
         }
+        delete curr[keys[keys.length - 1]];
+        this.save();
+    },
+
+    save() {
+        file.writeTo(this.path, JSON.stringify(this.data, null, 2));
     }
-    
 };
+    
 // 异步文件操作工具类
 class AsyncFileManager {
     static async readFile(path, defaultContent = '{}') {
@@ -385,43 +382,6 @@ class AsyncFileManager {
         });
     }
 }
-
-// 异步网络请求管理器
-class AsyncNetworkManager {
-    static async httpGet(url, timeout = 10000) {
-        return new Promise((resolve, reject) => {
-            const timer = setTimeout(() => {
-                reject(new Error(`请求超时: ${url}`));
-            }, timeout);
-
-            network.httpGet(url, (status, result) => {
-                //clearTimeout(timer);
-                if (status === 200) {
-                    resolve(result);
-                } else {
-                    reject(new Error(`请求失败，状态码: ${status}`));
-                }
-            });
-        });
-    }
-
-    static async httpPost(url, data, contentType = 'application/json', timeout = 10000) {
-        return new Promise((resolve, reject) => {
-            const timer = setTimeout(() => {
-                reject(new Error(`请求超时: ${url}`));
-            }, timeout);
-
-            network.httpPost(url, data, contentType, (status, result) => {
-                clearTimeout(timer);
-                if (status === 200) {
-                    resolve(result);
-                } else {
-                    reject(new Error(`请求失败，状态码: ${status}`));
-                }
-            });
-        });
-    }
-}
 /**
  * YEssential - 模块初始化管理器
  * 自动加载并初始化 modules 文件夹中的所有模块
@@ -441,6 +401,14 @@ class AsyncNetworkManager {
     { 
       path: BASE_PATH + "ConfigManager.js",
       name: "ConfigManager"
+    },
+    {
+      path: BASE_PATH + "AsyncUpdateChecker.js",
+      name: "AsyncUpdateChecker"
+    },
+    {
+      path: BASE_PATH + "RadomTeleportSystem.js",
+      name: "RadomTeleportSystem"
     }
     // 在这里继续添加其他模块
     // { path: BASE_PATH + "xxx.js", name: "ModuleName" }
@@ -466,9 +434,9 @@ class AsyncNetworkManager {
             initializePlugin();
             
             if (failedCount > 0) {
-                logger.warn("部分模块加载失败，请检查日志");
+                logger.warn(lang.get("init.fail"));
             } else {
-                colorLog("green","所有模块加载成功！");
+                colorLog("green",lang.get("init.success"));
             }
         } catch (error) {   
             logger.error("服务器启动初始化失败: " + error.message);
@@ -547,7 +515,7 @@ function printGradientLogo() {
     
     const reset = '\x1b[0m';
     
-    logger.info(PluginInfo + lang.get("Version.Chinese") + version + ",作者：Nico6719");
+    logger.info(PluginInfo + lang.get("Version.Chinese") + version + ", 作者：Nico6719");
     logger.info("=".repeat(80));
     
     logo.forEach((line, lineIndex) => {
@@ -567,6 +535,23 @@ function printGradientLogo() {
     logger.info("=".repeat(80));
 }
 function initializePlugin() {
+    // 第零步：获取并创建计分板
+    const scoreboardName = conf.get("Scoreboard") || "money";
+    
+    // 检查计分板是否存在，不存在则创建
+    try {
+        const allObjectives = mc.getAllScoreObjectives();
+        const objectiveExists = allObjectives.some(obj => obj === scoreboardName);
+        
+        if (!objectiveExists) {
+            mc.runcmdEx(`scoreboard objectives add ${scoreboardName} dummy`);
+        }   
+    } catch (error) {
+        logger.error(`创建计分板失败: ${error.message}`);
+        // 尝试强制创建
+        mc.runcmdEx(`scoreboard objectives add ${scoreboardName} dummy`);
+    }
+    
     // 第一步：注册PAPI
     PAPI.registerPlayerPlaceholder(getScoreMoney, "YEssential", "player_money");
     PAPI.registerPlayerPlaceholder(getLLMoney, "YEssential", "player_LLmoney");
@@ -601,7 +586,7 @@ function initializePlugin() {
     allPlayers.forEach(p => {
         // FCAM 创建的模拟玩家通常以 _sp 结尾
         if (p.isSimulatedPlayer() && p.name.endsWith("_sp")) {
-            logger.warn(`[FCAM] 清理残留的模拟玩家: ${p.name}`);
+            logger.warn(`[Fcam] 清理残留的模拟玩家: ${p.name}`);
             p.simulateDisconnect();
         }
     });
@@ -613,53 +598,6 @@ function initializePlugin() {
         });
     }
 }
-// 异步更新检查器
-class AsyncUpdateChecker {
-    static async checkForUpdates(currentVersion) {
-        try {
-            logger.warn(lang.get("Upd.check"));
-            
-            const result = await AsyncNetworkManager.httpGet("https://dl.mcmcc.cc/file/Version.json");
-            const jsonData = JSON.parse(result);
-            const remoteVersion = jsonData.version;
-            
-            const comparison = compareVersions(remoteVersion, currentVersion);
-            
-            if (comparison > 0) {
-                logger.warn(`发现新版本! ${currentVersion} → ${remoteVersion}`);
-                await this.downloadUpdate(remoteVersion);
-            } else if (comparison < 0) {
-                colorLog("red", `您的本地版本比远程版本更新！ (${currentVersion} > ${remoteVersion})`);
-            } else {
-                colorLog("green", `您已是最新版本 (${currentVersion})`);
-            }
-        } catch (error) {
-            logger.error("更新检查失败: " + error.message);
-        }
-    }
-
-    static async downloadUpdate(version) {
-        try {
-            logger.warn(`正在更新到 ${version} 中.....`);
-            const pluginData = await AsyncNetworkManager.httpGet('https://dl.mcmcc.cc/file/YEssential.js');
-            const processedData = pluginData.replace(/\r/g, '');
-            const cleanmgrpluginData = await AsyncNetworkManager.httpGet('https://dl.mcmcc.cc/file/modules/cleanmgr.js');
-            const cleanmgrprocessedData = cleanmgrpluginData.replace(/\r/g, '');
-            const ConfigManagerpluginData = await AsyncNetworkManager.httpGet('https://dl.mcmcc.cc/file/modules/ConfigManager.js');
-            const ConfigManagerprocessedData = ConfigManagerpluginData.replace(/\r/g, '');
-            await AsyncFileManager.writeFile(pluginpath + "YEssential.js", processedData);
-            await AsyncFileManager.writeFile(pluginpath + "./modules/cleanmgr.js", cleanmgrprocessedData);
-            await AsyncFileManager.writeFile(pluginpath + "./modules/ConfigManager.js", ConfigManagerprocessedData);
-            colorLog("green", lang.get("Upd.success"));
-            setTimeout(() => {
-                mc.runcmdEx("ll reload YEssential");
-            }, 1000);
-        } catch (error) {
-            logger.error(lang.get("Upd.fail") + ": " + error.message);
-        }
-    }
-}
-
 // 异步语言文件管理器
 class AsyncLanguageManager {
     static async mergeLangFiles() {
@@ -693,357 +631,6 @@ class AsyncLanguageManager {
             }
         } catch (error) {
             logger.error("合并语言文件时出错: " + error.message);
-        }
-    }
-}
-class AsyncTeleportSystem {
-    static generateRandomCoordinate() {
-        const config = conf.get("RTP");
-        const maxRadius = config.maxRadius || 5000;        // 最大传送半径
-        const minRadius = config.minRadius || 100;         // 最小传送半径
-        
-        let x, z;
-        let attempts = 0;
-        const maxAttempts = 50;
-        
-        do {
-            // 生成随机角度
-            const angle = Math.random() * 2 * Math.PI;
-            
-            // 在最小和最大半径之间生成随机距离
-            const minRadiusSquared = minRadius * minRadius;
-            const maxRadiusSquared = maxRadius * maxRadius;
-            const radiusSquared = minRadiusSquared + Math.random() * (maxRadiusSquared - minRadiusSquared);
-            const radius = Math.sqrt(radiusSquared);
-            
-            // 计算坐标
-            x = Math.floor(radius * Math.cos(angle));
-            z = Math.floor(radius * Math.sin(angle));
-            
-            attempts++;
-        } while (attempts < maxAttempts);
-        
-        return { x, z };
-    }
-
-    // 验证坐标是否在有效范围内
-    static isCoordinateValid(x, z) {
-        const config = conf.get("RTP");
-        const maxRadius = config.maxRadius || 5000;
-        const minRadius = config.minRadius || 100;
-        
-        const distance = Math.sqrt(x * x + z * z);
-        return distance >= minRadius && distance <= maxRadius;
-    }
-
-    // 其他方法保持不变...
-    static getSurfaceHeight(x, z, dimension) {
-    // 从高空向下扫描，适应各种地形。主世界从 Y=319 开始。
-    // 下界(dimid 1)限制在 Y=120 开始。
-    const startY = dimension === 1 ? 120 : 319; 
-    const endY = dimension === 1 ? 30 : -60; // 扫描到基岩层
-
-    for (let y = startY; y >= endY; y--) {
-        try {
-            // 获取当前方块
-            const block = mc.getBlock(x, y, z, dimension);
-
-            // 检查是否是非空气方块 (或非液体)
-            if (block && block.type !== "minecraft:air" && !block.isLiquid()) {
-                
-                // 确保上方两格是空气（供玩家站立）
-                const up1 = mc.getBlock(x, y + 1, z, dimension);
-                const up2 = mc.getBlock(x, y + 2, z, dimension);
-                
-                if (up1 && up1.type === "minecraft:air" && up2 && up2.type === "minecraft:air") {
-                    // 找到了安全落脚点
-                    return y + 1;
-                }
-            }
-        } catch (error) {
-            continue;
-        }
-    }
-    // 未找到安全高度时的默认值
-    return 70; 
-}
-
-    static isLocationSafe(x, y, z, dimension) {
-        try {
-            const feetBlock = mc.getBlock(x, y, z, dimension);
-            const headBlock = mc.getBlock(x, y + 1, z, dimension);
-            const groundBlock = mc.getBlock(x, y - 1, z, dimension);
-            
-            if (!feetBlock || !headBlock || !groundBlock) {
-                return false;
-            }
-
-            const feetSafe = feetBlock.type === "minecraft:air";
-            const headSafe = headBlock.type === "minecraft:air";
-            
-            const dangerousBlocks = [
-                "minecraft:air", "minecraft:lava", "minecraft:water", 
-                "minecraft:flowing_lava", "minecraft:flowing_water",
-                "minecraft:cactus", "minecraft:fire", "minecraft:void_air"
-            ];
-            
-            const groundSafe = !dangerousBlocks.includes(groundBlock.type);
-            
-            return feetSafe && headSafe && groundSafe;
-        } catch (error) {
-            return false;
-        }
-    }
-
-    static async findSafeLocationAsync(centerX, centerZ, dimension, maxAttempts = 25) {
-        return new Promise((resolve) => {
-            let attempt = 0;
-            
-            const checkLocation = () => {
-                if (attempt >= maxAttempts) {
-                    resolve(null);
-                    return;
-                }
-
-                const searchRadius = 50;
-                const offsetX = Math.floor(Math.random() * searchRadius * 2) - searchRadius;
-                const offsetZ = Math.floor(Math.random() * searchRadius * 2) - searchRadius;
-                
-                const x = centerX + offsetX;
-                const z = centerZ + offsetZ;
-
-                try {
-                    const y = this.getSurfaceHeight(x, z, dimension);
-                    
-                    if (this.isLocationSafe(x, y, z, dimension)) {
-                        resolve({ x, y, z, dimid: dimension });
-                        return;
-                    }
-                } catch (error) {
-                    // 继续下一次尝试
-                }
-
-                attempt++;
-                setTimeout(checkLocation, 20);
-            };
-
-            checkLocation();
-        });
-    }
-
- // RTP动画系统
-    static async performRTPAnimationAsync(player, x, z, y) {
-        
-        return new Promise((resolve) => {
-            if (conf.get("RTP").Animation == 1) {
-                // 动画模式传送
-                player.sendText(info + lang.get("rtp.search.chunks"));
-                mc.runcmdEx(`effect "${player.realName}" resistance 30 255 true`);
-                
-                // 第一阶段：淡出
-                setTimeout(() => {
-                    mc.runcmdEx(`camera "${player.realName}" fade time 0.1 10 0.1 color 0 0 0`);
-                }, 900);
-    
-                
-                // 第五阶段：实际传送
-                setTimeout(() => {
-                    player.teleport(x, 500, z, player.pos.dimid);
-                }, 3050);
-                
-                // 最终阶段：清除镜头效果
-                setTimeout(() => {
-                    mc.runcmdEx(`camera "${player.realName}" clear`);
-                    resolve(); // 动画完成
-                }, 6900);
-                
-            } else {
-                // 简单传送模式
-                player.teleport(x, 500, z, player.pos.dimid);
-                player.sendText(info + lang.get("rtp.search.chunks"));
-                mc.runcmdEx(`effect "${player.realName}" resistance 15 255 true`);
-                resolve(); // 立即完成
-            }
-        });
-    }
-
-    // 修改主要的RTP执行方法
-    static async performRTPAsync(player) {
-        const config = conf.get("RTP");
-        const cost = config.cost || 0;
-        const cooldown = config.cooldown || 0;
-        const maxRadius = config.maxRadius || 5000;
-        const minRadius = config.minRadius || 100;
-        
-        try {
-            // 冷却检查
-            if (cooltime && cooltime.has(player.realName) && cooltime.get(player.realName) > 0) {
-                player.sendText(info + `§c传送冷却中，剩余时间：${cooltime.get(player.realName)}秒`);
-                return false;
-            }
-
-            // 金币检查
-            if (cost > 0) {
-                const balance = conf.get("LLMoney") ? player.getMoney() : player.getScore(conf.get("Scoreboard"));
-                if (balance < cost) {
-                    player.sendText(info + `§c需要 ${cost}${lang.get("CoinName")} 才能传送！`);
-                    return false;
-                }
-            }
-
-            player.sendText(info + lang.get("rtp.search.chunks"));
-            if (config.minRadius && config.maxRadius) {
-                player.sendText(info + `§7传送范围：§f${minRadius} - ${maxRadius} 格`);
-            }
-
-            // 设置冷却（在传送前设置，防止动画期间重复使用）
-            if (cooldown > 0 && cooltime) {
-                cooltime.set(player.realName, cooldown);
-            }
-
-            // 扣除费用（在传送前扣除）
-            if (cost > 0) {
-                if (conf.get("LLMoney")) {
-                    player.reduceMoney(cost);
-                } else {
-                    player.reduceScore(conf.get("Scoreboard"), cost);
-                }
-                player.sendText(info + `§e花费 ${cost}${lang.get("CoinName")}`);
-            }
-
-            // 尝试找到合适的坐标
-            let safeLocation = null;
-            let coordinateAttempts = 0;
-            const maxCoordinateAttempts = 3;
-
-            while (!safeLocation && coordinateAttempts < maxCoordinateAttempts) {
-                coordinateAttempts++;
-                
-                const { x, z } = this.generateRandomCoordinate();
-                
-                // 验证坐标是否在有效范围内
-                if (!this.isCoordinateValid(x, z)) {
-                    continue;
-                }
-                
-                const distance = Math.floor(Math.sqrt(x * x + z * z));
-                player.sendText(`§7尝试第 ${coordinateAttempts} 次：坐标 X:${x}, Z:${z} (距离出生点: ${distance}格)`);
-
-                // 预估地面高度用于动画
-                const estimatedY = this.getSurfaceHeight(x, z, player.pos.dimid);
-                
-                // 执行RTP动画（如果启用）
-                await this.performRTPAnimationAsync(player, x, z, estimatedY);
-                
-                // 等待区块加载
-                await new Promise(resolve => setTimeout(resolve, 1000));
-
-                // 查找安全位置
-                safeLocation = await this.findSafeLocationAsync(x, z, player.pos.dimid, 25);
-                
-                if (safeLocation) {
-                    break;
-                } else {
-                    player.sendText(`§c坐标 (${x}, ${z}) 附近未找到安全位置，尝试新坐标...`);
-                    // 如果没找到安全位置，清除可能的动画效果
-                    if (conf.get("RTP").Animation == 1) {
-                        setTimeout(() => {
-                            mc.runcmdEx(`camera "${player.realName}" clear`);
-                        }, 1000);
-                    }
-                }
-            }
-
-            if (safeLocation) {
-                // 找到安全位置，进行最终传送
-                const finalDistance = Math.floor(Math.sqrt(safeLocation.x * safeLocation.x + safeLocation.z * safeLocation.z));
-                player.teleport(safeLocation.x, safeLocation.y, safeLocation.z, safeLocation.dimid);
-                player.sendText(info + `§a传送成功！位置: ${safeLocation.x}, ${safeLocation.y}, ${safeLocation.z}`);
-                player.sendText(info + `§e距离出生点: §f${finalDistance} 格`);
-
-                // 播放成功音效
-                setTimeout(() => {
-                    try {
-                        mc.runcmdEx("playsound random.levelup " + player.realName);
-                    } catch (e) {}
-                }, 500);
-
-                return true;
-            } else {
-                // 所有尝试都失败了，使用备用方案
-                player.sendText(info + lang.get("rtp.search.chunks2"));
-                const fallbackResult = await this.fallbackTeleport(player);
-                
-                if (!fallbackResult) {
-                    // 备用方案也失败，退还费用和重置冷却
-                    if (cost > 0) {
-                        if (conf.get("LLMoney")) {
-                            player.addMoney(cost);
-                        } else {
-                            player.addScore(conf.get("Scoreboard"), cost);
-                        }
-                        player.sendText(info + `§a已退还 ${cost}${lang.get("CoinName")}`);
-                    }
-                    
-                    if (cooldown > 0 && cooltime) {
-                        cooltime.delete(player.realName);
-                    }
-                    
-                    return false;
-                }
-                
-                return true;
-            }
-
-        } catch (error) {
-            logger.error(`RTP传送失败: ${error.message}`);
-            player.sendText(info + lang.get("rtp.error"));
-            
-            // 清除可能的动画效果
-            if (conf.get("RTP").Animation == 1) {
-                try {
-                    mc.runcmdEx(`camera "${player.realName}" clear`);
-                } catch (e) {}
-            }
-            
-            // 出错时退还费用和重置冷却
-            if (cost > 0) {
-                if (conf.get("LLMoney")) {
-                    player.addMoney(cost);
-                } else {
-                    player.addScore(conf.get("Scoreboard"), cost);
-                }
-            }
-            
-            if (cooldown > 0 && cooltime) {
-                cooltime.delete(player.realName);
-            }
-            
-            return false;
-        }
-    }
-
-    // 备用传送方案
-    static async fallbackTeleport(player) {
-        try {
-            const { x, z } = this.generateRandomCoordinate();
-            const y = 100;
-            
-            player.teleport(x, y, z, player.pos.dimid);
-            player.sendText(info + lang.get("rtp.tp.success2"));
-            player.sendText(`§7坐标: X:${x}, Y:${y}, Z:${z}`);
-            
-            // 给玩家缓降效果
-            setTimeout(() => {
-                try {
-                    mc.runcmdEx(`effect "${player.realName}" slow_falling 10 1`);
-                } catch (e) {}
-            }, 100);
-
-            return true;
-        } catch (error) {
-            logger.error(`备用传送失败: ${error.message}`);
-            return false;
         }
     }
 }
@@ -1447,23 +1034,7 @@ function teleportPlayer(pl,player) {
         logger.error(e.stack);
     }
 }
-function compareVersions(v1, v2) {
-    // 将版本号拆分成数字数组 ("2.3.9" => [2, 3, 9])
-    const parts1 = v1.split('.').map(Number);
-    const parts2 = v2.split('.').map(Number);
-    
-    // 比较每个分段
-    const maxLength = Math.max(parts1.length, parts2.length);
-    for (let i = 0; i < maxLength; i++) {
-        // 处理长度不一致的情况（缺失的部分视为0）
-        const num1 = parts1[i] || 0;
-        const num2 = parts2[i] || 0;
-        
-        if (num1 > num2) return 1;   // v1 > v2
-        if (num1 < num2) return -1;  // v1 < v2
-    }
-    return 0;  // 版本相同
-}
+
 function getScoreMoney(pl) {
     let ScoreMoney = pl.getScore(conf.get("Scoreboard"))
     return  ScoreMoney.toString();
@@ -1541,9 +1112,7 @@ if (conf.get("OptimizeXporb") == 1 )
 setInterval(() => {
   mc.runcmdEx("execute as @e[type=xp_orb] at @s run tp @p")
 }, 1000*10);
-}  else
-{ 
-}  
+}  else{ }  
 //自杀模块
 
 let suicidecmd = mc.newCommand("suicide","自杀",PermType.Any)
@@ -1932,78 +1501,88 @@ function getRandomLetter() {
     let letter = String.fromCharCode(charCode);
     return letter;
 }
-//moneys指令相关
-let moneycmd = mc.newCommand("moneys",lang.get("CoinName"),PermType.GameMasters)
-moneycmd.mandatory("option",ParamType.String)
-moneycmd.optional("player",ParamType.String)
-moneycmd.optional("amount",ParamType.Int)
-moneycmd.overload(["option","player","amount"])
-moneycmd.setCallback((cmd,ori,out,res)=>{
-    let pl = mc.getPlayer(res.player)
-    if(!pl) return out.error(+lang.get("money.tr.noonline"))
-    let moneyhisdata = MoneyHistory.get(pl.realName)
-    switch(res.option){
-        case "set":
-            if(!conf.get("LLMoney")){
-            pl.setScore(conf.get("Scoreboard"),res.amount)
-            }else{
-            pl.setMoney(res.amount)
+// moneys指令相关
+const moneycmd = mc.newCommand("moneys", lang.get("CoinName"), PermType.GameMasters);
+moneycmd.mandatory("option", ParamType.String);
+moneycmd.optional("player", ParamType.String);
+moneycmd.optional("amount", ParamType.Int);
+moneycmd.overload(["option", "player", "amount"]);
+
+moneycmd.setCallback((cmd, ori, out, res) => {
+    const pl = mc.getPlayer(res.player);
+    if (!pl) return out.error(info+lang.get("money.tr.noonline"));
+
+    const coinName = lang.get("CoinName");
+    const playerName = lang.get("player"); 
+    const moneyhisdata = MoneyHistory.get(pl.realName);
+    const timestamp = `${system.getTimeStr()}§${getRandomLetter()}`;
+
+    const logHistory = (action, amount) => {
+        moneyhisdata[timestamp] = `${coinName}${action}${amount}`;
+        MoneyHistory.set(pl.realName, moneyhisdata);
+    };
+
+    const actions = {
+        set: () => {
+            // 验证 amount 参数
+            if (res.amount === undefined || res.amount === null) {
+                return out.error("§c请指定数量！用法: /moneys set <玩家> <数量>");
             }
-
-            moneyhisdata[String(system.getTimeStr())+"§"+getRandomLetter()] = lang.get("CoinName")+"设置为"+res.amount
-            MoneyHistory.set(pl.realName,moneyhisdata)
-
-            out.success(lang.get("money.success")+lang.get("to")+lang.get("player")+res.player+"的"+lang.get("CoinName")+"设置为"+res.amount)
-            break
-        case "add":
-            if(!conf.get("LLMoney")){
-            pl.addScore(conf.get("Scoreboard"),res.amount)
-            }else{
-            pl.addMoney(res.amount)
+            Economy.execute(pl, 'set', res.amount);
+            logHistory(lang.get("money.op.set"), res.amount);
+            out.success(info + lang.get("moneys.set.success")
+                .replace("${player}", res.player)
+                .replace("${coin}", coinName)
+                .replace("${amount}", res.amount));
+        },
+        add: () => {
+            // 验证 amount 参数
+            if (res.amount === undefined || res.amount === null) {
+                return out.error("§c请指定数量！用法: /moneys add <玩家> <数量>");
             }
-
-            moneyhisdata[String(system.getTimeStr())+"§"+getRandomLetter()] = lang.get("CoinName")+"增加"+res.amount
-            MoneyHistory.set(pl.realName,moneyhisdata)
-
-            out.success(lang.get("money.success")+lang.get("to")+lang.get("player")+res.player+"的"+lang.get("CoinName")+"增加"+res.amount)
-            break
-        case "del":
-            pl.reduceScore(conf.get("Scoreboard"),res.amount)
-            if(!conf.get("LLMoney")){
-            pl.reduceScore(conf.get("Scoreboard"),res.amount)
-            }else{
-            pl.reduceMoney(res.amount)
+            Economy.execute(pl, 'add', res.amount);
+            logHistory(lang.get("money.op.add"), res.amount);
+            out.success(info + lang.get("moneys.add.success")
+                .replace("${player}", res.player)
+                .replace("${coin}", coinName)
+                .replace("${amount}", res.amount));
+        },
+        del: () => {
+            // 验证 amount 参数
+            if (res.amount === undefined || res.amount === null) {
+                return out.error("§c请指定数量！用法: /moneys del <玩家> <数量>");
             }
+            Economy.execute(pl, 'reduce', res.amount);
+            logHistory(lang.get("money.op.remove"), res.amount);
+            out.success(info + lang.get("moneys.del.success")
+                .replace("${player}", res.player)
+                .replace("${coin}", coinName)
+                .replace("${amount}", res.amount));
+        },
+        get: () => {
+            const balance = Economy.get(pl);
+            out.success(info + lang.get("moneys.get.result")
+                .replace("${player}", res.player)
+                .replace("${coin}", coinName)
+                .replace("${amount}", balance));
+        },
+        history: () => {
+            const items = Object.entries(moneyhisdata).slice(0, 50);
+            out.success(info + lang.get("moneys.history.title")
+                .replace("${player}", res.player)
+                .replace("${coin}", coinName));
+            items.forEach(([key, value]) => out.success(`${key}: ${value}`));
+        }
+    };
 
-            moneyhisdata[String(system.getTimeStr())+"§"+getRandomLetter()] = lang.get("CoinName")+"减少"+res.amount
-            MoneyHistory.set(pl.realName,moneyhisdata)
-
-            out.success(lang.get("money.success")+lang.get("to")+lang.get("player")+res.player+"的"+lang.get("CoinName")+"减少"+res.amount)
-            break
-        case "get":
-            if(!conf.get("LLMoney")){
-            pl.getScore(conf.get("Scoreboard"))
-            out.success(lang.get("player")+res.player+"的"+lang.get("CoinName")+"为"+pl.getScore(conf.get("Scoreboard")))
-            }else{
-            pl.sendText(info +"玩家当前LLMoney金币为："+pl.getMoney()) 
-            }
-           
-            break
-        case "history":
-            let jsonStr = JSON.stringify(moneyhisdata);
-            let items = jsonStr.slice(1, jsonStr.length - 1).split(',');
-            out.success(lang.get("player")+res.player+"的"+lang.get("CoinName")+lang.get("money.history"))
-            let count = 0
-            for (let item of items) {
-                if (count >= 50) {
-                    break;
-                }
-                out.success(item + "\n");
-            }
-            break
+    // 验证操作是否存在
+    if (!actions[res.option]) {
+        return out.error("§c无效的操作！可用操作: set, add, del, get, history");
     }
-})
-moneycmd.setup()
+
+    actions[res.option]();
+});
+moneycmd.setup();
 let moneygui = mc.newCommand("moneygui",lang.get("CoinName"),PermType.Any)
 moneygui.overload([])
 moneygui.setCallback((cmd,ori,out,res)=>{
@@ -2203,7 +1782,82 @@ function OPMoneyGui(plname){
 }
 
 // --- 1. 核心工具类 (封装底层逻辑) ---
+// --- 2.7.2 add 离线货币缓存管理 ---
+const OfflineMoneyCache = {
+    // 读取离线缓存
+    load: () => {
+        if (!File.exists(offlineMoneyPath)) {
+            File.writeTo(offlineMoneyPath, JSON.stringify({}));
+        }
+        return JSON.parse(File.readFrom(offlineMoneyPath));
+    },
+    
+    // 保存离线缓存
+    save: (data) => {
+        File.writeTo(offlineMoneyPath, JSON.stringify(data, null, 2));
+    },
+    
+    // 添加离线操作记录
+    add: (playerName, type, amount) => {
+        const cache = OfflineMoneyCache.load();
+        if (!cache[playerName]) {
+            cache[playerName] = [];
+        }
+        cache[playerName].push({
+            type: type,
+            amount: amount,
+            timestamp: system.getTimeStr()
+        });
+        OfflineMoneyCache.save(cache);
+    },
+    
+    // 获取玩家的离线操作
+    get: (playerName) => {
+        const cache = OfflineMoneyCache.load();
+        return cache[playerName] || [];
+    },
+    
+    // 清除玩家的离线操作
+    clear: (playerName) => {
+        const cache = OfflineMoneyCache.load();
+        delete cache[playerName];
+        OfflineMoneyCache.save(cache);
+    },
+    
+    // 应用离线操作到在线玩家
+    apply: (player) => {
+        const operations = OfflineMoneyCache.get(player.realName);
+        if (operations.length === 0) return;
+        
+        const coinName = lang.get("CoinName");
+        let totalChange = 0;
+        
+        operations.forEach(op => {
+            Economy.execute(player, op.type, op.amount);
+            
+            // 计算总变化（用于通知）
+            if (op.type === 'add' || op.type === 'set') {
+                totalChange += op.amount;
+            } else if (op.type === 'reduce') {
+                totalChange -= op.amount;
+            }
+        });
+        
+        // 清除已应用的操作
+        OfflineMoneyCache.clear(player.realName);
+        
+        // 通知玩家
+        if (totalChange !== 0) {
+            const message = totalChange > 0 
+                ? `§a你离线期间收到了 ${totalChange} ${coinName}`
+                : `§c你离线期间扣除了 ${Math.abs(totalChange)} ${coinName}`;
+            player.tell(message);
+        }
+        
+    }
+};
 
+// --- 改进的 Economy 核心 ---
 const Economy = {
     isScoreboard: () => conf.get("LLMoney") == 0,
     getObjName: () => conf.get("Scoreboard"),
@@ -2215,21 +1869,43 @@ const Economy = {
             : p.getMoney();
     },
     
-    // 执行变更操作
-    execute: (p, type, amount) => {
-        const isScore = Economy.isScoreboard();
-        const obj = Economy.getObjName();
-        switch (type) {
-            case 'set': return isScore ? p.setScore(obj, amount) : p.setMoney(amount);
-            case 'add': return isScore ? p.addScore(obj, amount) : p.addMoney(amount);
-            case 'reduce': 
-                // 兼容不同核心的减少API
-                return isScore ? p.reduceScore(obj, amount) : p.reduceMoney(amount);
-            default: return false;
+    // 执行变更操作（自动处理在线/离线）
+    execute: (playerIdentifier, type, amount) => {
+        // 如果是 Player 对象（在线玩家）
+        if (typeof playerIdentifier === 'object' && playerIdentifier.getScore) {
+            const p = playerIdentifier;
+            const isScore = Economy.isScoreboard();
+            const obj = Economy.getObjName();
+            
+            switch (type) {
+                case 'set': return isScore ? p.setScore(obj, amount) : p.setMoney(amount);
+                case 'add': return isScore ? p.addScore(obj, amount) : p.addMoney(amount);
+                case 'reduce': return isScore ? p.reduceScore(obj, amount) : p.reduceMoney(amount);
+                default: return false;
+            }
+        }
+        
+        // 如果是字符串（玩家名） - 尝试获取在线玩家
+        const playerName = typeof playerIdentifier === 'string' ? playerIdentifier : playerIdentifier.realName;
+        const onlinePlayer = mc.getPlayer(playerName);
+        
+        if (onlinePlayer) {
+            // 玩家在线，直接操作
+            return Economy.execute(onlinePlayer, type, amount);
+        } else {
+            // 玩家离线，添加到缓存队列
+            OfflineMoneyCache.add(playerName, type, amount);
+            logger.info(`[Economy] 玩家 ${playerName} 离线，操作已缓存: ${type} ${amount}`);
+            return true; // 返回成功，因为已缓存
         }
     }
 };
 
+// --- 玩家加入事件监听 ---
+mc.listen("onJoin", (player) => {
+    // 应用离线货币操作
+    OfflineMoneyCache.apply(player);
+});
 const Logger = {
     // 记录历史
     // targetName: 谁的钱变了
@@ -2319,9 +1995,6 @@ function MoneyHistoryGui(plname) {
         if (!historyData || Object.keys(historyData).length === 0) {
             return pl.sendText("暂无记录");
         }
-
-        // 优化：原代码的 JSON stringify/split 很容易出错且难以阅读
-        // 这里直接获取 Values 并反转（让最新的显示在最前面）
         const logs = Object.values(historyData).reverse();
         
         // 只显示前 50 条
@@ -2338,103 +2011,82 @@ function MoneyTransferGui(plname) {
     const pl = mc.getPlayer(plname);
     if (!pl) return;
 
-    // 1. 获取基础数据
-    const onlinePlayers = mc.getOnlinePlayers();
-    const playerNames = onlinePlayers.map(p => p.realName);
+    const playerNames = mc.getOnlinePlayers().map(p => p.realName);
     const myBalance = Economy.get(pl);
-    const taxRate = conf.get("PayTaxRate"); // 假设配置中为百分比，如 5 代表 5%
+    const taxRate = conf.get("PayTaxRate");
     const coinName = lang.get("CoinName");
 
-    // 2. 构建表单
     const fm = mc.newCustomForm();
-    fm.setTitle(lang.get("money.transfer") + coinName);
-    
-    // 顶部信息显示
-    fm.addLabel(`您的余额: ${myBalance} ${coinName}\n当前转账税率: ${taxRate}%`);
-    
-    // 字段索引说明: [1]目标玩家, [2]金额, [3]备注
+    fm.setTitle(lang.get("money.transfer.title") + coinName);
+    fm.addLabel(lang.get("money.transfer.balance")
+        .replace("${balance}", myBalance)
+        .replace("${coin}", coinName) + "\n" + 
+        lang.get("money.transfer.tax").replace("${rate}", taxRate));
     fm.addDropdown(lang.get("choose") + lang.get("one") + lang.get("player"), playerNames);
-    fm.addInput(lang.get("money.tr.amount"), "输入数量或 'all'");
-    fm.addInput(lang.get("money.tr.beizhu"), "选填：转账备注");
+    fm.addInput(lang.get("money.tr.amount"), lang.get("money.transfer.input.amount"));
+    fm.addInput(lang.get("money.tr.beizhu"), lang.get("money.tr.beizhu"));
 
     pl.sendForm(fm, (player, data) => {
-        // 返回上一级
         if (data == null) return player.runcmd("moneygui");
 
-        const [_, targetIdx, inputAmount, note] = data;
-        const targetName = playerNames[targetIdx];
-        const target = mc.getPlayer(targetName);
+        const [, targetIdx, inputAmount, note] = data;
+        const target = mc.getPlayer(playerNames[targetIdx]);
 
-        // --- 逻辑校验阶段 ---
-
-        // 校验目标
-        if (!target || target.isSimulatedPlayer()) {
-            return player.tell(info + lang.get("money.tr.error1"));
-        }
-        if (player.realName === target.realName) {
-            return player.tell(info + lang.get("money.tr.error2"));
+        if (!target?.isSimulatedPlayer?.() === false || player.realName === target.realName) {
+            return player.tell(info + (player.realName === target.realName 
+                ? lang.get("money.tr.error2") 
+                : lang.get("money.tr.error1")));
         }
 
-        // 校验金额格式
-        let amountStr = inputAmount.trim().toLowerCase();
-        let finalAmount = 0;
+        const amountStr = inputAmount.trim().toLowerCase();
+        const finalAmount = amountStr === "all" 
+            ? Economy.get(player) 
+            : /^\d+$/.test(amountStr) ? parseInt(amountStr) : -1;
 
-        if (amountStr === "all") {
-            finalAmount = Economy.get(player);
-        } else if (/^\d+$/.test(amountStr)) {
-            finalAmount = parseInt(amountStr);
-        } else {
-            return player.tell(info + lang.get("key.not.number"));
-        }
-
-        // 校验金额数值
         if (finalAmount <= 0) {
-            return player.tell(info + lang.get("money.must.bigger0"));
+            return player.tell(info + (finalAmount === -1 
+                ? lang.get("key.not.number") 
+                : lang.get("money.must.bigger0")));
         }
 
-        // --- 计算与二次校验 ---
-
-        // 计算税费
         const tax = Math.floor(finalAmount * (taxRate / 100));
         const actualReceived = finalAmount - tax;
 
-        if (actualReceived <= 0) {
-            return player.tell(info + "转账金额不足以支付手续费！");
+        if (actualReceived <= 0 || Economy.get(player) < finalAmount) {
+            return player.tell(info + (actualReceived <= 0 
+                ? lang.get("money.transfer.tax.notenough") 
+                : lang.get("money.no.enough")));
         }
 
-        // 核心安全：执行前再次检查余额，防止在填写表单时余额变动
-        const currentBal = Economy.get(player);
-        if (currentBal < finalAmount) {
-            return player.tell(info + lang.get("money.no.enough"));
-        }
-
-        // --- 执行转账 ---
-
-        // 1. 扣除转账者金额 (全额)
         Economy.execute(player, 'reduce', finalAmount);
-        
-        // 2. 增加接收者金额 (扣除手续费后的金额)
         Economy.execute(target, 'add', actualReceived);
 
-        // --- 日志与通知 ---
-
         const timeStr = system.getTimeStr();
-        const detailMsg = `数量:${finalAmount}, 到账:${actualReceived}, 手续费:${tax}`;
-        const noteMsg = note ? ` 备注: ${note}` : "";
-
-        // 记录转账者历史
+        const noteMsg = note ? ` ${lang.get("money.tr.beizhu")}: ${note}` : "";
+        
         Logger.add(player.realName, 
-            `${timeStr} 转账给 ${target.realName}, ${detailMsg}${noteMsg}`
+            `${timeStr} ${lang.get("money.transfer.log.send")
+                .replace("${target}", target.realName)
+                .replace("${amount}", finalAmount)
+                .replace("${received}", actualReceived)
+                .replace("${tax}", tax)}${noteMsg}`
         );
         
-        // 记录接收者历史
         Logger.add(target.realName, 
-            `${timeStr} 收到 ${player.realName} 转账, ${detailMsg}${noteMsg}`
+            `${timeStr} ${lang.get("money.transfer.log.receive")
+                .replace("${sender}", player.realName)
+                .replace("${amount}", finalAmount)
+                .replace("${received}", actualReceived)
+                .replace("${tax}", tax)}${noteMsg}`
         );
 
-        // 双方通知
-        player.sendText(`${info}转账成功！您支出了 ${finalAmount}，对方收到 ${actualReceived}。`);
-        target.sendText(`${info}您收到来自 ${player.realName} 的 ${actualReceived} ${coinName}。${noteMsg}`);
+        player.sendText(info + lang.get("money.transfer.success.sender")
+            .replace("${amount}", finalAmount)
+            .replace("${received}", actualReceived));
+        target.sendText(info + lang.get("money.transfer.success.receiver")
+            .replace("${sender}", player.realName)
+            .replace("${amount}", actualReceived)
+            .replace("${coin}", coinName) + noteMsg);
     });
 }
 // [查询余额]
@@ -2491,118 +2143,127 @@ function MoneyAddGui(plname) {
     });
 }
 
-let warpgui = mc.newCommand("warp","公共传送点",PermType.Any)
-warpgui.overload([])
-warpgui.setCallback((cmd,ori,out,res)=>{
-    let pl = ori.player
-    if(!pl) return out.error("仅限玩家执行")
+const warpgui = mc.newCommand("warp", "公共传送点", PermType.Any);
+warpgui.overload([]);
+warpgui.setCallback((cmd, ori, out, res) => {
+    const pl = ori.player;
+    if (!pl) return out.error("仅限玩家执行");
     
-    let fm = mc.newSimpleForm()
-    fm.setTitle(lang.get("warp.menu.public"))
-    if(pl.isOP()) {
-        OPWarpGui(pl.realName)
-    }else{
-        WarpGui(pl.realName)
-    }
-    
-})
-warpgui.setup()
+    pl.isOP() ? OPWarpGui(pl.realName) : WarpGui(pl.realName);
+});
+warpgui.setup();
 
-function OPWarpGui(plname){
-    let pl = mc.getPlayer(plname)
-    if(!pl) return
-    let fm = mc.newSimpleForm()
-    fm.setTitle(lang.get("warp.menu.public.op"))
-    fm.addButton(lang.get("warp.add"))
-    fm.addButton(lang.get("warp.del"))
-    fm.addButton(lang.get("warp.list"))
-    pl.sendForm(fm,(pl,id)=>{
-        if(id == null) return pl.tell(info + lang.get("gui.exit"));
-        switch(id){
-            case 0:
-                WarpAddGui(pl.realName)
-                break
-            case 1:
-                WarpDelGui(pl.realName)
-                break
-            case 2:
-                WarpGui(pl.realName)
-                break
-        }
-    })
+function OPWarpGui(plname) {
+    const pl = mc.getPlayer(plname);
+    if (!pl) return;
+    
+    const fm = mc.newSimpleForm();
+    fm.setTitle(lang.get("warp.menu.public.op"));
+    fm.addButton(lang.get("warp.add"));
+    fm.addButton(lang.get("warp.del"));
+    fm.addButton(lang.get("warp.list"));
+    
+    pl.sendForm(fm, (pl, id) => {
+        if (id == null) return pl.tell(info + lang.get("gui.exit"));
+        
+        const actions = [
+            () => WarpAddGui(pl.realName),
+            () => WarpDelGui(pl.realName),
+            () => WarpGui(pl.realName)
+        ];
+        actions[id]?.();
+    });
 }
-function WarpGui(plname){
-    let pl = mc.getPlayer(plname)
-    if(!pl) return
-    let cost = conf.get("Warp")
-    let fm = mc.newSimpleForm()
-    fm.setTitle(lang.get("warp.menu.public"))
-    let lst = Object.keys(JSON.parse(warpdata.read()))
-    //logger.log(lst)
-    for(let i in lst){
-        fm.addButton(lst[i])
-    }
-    pl.sendForm(fm,(pl,id)=>{
-        if(id == null) return pl.tell(info + lang.get("gui.exit"));
-        let fm = mc.newCustomForm()
-        fm.setTitle(lang.get("warp.go.to"))
-        fm.addLabel("传送点名称："+lst[id])
-        fm.addLabel("坐标："+warpdata.get(lst[id]).x+","+warpdata.get(lst[id]).y+","+warpdata.get(lst[id]).z+" "+transdimid[warpdata.get(lst[id]).dimid])
-        fm.addLabel("传送花费："+conf.get("Warp"))
-        fm.addLabel(displayMoneyInfo(pl, pl, true))        
-        pl.sendForm(fm,(pl,data)=>{
-            if(data == null) return pl.tell(info + lang.get("gui.exit"));
-            if(!conf.get("LLMoney")){
-            if(!ValueCheck(pl.realName,conf.get("Warp"))) return pl.tell(info + lang.get("money.no.enough"));
-            }else{
-            if(!LLValueCheck(pl.realName,conf.get("Warp"))) return pl.tell(info + lang.get("money.no.enough"));
+
+function WarpGui(plname) {
+    const pl = mc.getPlayer(plname);
+    if (!pl) return;
+    
+    const warpList = Object.keys(JSON.parse(warpdata.read()));
+    
+    const fm = mc.newSimpleForm();
+    fm.setTitle(lang.get("warp.menu.public"));
+    warpList.forEach(name => fm.addButton(name));
+    
+    pl.sendForm(fm, (pl, id) => {
+        if (id == null) return pl.tell(info + lang.get("gui.exit"));
+        
+        const warpName = warpList[id];
+        const warpInfo = warpdata.get(warpName);
+        const cost = conf.get("Warp");
+        
+        const confirmFm = mc.newCustomForm();
+        confirmFm.setTitle(lang.get("warp.go.to"));
+        confirmFm.addLabel(lang.get("warp.teleport.name") + warpName);
+        confirmFm.addLabel(lang.get("warp.teleport.coord") + `${warpInfo.x},${warpInfo.y},${warpInfo.z} ${transdimid[warpInfo.dimid]}`);
+        confirmFm.addLabel(lang.get("warp.teleport.cost") + cost);
+        confirmFm.addLabel(displayMoneyInfo(pl, pl, true));
+        
+        pl.sendForm(confirmFm, (pl, data) => {
+            if (data == null) return pl.tell(info + lang.get("gui.exit"));
+            
+            if (Economy.get(pl) < cost) {
+                return pl.tell(info + lang.get("money.no.enough"));
             }
-            pl.teleport(parseFloat(warpdata.get(lst[id]).x),parseFloat(warpdata.get(lst[id]).y),parseFloat(warpdata.get(lst[id]).z),parseInt(warpdata.get(lst[id]).dimid))
-            pl.sendText("已前往传送点 "+lst[id])
-        })
-    })
+            
+            Economy.execute(pl, 'reduce', cost);
+            pl.teleport(
+                parseFloat(warpInfo.x),
+                parseFloat(warpInfo.y),
+                parseFloat(warpInfo.z),
+                parseInt(warpInfo.dimid)
+            );
+            pl.sendText(info +lang.get("warp.teleported").replace("${name}", warpName));
+        });
+    });
 }
 
-function WarpDelGui(plname){
-    let pl = mc.getPlayer(plname)
-    if(!pl) return
-    let fm = mc.newSimpleForm()
-    fm.setTitle(lang.get("warp.del.point"))
-    let lst = Object.keys(JSON.parse(warpdata.read()))
-    //(lst)
-    for(let i in lst){
-        fm.addButton(lst[i])
-    }
-    pl.sendForm(fm,(pl,id)=>{
-        if(id == null) return pl.runcmd("warp")
-        warpdata.delete(lst[id])
-        pl.sendText(lang.get("warp.del.point")+" "+lst[id]+" 成功！")
-    })
+function WarpDelGui(plname) {
+    const pl = mc.getPlayer(plname);
+    if (!pl) return;
+    
+    const warpList = Object.keys(JSON.parse(warpdata.read()));
+    
+    const fm = mc.newSimpleForm();
+    fm.setTitle(lang.get("warp.del.point"));
+    warpList.forEach(name => fm.addButton(name));
+    
+    pl.sendForm(fm, (pl, id) => {
+        if (id == null) return pl.runcmd("warp");
+        
+        const warpName = warpList[id];
+        warpdata.delete(warpName);
+        pl.sendText(info +lang.get("warp.del.success").replace("${name}", warpName));
+    });
 }
 
-
-function WarpAddGui(plname){
-    let pl = mc.getPlayer(plname)
-    if(!pl) return
-    let fm = mc.newCustomForm()
-    fm.setTitle(lang.get("warp.add.point"))
-    fm.addLabel(lang.get("warp.add.point.xyz"))
-    fm.addLabel("坐标："+pl.pos.x.toFixed(1)+","+pl.pos.y.toFixed(1)+","+pl.pos.z.toFixed(1)+" "+transdimid[pl.pos.dimid])
-    fm.addInput(lang.get("warp.input.name"),lang.get("warp.name"))
-    pl.sendForm(fm,(pl,data)=>{
-        if(data == null) return pl.runcmd("warp")
-        if(data[2] == "" || !data[2]) return pl.tell(info + lang.get("warp.noinput.name"));
-        if(warpdata.get(data[2]) != null) return pl.tell(info + lang.get("warp.name.repetitive"));
-        warpdata.set(data[2],{
-            "x":JSON.parse(pl.pos.x).toFixed(1),
-            "y":JSON.parse(pl.pos.y).toFixed(1),
-            "z":JSON.parse(pl.pos.z).toFixed(1),
-            "dimid":JSON.parse(pl.pos.dimid)
-        })
-        pl.sendText("添加公共传送点 "+data[2]+" 成功！")
-    })
+function WarpAddGui(plname) {
+    const pl = mc.getPlayer(plname);
+    if (!pl) return;
+    
+    const pos = pl.pos;
+    const fm = mc.newCustomForm();
+    fm.setTitle(lang.get("warp.add.point"));
+    fm.addLabel(lang.get("warp.add.point.xyz"));
+    fm.addLabel(lang.get("warp.teleport.coord") + `${pos.x.toFixed(1)},${pos.y.toFixed(1)},${pos.z.toFixed(1)} ${transdimid[pos.dimid]}`);
+    fm.addInput(lang.get("warp.input.name"), lang.get("warp.name"));
+    
+    pl.sendForm(fm, (pl, data) => {
+        if (data == null) return pl.runcmd("warp");
+        
+        const warpName = data[2];
+        if (!warpName) return pl.tell(info + lang.get("warp.noinput.name"));
+        if (warpdata.get(warpName)) return pl.tell(info + lang.get("warp.name.repetitive"));
+        
+        warpdata.set(warpName, {
+            x: pos.x.toFixed(1),
+            y: pos.y.toFixed(1),
+            z: pos.z.toFixed(1),
+            dimid: pos.dimid
+        });
+        pl.sendText(info +lang.get("warp.add.success").replace("${name}", warpName));
+    });
 }
-
 
 
 mc.listen("onRespawn",(pl)=>{
@@ -3456,7 +3117,7 @@ asyncRtpCmd.setCallback(async (cmd, ori, out, res) => {
     }
     
     try {
-        await AsyncTeleportSystem.performRTPAsync(pl);
+        await RadomTeleportSystem.performRTPAsync(pl);
     } catch (error) {
         logger.error(`RTP命令执行失败: ${error.message}`);
         pl.tell(info + "§c传送失败，请稍后重试");
@@ -3884,9 +3545,8 @@ function showRedPacketDetail(pl, packet) {
     });
     
     pl.sendForm(form, (pl, id) => {
-        // 点击任何按钮都提示并返回主菜单
+        // 点击任何按钮都返回主菜单
         if (id !== null) {
-           // pl.tell(info + "§a正在返回经济系统主界面...");
         }
         pl.runcmd("moneygui");
     });
