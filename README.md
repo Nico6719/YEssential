@@ -18,6 +18,7 @@
 
 |功能  	 |描述	                      |状态 |
 |--------|----------------------------|-------------|
+|Modules|多模块支持！|✅|
  |Economic	 |经济核心|	✅|
  |Hub	 |一键回城，可通过指令设置传送点。 |	✅|
  |Rtp	 |随机传送，附带动画。	 |✅|
@@ -266,8 +267,39 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
     ]
   }
 ```
+- ./modules/modulelist.json
+```json
+{
+    "modules": [
+        {
+            "path": "cleanmgr.js",
+            "name": "CleanMgr"
+        },
+        {
+            "path": "ConfigManager.js",
+            "name": "ConfigManager"
+        },
+        {
+            "path": "AsyncUpdateChecker.js",
+            "name": "AsyncUpdateChecker"
+        },
+        {
+            "path": "RadomTeleportSystem.js",
+            "name": "RadomTeleportSystem"
+        },
+        {
+            "path": "XXX.js",
+            "name": "XXX"  //可以添加你想要加载的模块以便服务器使用
+        }
+    ]
+}
+```
 
 ---
+
+## 📥 API调用 / 使用
+待补充
+
 ## 📦 示例指令
 
 以下是部分常用指令示例（视插件版本可能会有所变动）：
