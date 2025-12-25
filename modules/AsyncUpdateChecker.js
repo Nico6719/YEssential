@@ -64,6 +64,7 @@ class AsyncUpdateChecker {
             { url: 'YEssential.js', path: 'YEssential.js' },
             { url: 'modules/Cleanmgr.js', path: './modules/Cleanmgr.js' },
             { url: 'modules/ConfigManager.js', path: './modules/ConfigManager.js' },
+            { url: 'modules/AsyncUpdateChecker.js', path: './modules/AsyncUpdateChecker.js' },
             { url: 'modules/RadomTeleportSystem.js', path: './modules/RadomTeleportSystem.js' }
         ],
         reloadDelay: 1000,

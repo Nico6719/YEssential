@@ -587,7 +587,7 @@ var CleanMgr = (function () {
   /* ================= 初始化 ================= */
   function init() {
 
-    logger.info("CleanMgr 模块初始化中…");
+    //logger.info("CleanMgr 模块初始化中…");
 
     
     // 先加载配置（用于debug设置）
@@ -600,41 +600,7 @@ var CleanMgr = (function () {
     
     // 加载语言
     lang = loadLang();
-    /*logger.info("语言对象已初始化");
-    
-    // 详细测试语言功能
-    logger.info("=== 语言功能测试 ===");
-    logger.info("lang 是否存在: " + (lang ? "是" : "否"));
-    logger.info("lang.prefix: " + (lang && lang.prefix ? lang.prefix : "未定义"));
-    logger.info("lang.messages 类型: " + (lang && lang.messages ? typeof lang.messages : "未定义"));
-    
-    if (lang && lang.messages) {
-      var msgKeys = Object.keys(lang.messages);
-      logger.info("messages 键数量: " + msgKeys.length);
-      logger.info("前5个键: " + msgKeys.slice(0, 5).join(", "));
-      
-      // 测试几个关键消息
-      logger.info("cleanup_start 值: " + (lang.messages.cleanup_start || "未定义"));
-      logger.info("system_starting 值: " + (lang.messages.system_starting || "未定义"));
-    }
-    
-    // 测试翻译函数
-    logger.info("=== 翻译函数测试 ===");
-    logger.info("测试1: " + t("messages.system_starting"));
-    logger.info("测试2: " + t("messages.cleanup_complete", "123"));
-    logger.info("测试3: " + t("messages.cleanup_stats", "100", "50", "50"));
-    logger.info("=== 测试结束 ===");
-    
-    // 现在可以安全使用了
-    var msg1 = lang.prefix + t("messages.system_starting");
-    var msg2 = lang.prefix + t("messages.config_loaded");
-    
-    logger.info("准备广播消息1: " + msg1);
-    logger.info("准备广播消息2: " + msg2);
-    
-    mc.broadcast(msg1);
-    mc.broadcast(msg2);
-    */ 
+ 
     compileWhitelist();
     
     initTpsSampler();
@@ -643,7 +609,7 @@ var CleanMgr = (function () {
     
     startTimers();
   
-    logger.info("CleanMgr 启动完成"); 
+    //logger.info("CleanMgr 启动完成"); 
   }
 
   return { init: init };

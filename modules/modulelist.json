@@ -1,0 +1,20 @@
+{
+    "modules": [
+        {
+            "path": "cleanmgr.js",
+            "name": "CleanMgr"
+        },
+        {
+            "path": "ConfigManager.js",
+            "name": "ConfigManager"
+        },
+        {
+            "path": "AsyncUpdateChecker.js",
+            "name": "AsyncUpdateChecker"
+        },
+        {
+            "path": "RadomTeleportSystem.js",
+            "name": "RadomTeleportSystem"
+        }
+    ]
+}

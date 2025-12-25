@@ -305,7 +305,7 @@ class ConfigManager {
      * 确保所有配置项都存在
      */
     ensureAllConfigs() {
-        logger.info("检查所有配置项...");
+        //logger.info("检查所有配置项...");
         
         for (let key in this.configDefaults) {
             if (this.isValidObject(this.configDefaults[key])) {
