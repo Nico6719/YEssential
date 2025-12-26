@@ -1,24 +1,28 @@
 {
     "modules": [
         {
-            "path": "cleanmgr.js",
-            "name": "CleanMgr"
+            "path": "AsyncUpdateChecker.js",
+            "name": "AsyncUpdateChecker"
+        },
+        {
+            "path": "Cd.js",
+            "name": "Cd"
+        },
+        {
+            "path": "Cleanmgr.js",
+            "name": "Cleanmgr"
         },
         {
             "path": "ConfigManager.js",
             "name": "ConfigManager"
         },
         {
-            "path": "AsyncUpdateChecker.js",
-            "name": "AsyncUpdateChecker"
-        },
-        {
             "path": "RadomTeleportSystem.js",
             "name": "RadomTeleportSystem"
         },
         {
-            "path": "Cd.js",
-            "name": "Cd"
+            "path": "YEssentialAPI.js",
+            "name": "YEssentialAPI"
         }
     ]
 }
