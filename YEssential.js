@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.7.3";
-const regversion =[2,7,3];
+const version = "2.7.4";
+const regversion =[2,7,4];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("x.x"));
@@ -39,6 +39,15 @@ const defaultLangContent = {
     "moneys.get.result": "玩家 ${player} 的${coin}为 ${amount}",
     "moneys.history.title": "玩家 ${player} 的${coin}历史记录",
     
+    //Cd相关
+    "cd.config.error": "§l§c打开菜单失败,配置文件的内容没有完善", 
+    "cd.button.isnull":"§l§c菜单中没有任何按钮",
+    "cd.yourmoney.iszero":"§l§c你没有足够的金币使用这个按钮",  
+    "cd.thisbutton.error":"§l§c这个按钮的类型错误,请联系管理员处理",
+    "cd.vip.deny":"§l§c会员功能未启用",
+    "cd.op.deny":"§l§c你没有权限使用这个按钮,抱歉",
+
+
     // warp相关
     "warp.command.desc": "公共传送点",
     "warp.only.player": "仅限玩家执行",
