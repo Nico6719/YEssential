@@ -1,7 +1,7 @@
 # 📦 YEssential  
 **基于 LSE 的多功能基础插件**  
 
-> 一个简洁、实用的基础插件，适用于基岩版服务器。基于 LegacyScriptEngine (LSE) 的插件，并可迁移 TMEssential 的部分数据（如 home 和 warp）。 
+> 一个简洁、实用的基础插件，适用于基岩版服务器。基于 LegacyScriptEngine (LSE) 的插件，并且可以迁移 TMEssential 的部分数据（如 home 和 warp）以及 [PMenu](https://www.minebbs.com/resources/pmenu.4277/) 的菜单数据（100%兼容！）
 ## 📌 基本信息
 
 - **名称**：YEssential  
