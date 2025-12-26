@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.7.4";
-const regversion =[2,7,4];
+const version = "2.7.5";
+const regversion =[2,7,5];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("x.x"));
@@ -299,6 +299,10 @@ let modulelist = new JsonConfigFile(pluginpath +"/modules/modulelist.json",JSON.
     {
       "path": "RadomTeleportSystem.js",
       "name": "RadomTeleportSystem"
+    },
+    {
+      "path": "Cd.js",
+      "name": "Cd"
     }
   ]
 }));
