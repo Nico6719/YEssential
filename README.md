@@ -123,6 +123,7 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
 ---
 ## 📦 配置文件
 - ./Config/config.json
+主配置文件
 ```json
 {
     "AutoUpdate": 1,  //自动更新，默认为开启
@@ -208,7 +209,9 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
 }
 ```
 > 懒怎么办？？ 试试[网页配置编辑器](https://jzrxh.work/projects/yessential/config.html)吧！
+
 - ./Config/cleanmgr/config.json
+清理器配置文件
 ```json
 {
   "cleanmgr": {
@@ -258,6 +261,7 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
 }
 ```
 - ./data/TrSeverData/server.json
+跨服传送配置文件
 ```json
 {
     "servers": [
@@ -269,11 +273,12 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
   }
 ```
 - ./modules/modulelist.json
+模块列表
 ```json
 {
     "modules": [
         {
-            "path": "cleanmgr.js",
+            "path": "Cleanmgr.js",
             "name": "CleanMgr"
         },
         {
@@ -289,13 +294,19 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
             "name": "RadomTeleportSystem"
         },
         {
+            "path": "Cd.js",
+            "name": "Cd"
+        },
+        {
             "path": "XXX.js",
             "name": "XXX"  //可以添加你想要加载的模块以便服务器使用
         }
     ]
 }
 ```
-- 1
+
+- ./Config/Cd/Config.json
+菜单的配置文件
 
 ```json
 {
