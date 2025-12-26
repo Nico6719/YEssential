@@ -20,6 +20,7 @@
 |--------|----------------------------|-------------|
 |Modules|多模块支持！|✅|
  |Economic	 |经济核心|	✅|
+ |菜单	 |菜单功能，兼容[PMenu](https://www.minebbs.com/resources/pmenu.4277/)的配置文件！！|	✅|
  |Hub	 |一键回城，可通过指令设置传送点。 |	✅|
  |Rtp	 |随机传送，附带动画。	 |✅|
  |Tpa	 |传送系统，借鉴了子邪大佬写的 TeleportMaster。 |	✅|
@@ -110,7 +111,7 @@
 适合基岩版 Minecraft 服务器使用，特别是：
 
 - 想从 TMEssential 迁移到新基础插件  
-- 需要增强默认指令与服务器管理功能 
+- 需要还在维护的Menu插件
 ---
 
 ## 🧩 与 LeviLamina 关系说明
@@ -294,6 +295,17 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
     ]
 }
 ```
+- 1
+
+```json
+{
+            money: 0,  //经济模式 0为计分板 1为LLMoney
+            score: "money", //计分板名称
+            item: "minecraft:clock", //菜单触发物品
+            main: "main", //主菜单文件名
+            shield: [] //屏蔽方块列表
+}
+```
 
 ---
 
@@ -305,6 +317,8 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
 以下是部分常用指令示例（视插件版本可能会有所变动）：
 
 ```txt
+/cd 菜单
+/menu {set} 菜单{配置}
 /home	 #家系统菜单(设置、传送到家)
 /tpa	 #玩家互传系统(发送传送请求)
 /tpayes	 #同意传送请求
