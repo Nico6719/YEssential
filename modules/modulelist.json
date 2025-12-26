@@ -15,6 +15,10 @@
         {
             "path": "RadomTeleportSystem.js",
             "name": "RadomTeleportSystem"
+        },
+        {
+            "path": "Cd.js",
+            "name": "Cd"
         }
     ]
 }
