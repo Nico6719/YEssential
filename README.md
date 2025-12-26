@@ -365,19 +365,13 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
 ## 迁移其他插件的数据
 
 - 迁移TMET基础插件配置文件教程：
-
-
-
 把 服务端目录\plugins\Timiya\data内的homelist.json和warplist.json
 移动到服务端目录\plugins\YEssential\data内并且分别重命名为homedata.json和warpdata.json然后保存即可
 
-
 - 迁移PMenu菜单插件配置文件教程：
-
-
-
 把 服务端目录\plugins\Planet\PMENU\packs内的所有东西
 移动 到 服务端目录\plugins\YEssential\data\menus内即可
+
 ---
 
 ## 贡献
