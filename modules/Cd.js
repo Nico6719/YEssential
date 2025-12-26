@@ -4,7 +4,7 @@
 // ==================== 常量定义 ====================
 const info = "§l§6[-YEST-] §r";
 const MENU_CONFIG = {
-    configPath: "./plugins/YEssential/Config/Cd/Menu.json",
+    configPath: "./plugins/YEssential/Config/Cd/Config.json",
     menusPath: "./plugins/YEssential/data/Menus/",
     prefix: "§e§l[菜单] §r",
     mobileOS: ["Android", "iOS"],
