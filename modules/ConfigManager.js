@@ -2,6 +2,8 @@
 class ConfigManager {
     constructor() {
         this.currentVersion = 267;
+        this.pluginPath = pluginpath || "./plugins/EssentialX";
+        this.moduleListPath = `${this.pluginPath}/modules/modulelist.json`;
         
         // 默认配置
         this.configDefaults = {
@@ -79,33 +81,65 @@ class ConfigManager {
             }
         };
 
-        // 废弃的配置项列表（需要删除的旧配置）
+        // 默认模块列表
+        this.defaultModules = [
+            {
+                "path": "cleanmgr.js",
+                "name": "CleanMgr"
+            },
+            {
+                "path": "ConfigManager.js",
+                "name": "ConfigManager"
+            },
+            {
+                "path": "AsyncUpdateChecker.js",
+                "name": "AsyncUpdateChecker"
+            },
+            {
+                "path": "RadomTeleportSystem.js",
+                "name": "RadomTeleportSystem"
+            },
+            {
+                "path": "Cd.js",
+                "name": "Cd"
+            }
+        ];
+
+        // 废弃的配置项列表(需要删除的旧配置)
         this.deprecatedConfigs = [
             "OldConfigKey1",
             "ObsoleteFeature",
             "LegacySetting"
-            // 在这里添加需要删除的旧配置项名称
         ];
 
-        // 废弃的嵌套配置项（格式：父键.子键）
+        // 废弃的嵌套配置项(格式:父键.子键)
         this.deprecatedNestedConfigs = {
             "RTP": ["oldProperty", "deprecatedSetting"],
             "Hub": ["unusedField"]
-            // 格式：对象名: [要删除的子属性数组]
         };
+
+        // 初始化模块列表配置文件
+        this.moduleListConfig = null;
     }
 
     /**
      * 初始化配置系统
      */
     init() {
+        // 初始化模块列表
+        this.initModuleList();
+        
+        // 扫描并同步模块
+        this.syncModules();
+        
+        // 原有的配置初始化逻辑
         let savedVersion = conf.get("Version") || 0;
         
         if (savedVersion < this.currentVersion) {
             logger.info(`检测到配置版本更新: ${savedVersion} -> ${this.currentVersion}, 开始迁移配置...`);
             this.migrateConfig(savedVersion);
             conf.set("Version", this.currentVersion);
-            logger.info("配置迁移完成！");
+            logger.info("配置迁移完成!");
         }
         
         // 确保所有配置项都存在
@@ -115,6 +149,178 @@ class ConfigManager {
         this.cleanupDeprecatedConfigs();
     }
 
+    // ========== 模块列表管理 ==========
+
+    /**
+     * 初始化模块列表配置文件
+     */
+    initModuleList() {
+        try {
+            this.moduleListConfig = new JsonConfigFile(
+                this.moduleListPath,
+                JSON.stringify({
+                    "modules": this.defaultModules
+                })
+            );
+            logger.info("模块列表配置文件初始化成功");
+        } catch (error) {
+            logger.error(`模块列表配置文件初始化失败: ${error.message}`);
+        }
+    }
+
+    /**
+     * 扫描模块目录并同步到配置文件
+     */
+    syncModules() {
+        try {
+            const modulesDir = `${this.pluginPath}/modules`;
+            
+            // 获取目录中的所有 .js 文件
+            const files = File.getFilesList(modulesDir);
+            if (!files || files.length === 0) {
+                logger.warn("未找到任何模块文件");
+                return;
+            }
+
+            // 过滤出 .js 文件
+            const jsFiles = files.filter(file => file.endsWith('.js'));
+            
+            // 获取当前配置的模块列表
+            let currentModules = this.moduleListConfig.get("modules") || [];
+            let modulesMap = new Map();
+            
+            // 构建现有模块的映射
+            currentModules.forEach(mod => {
+                modulesMap.set(mod.path, mod);
+            });
+
+            let addedCount = 0;
+            let updatedModules = [];
+
+            // 检查文件系统中的模块
+            jsFiles.forEach(file => {
+                const fileName = file.split(/[/\\]/).pop(); // 兼容不同操作系统路径
+                
+                if (modulesMap.has(fileName)) {
+                    // 模块已存在,保留原有配置
+                    updatedModules.push(modulesMap.get(fileName));
+                } else {
+                    // 发现新模块
+                    const moduleName = this.getModuleNameFromFile(fileName);
+                    const newModule = {
+                        "path": fileName,
+                        "name": moduleName
+                    };
+                    updatedModules.push(newModule);
+                    logger.info(`发现新模块: ${fileName} (${moduleName})`);
+                    addedCount++;
+                }
+            });
+
+            // 检查是否有模块被删除
+            let removedCount = 0;
+            currentModules.forEach(mod => {
+                if (!jsFiles.some(file => file.endsWith(mod.path))) {
+                    logger.info(`模块已被删除: ${mod.path}`);
+                    removedCount++;
+                }
+            });
+
+            // 更新配置文件
+            if (addedCount > 0 || removedCount > 0) {
+                this.moduleListConfig.set("modules", updatedModules);
+                logger.info(`模块同步完成: 新增 ${addedCount} 个, 删除 ${removedCount} 个`);
+            } else {
+                logger.info("模块列表无变化");
+            }
+
+        } catch (error) {
+            logger.error(`模块同步失败: ${error.message}`);
+        }
+    }
+
+    /**
+     * 从文件名推断模块名称
+     * @param {string} fileName 文件名
+     * @returns {string} 模块名称
+     */
+    getModuleNameFromFile(fileName) {
+        // 移除 .js 后缀
+        let name = fileName.replace(/\.js$/i, '');
+        
+        // 将常见的命名格式转换为标准格式
+        // 例如: random-teleport-system.js -> RandomTeleportSystem
+        //      async_update_checker.js -> AsyncUpdateChecker
+        
+        // 处理横线和下划线分隔
+        if (name.includes('-') || name.includes('_')) {
+            name = name.split(/[-_]/)
+                       .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                       .join('');
+        } else {
+            // 首字母大写
+            name = name.charAt(0).toUpperCase() + name.slice(1);
+        }
+        
+        return name;
+    }
+
+    /**
+     * 获取所有已注册的模块
+     * @returns {Array} 模块列表
+     */
+    getModules() {
+        return this.moduleListConfig.get("modules") || [];
+    }
+
+    /**
+     * 添加新模块到列表
+     * @param {string} path 模块路径
+     * @param {string} name 模块名称
+     */
+    addModule(path, name) {
+        let modules = this.getModules();
+        
+        // 检查模块是否已存在
+        if (modules.some(mod => mod.path === path)) {
+            logger.warn(`模块已存在: ${path}`);
+            return false;
+        }
+
+        modules.push({ path, name });
+        this.moduleListConfig.set("modules", modules);
+        logger.info(`添加模块: ${path} (${name})`);
+        return true;
+    }
+
+    /**
+     * 从列表中移除模块
+     * @param {string} path 模块路径
+     */
+    removeModule(path) {
+        let modules = this.getModules();
+        let filtered = modules.filter(mod => mod.path !== path);
+        
+        if (filtered.length === modules.length) {
+            logger.warn(`模块不存在: ${path}`);
+            return false;
+        }
+
+        this.moduleListConfig.set("modules", filtered);
+        logger.info(`移除模块: ${path}`);
+        return true;
+    }
+
+    /**
+     * 手动触发模块扫描
+     */
+    scanModules() {
+        logger.info("开始扫描模块目录...");
+        this.syncModules();
+    }
+
+    // ========== 原有的配置管理方法 ==========
+
     /**
      * 迁移配置到最新版本
      * @param {number} oldVersion 旧版本号
@@ -123,53 +329,6 @@ class ConfigManager {
         // 备份当前配置
         this.backupConfig(oldVersion);
         
-        // 版本特定的迁移逻辑
-        if (oldVersion < 261) {
-            this.migrateTo261();
-        }
-        if (oldVersion < 262) {
-            this.migrateTo262();
-        }
-        if (oldVersion < 263) {
-            this.migrateTo263();
-        }
-        if (oldVersion < 264) {
-            this.migrateTo264();
-        }
-        if (oldVersion < 265) {
-            this.migrateTo265();
-        }
-    }
-
-    /**
-     * 备份配置
-     */
-    backupConfig(version) {
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const backupKey = `ConfigBackup_v${version}_${timestamp}`;
-        
-        // 获取所有当前配置
-        let allConfigs = {};
-        for (let key in this.configDefaults) {
-            let value = conf.get(key);
-            if (value !== undefined) {
-                allConfigs[key] = value;
-            }
-        }
-
-        // 保存备份
-        conf.set(backupKey, {
-            version: version,
-            timestamp: timestamp,
-            configs: allConfigs
-        });
-    }
-
-    /**
-     * 迁移配置到最新版本
-     * @param {number} oldVersion 旧版本号
-     */
-    migrateConfig(oldVersion) {
         const migrations = [
             { version: 261, handler: () => this.migrateTo261() },
             { version: 262, handler: () => this.migrateTo262() },
@@ -189,6 +348,28 @@ class ConfigManager {
         });
     }
 
+    /**
+     * 备份配置
+     */
+    backupConfig(version) {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const backupKey = `ConfigBackup_v${version}_${timestamp}`;
+        
+        let allConfigs = {};
+        for (let key in this.configDefaults) {
+            let value = conf.get(key);
+            if (value !== undefined) {
+                allConfigs[key] = value;
+            }
+        }
+
+        conf.set(backupKey, {
+            version: version,
+            timestamp: timestamp,
+            configs: allConfigs
+        });
+    }
+
     // ========== 版本特定迁移方法 ==========
 
     migrateTo261() {
@@ -198,7 +379,6 @@ class ConfigManager {
 
     migrateTo262() {
         logger.info("迁移到版本2.6.2...");
-        // v2.6.2 特定的迁移逻辑
     }
 
     migrateTo263() {
@@ -214,14 +394,10 @@ class ConfigManager {
 
     migrateTo265() {
         logger.info("迁移到版本2.6.5...");
-        // v2.6.5 特定的迁移逻辑
     }
 
     // ========== 配置管理核心方法 ==========
 
-    /**
-     * 设置配置项（如果不存在）
-     */
     setIfMissing(key, defaultValue) {
         if (conf.get(key) === undefined) {
             conf.set(key, defaultValue);
@@ -229,35 +405,24 @@ class ConfigManager {
         }
     }
 
-    /**
-     * 确保对象配置存在并包含所有必要的属性
-     */
     ensureObjectConfig(key, defaultConfig) {
         let currentConfig = conf.get(key);
         
-        // 检查当前配置是否为有效对象
         if (!this.isValidObject(currentConfig)) {
             conf.set(key, defaultConfig);
             logger.info(`创建对象配置: ${key}`);
             return;
         }
 
-        // 合并配置
         let merged = this.mergeConfigs(defaultConfig, currentConfig);
         conf.set(key, merged);
         
-        // 检查是否有新增的属性
         let addedProps = this.getAddedProperties(defaultConfig, currentConfig);
         if (addedProps.length > 0) {
             logger.info(`配置 ${key} 新增属性: ${addedProps.join(", ")}`);
         }
     }
 
-    /**
-     * 检查是否为有效对象
-     * @param {*} value 要检查的值
-     * @returns {boolean}
-     */
     isValidObject(value) {
         return value !== undefined && 
                value !== null && 
@@ -265,12 +430,6 @@ class ConfigManager {
                !Array.isArray(value);
     }
 
-    /**
-     * 递归合并配置对象
-     * @param {object} defaultConfig 默认配置
-     * @param {object} currentConfig 当前配置
-     * @returns {object} 合并后的配置
-     */
     mergeConfigs(defaultConfig, currentConfig) {
         let merged = JSON.parse(JSON.stringify(currentConfig));
         
@@ -285,12 +444,6 @@ class ConfigManager {
         return merged;
     }
 
-    /**
-     * 获取新增的属性列表
-     * @param {object} defaultConfig 默认配置
-     * @param {object} currentConfig 当前配置
-     * @returns {Array<string>} 新增属性名数组
-     */
     getAddedProperties(defaultConfig, currentConfig) {
         let added = [];
         for (let key in defaultConfig) {
@@ -301,12 +454,7 @@ class ConfigManager {
         return added;
     }
 
-    /**
-     * 确保所有配置项都存在
-     */
     ensureAllConfigs() {
-        //logger.info("检查所有配置项...");
-        
         for (let key in this.configDefaults) {
             if (this.isValidObject(this.configDefaults[key])) {
                 this.ensureObjectConfig(key, this.configDefaults[key]);
@@ -318,13 +466,9 @@ class ConfigManager {
 
     // ========== 清理废弃配置 ==========
 
-    /**
-     * 清理所有废弃的配置项
-     */
     cleanupDeprecatedConfigs() {
         let removedCount = 0;
 
-        // 清理顶级废弃配置
         this.deprecatedConfigs.forEach(key => {
             if (conf.get(key) !== undefined) {
                 conf.delete(key);
@@ -333,7 +477,6 @@ class ConfigManager {
             }
         });
 
-        // 清理嵌套对象中的废弃配置
         for (let parentKey in this.deprecatedNestedConfigs) {
             let parentConfig = conf.get(parentKey);
             
@@ -356,19 +499,14 @@ class ConfigManager {
             }
         }
 
-        // 清理旧的备份（保留最近5个）
         removedCount += this.cleanupOldBackups();
 
         if (removedCount > 0) {
-            logger.info(`清理完成，共删除 ${removedCount} 个废弃配置`);
+            logger.info(`清理完成,共删除 ${removedCount} 个废弃配置`);
         }
     }
 
-    /**
-     * 清理旧的配置备份（保留最近N个）
-     */
     cleanupOldBackups(keepCount = 5) {
-        // 获取所有备份键
         let allKeys = this.getAllConfigKeys();
         let backupKeys = allKeys.filter(key => key.startsWith("ConfigBackup_"));
 
@@ -376,14 +514,12 @@ class ConfigManager {
             return 0;
         }
 
-        // 按时间戳排序（新到旧）
         backupKeys.sort((a, b) => {
             let timeA = a.split('_').pop();
             let timeB = b.split('_').pop();
             return timeB.localeCompare(timeA);
         });
 
-        // 删除旧备份
         let toDelete = backupKeys.slice(keepCount);
         toDelete.forEach(key => {
             conf.delete(key);
@@ -392,11 +528,7 @@ class ConfigManager {
         return toDelete.length;
     }
 
-    /**
-     * 获取所有配置键
-     */
     getAllConfigKeys() {
-        // 根据实际的 conf 对象API调整
         if (typeof conf.keys === 'function') {
             return conf.keys();
         } else if (typeof conf.getKeys === 'function') {
@@ -409,18 +541,18 @@ class ConfigManager {
 // 创建配置管理器实例并初始化
 const configManager = new ConfigManager();
 
-// 初始化配置（在插件加载时自动执行）
+// 初始化配置(在插件加载时自动执行)
 function initializeConfig() {
     configManager.init();
 }
 
-// 如果作为模块使用，延迟初始化
-// 如果直接在主文件中使用，立即初始化
+// 如果作为模块使用,延迟初始化
+// 如果直接在主文件中使用,立即初始化
 if (typeof ll !== 'undefined' && ll.registerPlugin) {
-    // 在插件环境中，立即初始化
+    // 在插件环境中,立即初始化
     initializeConfig();
 } else if (typeof module !== 'undefined' && module.exports) {
-    // 作为模块导出时，提供初始化方法
+    // 作为模块导出时,提供初始化方法
     module.exports = {
         ConfigManager: ConfigManager,
         configManager: configManager,
