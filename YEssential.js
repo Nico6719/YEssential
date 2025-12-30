@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.7.5";
-const regversion =[2,7,5];
+const version = "2.7.6";
+const regversion =[2,7,6];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("x.x"));
@@ -257,6 +257,7 @@ const defaultLangContent = {
     "rtp.error":"§c传送过程发生错误",
     "pvp.is.on":"§6PVP 已开启。",
     "pvp.is.off":"§6PVP 已关闭。",
+    "pvp.player.isoff":"附近玩家 ${player.realName} PVP 关闭, 你无法攻击他。",
     "your.pvp.isoff":"§l§b你关闭了 PVP。",
     "then.pvp.isoff":"§l§b对方关闭了 PVP。",
     "init.success":"所有模块加载成功！",
@@ -285,24 +286,12 @@ let conf = new JsonConfigFile(pluginpath +"/Config/config.json",JSON.stringify({
 let modulelist = new JsonConfigFile(pluginpath +"/modules/modulelist.json",JSON.stringify({
   "modules": [
     {
-      "path": "cleanmgr.js",
-      "name": "CleanMgr"
-    },
-    {
       "path": "ConfigManager.js",
       "name": "ConfigManager"
     },
     {
       "path": "AsyncUpdateChecker.js",
       "name": "AsyncUpdateChecker"
-    },
-    {
-      "path": "RadomTeleportSystem.js",
-      "name": "RadomTeleportSystem"
-    },
-    {
-      "path": "Cd.js",
-      "name": "Cd"
     }
   ]
 }));
@@ -1181,79 +1170,155 @@ suicidecmd.setCallback((cmd,ori,out,res)=>{
 })
 suicidecmd.setup()
 
-//掉落物清理模块
+
+
 function initPvpModule() {
-    // 注册命令
-    if (!conf.get("PVPEnabled")) {
+    // 1. 基础检查
+    if (!conf.get("PVP").EnabledModule) {
         return;
     }
+
+    // 2. 注册 PVP 命令
     const pvp = mc.newCommand("pvp", "设置是否 PVP。", PermType.Any);
     pvp.optional("bool", ParamType.Bool);
     pvp.overload(["bool"]);
+    
     pvp.setCallback(function(_cmd, ori, out, res) {
+        if (!ori.player) return;
         const player = ori.player;
-        const xuid = player.realName;
-        // 获取当前状态（默认为false）
+        const xuid = player.realName; // 建议用 xuid，这里保持原逻辑使用 realName
+
+        // 再次检查全局开关
+        if (!conf.get("PVP").EnabledModule) {
+            player.tell(info + lang.get("module.no.Enabled"));
+            return;
+        }
+
         const currentState = pvpConfig.get(xuid, false);
-        if (!conf.get("PVPEnabled")) {
-        player.tell(info + lang.get("module.no.Enabled"));
-        return;
-        }
+        let newState = false;
+
         if (res.bool === undefined) {
-            // 切换状态
-            const newState = !currentState;
-            pvpConfig.set(xuid,newState);
-           // pvpConfig.save();
-            out.success(info + (newState ? lang.get("pvp.is.on") : lang.get("pvp.is.off")));
-        } else if (res.bool) {
-            pvpConfig.set(xuid,true);
-           // pvpConfig.save();
-            out.success(info + lang.get("pvp.is.on"));
+            newState = !currentState;
         } else {
-            pvpConfig.set(xuid,false);
-          //  pvpConfig.save();
-            out.success(info + lang.get("pvp.is.off"));
+            newState = res.bool;
         }
+
+        pvpConfig.set(xuid, newState);
+        // pvpConfig.save(); // 如果需要实时保存
+
+        out.success(info + (newState ? lang.get("pvp.is.on") : lang.get("pvp.is.off")));
     });
     pvp.setup();
 
-    // 监听玩家加入事件
+    // 3. 监听玩家加入 (初始化状态)
     mc.listen("onJoin", function(player) {
-       const xuid = player.realName;
-        // 检查玩家是否已有记录
+        const xuid = player.realName;
         if (pvpConfig.get(xuid) === undefined) {
-            // 初始化新玩家
             pvpConfig.set(xuid, false);
-        //    pvpConfig.save();
         }
     });
 
-    // PVP伤害监听
-    mc.listen("onMobHurt", function(mob, source) {
-        if (!source || !source.isPlayer() || !mob.isPlayer()) return;
-        
-        const attacker = source.toPlayer();
-        const victim = mob.toPlayer();
-        
-        // 获取PVP状态（默认为false）
-        const attackerPVP = pvpConfig.get(attacker.name);
-        const victimPVP = pvpConfig.get(victim.name);
-        
-        if (!conf.get("PVPEnabled")) {
-            return;
+   mc.listen("onEntityExplode", (source, pos, radius, maxResistance, isDestroy, isFire) => {
+    logger.warn(source.type);
+    if (!source || !pos) return true;
+    if (!source) return true;
+
+    const type = source.type?.toLowerCase() ?? "";
+    // ===== 1. PVP 模块开关 =====
+    const pvpSettings = conf.get("PVP");
+    if (!pvpSettings || !pvpSettings.EnabledModule) {
+        return true;
+    }
+    // ===== 2. 必须存在 DangerousBlocks =====
+    const dangerousBlocks = pvpSettings.DangerousBlocks;
+
+    // 没配置直接放行
+    if (!Array.isArray(dangerousBlocks) || dangerousBlocks.length === 0) {
+        return true;
+    }
+
+    const entityType = source.type ? source.type.toLowerCase() : "";
+
+    // ===== 3. 是否在配置列表中 =====
+    const isDangerous = dangerousBlocks.some(d => {
+        if (typeof d !== "string") return false;
+        d = d.toLowerCase();
+
+        if (d === entityType) return true;
+
+        // 允许省略命名空间
+        if (!d.includes(":") && entityType.includes(":")) {
+            return d === entityType.split(":")[1];
         }
-        if (!attackerPVP) {
-            attacker.tell(lang.get("your.pvp.isoff"), 4);
-        } else if (!victimPVP) {
-            attacker.tell(lang.get("then.pvp.isoff"), 4);
-        } else {
-            return; // 双方开启PVP，允许伤害
-        }
-        
-        mob.stopFire();
+
         return false;
     });
+
+    // 不在配置里 → 放行
+    if (!isDangerous) {
+        return true;
+    }
+
+    // ===== 4. 扫描附近玩家 =====
+    const range = Math.max(radius, 6);
+    const players = mc.getOnlinePlayers();
+
+    for (const player of players) {
+        const p = player.pos;
+        if (p.dimid !== pos.dimid) continue;
+
+        const dx = Math.abs(p.x - pos.x);
+        const dy = Math.abs(p.y - pos.y);
+        const dz = Math.abs(p.z - pos.z);
+
+        if (dx <= range && dy <= range && dz <= range) {
+            const pvpState = pvpConfig.get(player.realName, false);
+       try {
+            if (!pvpState) {
+                player.sendToast(
+                    info , lang.get("pvp.player.isoff")
+                        .replace("${player.realName}", player.realName)
+                );
+                return false;
+            }} catch (e) {
+                logger.error("onEntityExplode 事件处理失败: " + e);}
+        }
+    }
+
+    return true;
+});
+
+// 5. 监听物理攻击伤害 (PVP)
+mc.listen("onMobHurt", function(mob, source, damage, cause) {
+    if (!mob.isPlayer()) return true;
+
+    const victim = mob.toPlayer();
+
+    // 全局 PVP 开关
+    if (!conf.get("PVP").EnabledModule) return true;
+
+    // 玩家互殴
+    if (!source || !source.isPlayer()) return true;
+    const attacker = source.toPlayer();
+
+    const attackerPVP = pvpConfig.get(attacker.realName, false);
+    const victimPVP = pvpConfig.get(victim.realName, false);
+
+    if (!attackerPVP) {
+        attacker.tell(lang.get("your.pvp.isoff"), 4);
+        return false;
+    } else if (!victimPVP) {
+        attacker.tell(lang.get("then.pvp.isoff"), 4);
+        return false;
+    }
+
+    mob.stopFire(); // 可选
+    return true;
+});
+
+
 }
+
 
 // 灵魂出窍（FCAM）
 function initFcamModule() {
@@ -1280,13 +1345,6 @@ function initFcamModule() {
             pl.tell(info + lang.get("module.no.Enabled"));
             return;
         }
-
-        // OP 不能使用
-        if (pl.isOP()) {
-            out.error(info + lang.get("fc.error2"));
-            return;
-        }
-
         //===============================
         // 退出灵魂出窍模式
         //===============================
@@ -1479,20 +1537,6 @@ function initFcamModule() {
     });
 }
 
-function Motd(){
-    let motds = conf.get("Motd")
-    if(motds == []) return
-    
-    let items = motds
-    let index = 0;
-    let intervalId; // 存储 setInterval 的返回值，以便后续清除
-    
-    intervalId = setInterval(() => {
-        let item = items[index];
-        index = (index + 1) % items.length; // 计算下一个元素的索引，如果到达末尾则回到开头
-        mc.setMotd(item)
-    }, 5000); // 每 5000 毫秒（即 5下· 秒）执行一次
-}
 //维护模块
 // 初始化维护状态变量，从配置读取
 let whConfig = conf.get("wh") || { EnableModule: true, status: 0 };
