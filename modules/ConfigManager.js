@@ -1,15 +1,24 @@
 // 配置版本管理类
 class ConfigManager {
     constructor() {
-        this.currentVersion = 267;
-        this.pluginPath = pluginpath || "./plugins/EssentialX";
+        this.currentVersion = 268;
+        this.pluginPath = pluginpath || "./plugins/YEssential";
         this.moduleListPath = `${this.pluginPath}/modules/modulelist.json`;
         
         // 默认配置
         this.configDefaults = {
-            "Version": 267,
+            "Version": 268,
             "AutoUpdate": 1,
-            "PVPEnabled": 1,
+            "PVP": {
+                // 新增：PVP 模块的高级配置
+                "EnabledModule": true,
+                "DangerousBlocks": [
+                    "minecraft:tnt",
+                    "minecraft:respawn_anchor",
+                    "minecraft:bed",
+                    "minecraft:undyed_shulker_box"
+                ]
+            },
             "HubEnabled": 0,
             "NoticeEnabled": 0,
             "CrashModuleEnabled": 0,
@@ -334,7 +343,8 @@ class ConfigManager {
             { version: 262, handler: () => this.migrateTo262() },
             { version: 263, handler: () => this.migrateTo263() },
             { version: 264, handler: () => this.migrateTo264() },
-            { version: 265, handler: () => this.migrateTo265() }
+            { version: 265, handler: () => this.migrateTo265() },
+            { version: 268, handler: () => this.migrateTo268() }
         ];
 
         migrations.forEach(migration => {
@@ -395,7 +405,12 @@ class ConfigManager {
     migrateTo265() {
         logger.info("迁移到版本2.6.5...");
     }
-
+   
+    migrateTo268() {
+        logger.info("迁移到版本2.6.8...");
+        // 确保 PVP 配置对象存在，如果不存在则写入默认值
+        this.ensureObjectConfig("PVP", this.configDefaults.PVP);
+    }
     // ========== 配置管理核心方法 ==========
 
     setIfMissing(key, defaultValue) {
