@@ -127,7 +127,15 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
 ```json
 {
     "AutoUpdate": 1,  //自动更新，默认为开启
-    "PVPEnabled": 1,  //PVP模块开关，默认为开启
+     "PVP": {
+        "EnabledModule": true,  //PVP模块，默认为开启
+        "DangerousBlocks": [  //自定义拦截玩家放置的爆炸实体
+            "minecraft:tnt",
+            "minecraft:respawn_anchor",
+            "minecraft:bed",
+            "minecraft:undyed_shulker_box"
+        ]
+    },
     "DebugMode": 0,  //Debug模式，默认为关闭
     "CrashModuleEnabled": 0,  //崩端功能开关，默认为关闭
     "NoticeEnabled":0,  //Notice 功能开关，默认为关闭
