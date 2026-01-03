@@ -1170,8 +1170,6 @@ suicidecmd.setCallback((cmd,ori,out,res)=>{
 })
 suicidecmd.setup()
 
-
-
 function initPvpModule() {
     // 1. 基础检查
     if (!conf.get("PVP").EnabledModule) {
@@ -1216,161 +1214,122 @@ function initPvpModule() {
         }
     });
 
-    // 4. 监听实体爆炸 (核心修改部分)
+    // 4. 监听实体爆炸 (统一处理，优化版)
     mc.listen("onEntityExplode", (source, pos, radius, maxResistance, isDestroy, isFire) => {
-        // 如果位置不存在，无法判断距离，直接放行（防止报错）
-        if (!pos) return true;
-        //logger.warn("PVPDebug"+source.type)
-        // ===== 1. PVP 模块开关 =====
-        const pvpSettings = conf.get("PVP");
-        if (!pvpSettings || !pvpSettings.EnabledModule) {
-            return true;
-        }
-
-        // 【修改点】：移除了 DangerousBlocks 的检测逻辑
-        // 之前的逻辑是：如果爆炸物不在名单里，就放行。这导致模组物品无法被拦截。
-        // 现在的逻辑是：不论是谁炸的，只要旁边有不开PVP的玩家，就拦截。
-
-        // ===== 2. 扫描附近玩家 =====say
-        // 设定保护范围，至少保护 6 格，或者爆炸半径
-        const range = Math.max(radius, 6);
-        const players = mc.getOnlinePlayers();
-
-        for (const player of players) {
-            const p = player.pos;
-            // 必须在同一维度
-            if (p.dimid !== pos.dimid) continue;
-
-            const dx = Math.abs(p.x - pos.x);
-            const dy = Math.abs(p.y - pos.y);
-            const dz = Math.abs(p.z - pos.z);
-
-            // 如果玩家在爆炸范围内
-            if (dx <= range && dy <= range && dz <= range) {
-                const pvpState = pvpConfig.get(player.realName, false);
-
-                // 如果该玩家关闭了 PVP
-                if (!pvpState) {
-                    try {
-                        // 提示玩家（可选）
-                        player.sendToast(
-                            info,
-                            lang.get("pvp.player.isoff").replace("${player.realName}", player.realName)
-                        );
-                    } catch (e) {
-                        logger.error("onEntityExplode 事件处理警告: " + e);
-                    }
-                    
-                    // 【核心】：直接返回 false 拦截爆炸
-                    // 这样就像“无敌时间”一样，强制阻止伤害和破坏
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    });
-    // 4. 监听实体爆炸 (优化判定版)
-    mc.listen("onEntityExplode", (source, pos, radius, maxResistance, isDestroy, isFire) => {
+        // 位置检查
         if (!pos) return true;
 
+        // 全局开关检查
         const pvpSettings = conf.get("PVP");
         if (!pvpSettings || !pvpSettings.EnabledModule) return true;
 
         // 获取所有在线玩家
         const allPlayers = mc.getOnlinePlayers();
         
-        // 1. 第一步：筛选出在【范围5】内的所有玩家
-        let playersNearby = allPlayers.filter(player => {
+        // 设定保护范围：至少 5 格
+        const protectionRange = Math.max(radius, 5);
+        
+        // 筛选出在保护范围内的所有玩家
+        const playersNearby = allPlayers.filter(player => {
             const p = player.pos;
+            
             // 维度检查
             if (p.dimid !== pos.dimid) return false;
             
-            // 使用标准的 3D 距离公式计算 (更精准)
+            // 使用 3D 距离公式计算
             const dist = Math.sqrt(
                 Math.pow(p.x - pos.x, 2) + 
                 Math.pow(p.y - pos.y, 2) + 
                 Math.pow(p.z - pos.z, 2)
             );
-            return dist <= 5; 
+            
+            return dist <= protectionRange;
         });
 
-        // 2. 第二步：人数判定
-        // 只有附近有 2 个或更多人时，才执行拦截检查
+        // 如果附近有 2 个或更多玩家，才执行 PVP 保护检查
         if (playersNearby.length >= 2) {
-            // 检查这几个人里有没有人关了 PVP
-            for (const p of playersNearby) {
-                const isPvpOff = !pvpConfig.get(p.realName, false);
+            // 检查是否有玩家关闭了 PVP
+            for (const player of playersNearby) {
+                const isPvpOff = !pvpConfig.get(player.realName, false);
+                
                 if (isPvpOff) {
-                    // 只要有一个人没开PVP，为了保护他，直接拦截整个爆炸
-                    p.sendToast(info, "检测到多人聚集且您处于PVP保护，已拦截爆炸");
-                    return false; 
+                    // 只要有一个人关闭 PVP，拦截整个爆炸
+                    try {
+                        player.sendToast(info, "检测到多人聚集且您处于 PVP 保护，已拦截爆炸");
+                    } catch (e) {
+                        logger.error("发送提示失败: " + e);
+                    }
+                    return false; // 拦截爆炸
                 }
             }
         }
 
-        // 只有 1 个人，或者附近的人全部都开了 PVP，则不拦截
+        // 只有 1 个人或所有人都开启 PVP，放行爆炸
         return true;
     });
 
-    // 5. 补充拦截：如果爆炸事件没拦住，在伤害阶段强制拦截伤害 (类似无敌时间插件)
-    mc.listen("onMobHurt", (mob, source, damage, cause) => {
-        if (!mob.isPlayer()) return true;
-        const victim = mob.toPlayer();
-        const victimPvpOff = !pvpConfig.get(victim.realName, false);
-
-        // 如果玩家关闭了 PVP，且伤害来源是爆炸 (cause 2:实体爆炸, 3:方块爆炸)
-        if (victimPvpOff && (cause === 2 || cause === 3)) {
-            
-            // 同样执行人数检查：受害者坐标 5 格内是否有其他人
-            const p = victim.pos;
-            const nearbyCount = mc.getOnlinePlayers().filter(other => {
-                const op = other.pos;
-                if (op.dimid !== p.dimid) return false;
-                const dist = Math.sqrt(Math.pow(op.x - p.x, 2) + Math.pow(op.y - p.y, 2) + Math.pow(op.z - p.z, 2));
-                return dist <= 5;
-            }).length;
-
-            // 如果附近有 2 人以上且受害者关了 PVP，伤害降为 0 (彻底无敌)
-            if (nearbyCount >= 2) {
-                return false; 
-            }
-        }
-        return true;
-    });
-    // 5. 监听物理攻击伤害 (PVP)
+    // 5. 监听伤害事件 (统一处理)
     mc.listen("onMobHurt", function (mob, source, damage, cause) {
+        // 只处理玩家受伤
         if (!mob.isPlayer()) return true;
 
         const victim = mob.toPlayer();
 
-        // 全局 PVP 开关
+        // 全局 PVP 开关检查
         if (!conf.get("PVP").EnabledModule) return true;
 
-        // 玩家互殴检测
+        // ===== 情况 1：玩家互殴 =====
         if (source && source.isPlayer()) {
             const attacker = source.toPlayer();
             const attackerPVP = pvpConfig.get(attacker.realName, false);
             const victimPVP = pvpConfig.get(victim.realName, false);
 
+            // 攻击者未开启 PVP
             if (!attackerPVP) {
                 attacker.tell(lang.get("your.pvp.isoff"), 4);
                 return false;
-            } else if (!victimPVP) {
+            }
+            
+            // 受害者未开启 PVP
+            if (!victimPVP) {
                 attacker.tell(lang.get("then.pvp.isoff"), 4);
                 return false;
             }
         }
 
-        // 【额外建议】：为了像 LKinvincibleTime 一样彻底，
-        // 如果爆炸拦截漏网（例如非实体爆炸），可以在这里通过 cause 再次拦截伤害
-        const victimPVP = pvpConfig.get(victim.realName, false);
-        // 如果是爆炸伤害 (cause 2 或 3 通常是爆炸) 且玩家 PVP 关闭
-        if (!victimPVP && (cause === 2 || cause === 3 || cause === 11)) {
-            return false;
+        // ===== 情况 2：爆炸伤害补充拦截 =====
+        // 只有当伤害来源是【玩家造成的爆炸】时才拦截，不拦截敌对生物
+        // cause 2: 实体爆炸, cause 3: 方块爆炸, cause 11: 其他爆炸
+        const isExplosionDamage = (cause === 2 || cause === 3 || cause === 11);
+        
+        if (isExplosionDamage) {
+            const victimPVP = pvpConfig.get(victim.realName, false);
+            
+            // 如果受害者关闭了 PVP
+            if (!victimPVP) {
+                const p = victim.pos;
+                
+                // 检查附近是否有其他玩家（5格范围内，包含自己）
+                const nearbyPlayers = mc.getOnlinePlayers().filter(other => {
+                    const op = other.pos;
+                    if (op.dimid !== p.dimid) return false;
+                    
+                    const dist = Math.sqrt(
+                        Math.pow(op.x - p.x, 2) + 
+                        Math.pow(op.y - p.y, 2) + 
+                        Math.pow(op.z - p.z, 2)
+                    );
+                    
+                    return dist <= 5;
+                });
+                
+                // 只有附近有 2 人或以上时才拦截爆炸伤害
+                if (nearbyPlayers.length >= 2) {
+                    return false; // 拦截伤害
+                }
+            }
         }
 
-        // mob.stopFire(); // 可选
         return true;
     });
 }
