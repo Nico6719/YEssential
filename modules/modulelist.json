@@ -19,10 +19,6 @@
         {
             "path": "RadomTeleportSystem.js",
             "name": "RadomTeleportSystem"
-        },
-        {
-            "path": "YEssentialAPI.js",
-            "name": "YEssentialAPI"
         }
     ]
 }
