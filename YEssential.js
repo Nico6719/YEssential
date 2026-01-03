@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.7.6";
-const regversion =[2,7,6];
+const version = "2.7.7";
+const regversion =[2,7,7];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("x.x"));
@@ -1182,11 +1182,11 @@ function initPvpModule() {
     const pvp = mc.newCommand("pvp", "设置是否 PVP。", PermType.Any);
     pvp.optional("bool", ParamType.Bool);
     pvp.overload(["bool"]);
-    
-    pvp.setCallback(function(_cmd, ori, out, res) {
+
+    pvp.setCallback(function (_cmd, ori, out, res) {
         if (!ori.player) return;
         const player = ori.player;
-        const xuid = player.realName; // 建议用 xuid，这里保持原逻辑使用 realName
+        const xuid = player.realName;
 
         // 再次检查全局开关
         if (!conf.get("PVP").EnabledModule) {
@@ -1204,121 +1204,190 @@ function initPvpModule() {
         }
 
         pvpConfig.set(xuid, newState);
-        // pvpConfig.save(); // 如果需要实时保存
-
         out.success(info + (newState ? lang.get("pvp.is.on") : lang.get("pvp.is.off")));
     });
     pvp.setup();
 
     // 3. 监听玩家加入 (初始化状态)
-    mc.listen("onJoin", function(player) {
+    mc.listen("onJoin", function (player) {
         const xuid = player.realName;
         if (pvpConfig.get(xuid) === undefined) {
             pvpConfig.set(xuid, false);
         }
     });
 
-   mc.listen("onEntityExplode", (source, pos, radius, maxResistance, isDestroy, isFire) => {
-    logger.warn(source.type);
-    if (!source || !pos) return true;
-    if (!source) return true;
-
-    const type = source.type?.toLowerCase() ?? "";
-    // ===== 1. PVP 模块开关 =====
-    const pvpSettings = conf.get("PVP");
-    if (!pvpSettings || !pvpSettings.EnabledModule) {
-        return true;
-    }
-    // ===== 2. 必须存在 DangerousBlocks =====
-    const dangerousBlocks = pvpSettings.DangerousBlocks;
-
-    // 没配置直接放行
-    if (!Array.isArray(dangerousBlocks) || dangerousBlocks.length === 0) {
-        return true;
-    }
-
-    const entityType = source.type ? source.type.toLowerCase() : "";
-
-    // ===== 3. 是否在配置列表中 =====
-    const isDangerous = dangerousBlocks.some(d => {
-        if (typeof d !== "string") return false;
-        d = d.toLowerCase();
-
-        if (d === entityType) return true;
-
-        // 允许省略命名空间
-        if (!d.includes(":") && entityType.includes(":")) {
-            return d === entityType.split(":")[1];
+    // 4. 监听实体爆炸 (核心修改部分)
+    mc.listen("onEntityExplode", (source, pos, radius, maxResistance, isDestroy, isFire) => {
+        // 如果位置不存在，无法判断距离，直接放行（防止报错）
+        if (!pos) return true;
+        //logger.warn("PVPDebug"+source.type)
+        // ===== 1. PVP 模块开关 =====
+        const pvpSettings = conf.get("PVP");
+        if (!pvpSettings || !pvpSettings.EnabledModule) {
+            return true;
         }
 
-        return false;
+        // 【修改点】：移除了 DangerousBlocks 的检测逻辑
+        // 之前的逻辑是：如果爆炸物不在名单里，就放行。这导致模组物品无法被拦截。
+        // 现在的逻辑是：不论是谁炸的，只要旁边有不开PVP的玩家，就拦截。
+
+        // ===== 2. 扫描附近玩家 =====say
+        // 设定保护范围，至少保护 6 格，或者爆炸半径
+        const range = Math.max(radius, 6);
+        const players = mc.getOnlinePlayers();
+
+        for (const player of players) {
+            const p = player.pos;
+            // 必须在同一维度
+            if (p.dimid !== pos.dimid) continue;
+
+            const dx = Math.abs(p.x - pos.x);
+            const dy = Math.abs(p.y - pos.y);
+            const dz = Math.abs(p.z - pos.z);
+
+            // 如果玩家在爆炸范围内
+            if (dx <= range && dy <= range && dz <= range) {
+                const pvpState = pvpConfig.get(player.realName, false);
+
+                // 如果该玩家关闭了 PVP
+                if (!pvpState) {
+                    try {
+                        // 提示玩家（可选）
+                        player.sendToast(
+                            info,
+                            lang.get("pvp.player.isoff").replace("${player.realName}", player.realName)
+                        );
+                    } catch (e) {
+                        logger.error("onEntityExplode 事件处理警告: " + e);
+                    }
+                    
+                    // 【核心】：直接返回 false 拦截爆炸
+                    // 这样就像“无敌时间”一样，强制阻止伤害和破坏
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    });
+    // 4. 监听实体爆炸 (优化判定版)
+    mc.listen("onEntityExplode", (source, pos, radius, maxResistance, isDestroy, isFire) => {
+        if (!pos) return true;
+
+        const pvpSettings = conf.get("PVP");
+        if (!pvpSettings || !pvpSettings.EnabledModule) return true;
+
+        // 获取所有在线玩家
+        const allPlayers = mc.getOnlinePlayers();
+        
+        // 1. 第一步：筛选出在【范围5】内的所有玩家
+        let playersNearby = allPlayers.filter(player => {
+            const p = player.pos;
+            // 维度检查
+            if (p.dimid !== pos.dimid) return false;
+            
+            // 使用标准的 3D 距离公式计算 (更精准)
+            const dist = Math.sqrt(
+                Math.pow(p.x - pos.x, 2) + 
+                Math.pow(p.y - pos.y, 2) + 
+                Math.pow(p.z - pos.z, 2)
+            );
+            return dist <= 5; 
+        });
+
+        // 2. 第二步：人数判定
+        // 只有附近有 2 个或更多人时，才执行拦截检查
+        if (playersNearby.length >= 2) {
+            // 检查这几个人里有没有人关了 PVP
+            for (const p of playersNearby) {
+                const isPvpOff = !pvpConfig.get(p.realName, false);
+                if (isPvpOff) {
+                    // 只要有一个人没开PVP，为了保护他，直接拦截整个爆炸
+                    p.sendToast(info, "检测到多人聚集且您处于PVP保护，已拦截爆炸");
+                    return false; 
+                }
+            }
+        }
+
+        // 只有 1 个人，或者附近的人全部都开了 PVP，则不拦截
+        return true;
     });
 
-    // 不在配置里 → 放行
-    if (!isDangerous) {
-        return true;
-    }
+    // 5. 补充拦截：如果爆炸事件没拦住，在伤害阶段强制拦截伤害 (类似无敌时间插件)
+    mc.listen("onMobHurt", (mob, source, damage, cause) => {
+        if (!mob.isPlayer()) return true;
+        const victim = mob.toPlayer();
+        const victimPvpOff = !pvpConfig.get(victim.realName, false);
 
-    // ===== 4. 扫描附近玩家 =====
-    const range = Math.max(radius, 6);
-    const players = mc.getOnlinePlayers();
+        // 如果玩家关闭了 PVP，且伤害来源是爆炸 (cause 2:实体爆炸, 3:方块爆炸)
+        if (victimPvpOff && (cause === 2 || cause === 3)) {
+            
+            // 同样执行人数检查：受害者坐标 5 格内是否有其他人
+            const p = victim.pos;
+            const nearbyCount = mc.getOnlinePlayers().filter(other => {
+                const op = other.pos;
+                if (op.dimid !== p.dimid) return false;
+                const dist = Math.sqrt(Math.pow(op.x - p.x, 2) + Math.pow(op.y - p.y, 2) + Math.pow(op.z - p.z, 2));
+                return dist <= 5;
+            }).length;
 
-    for (const player of players) {
-        const p = player.pos;
-        if (p.dimid !== pos.dimid) continue;
-
-        const dx = Math.abs(p.x - pos.x);
-        const dy = Math.abs(p.y - pos.y);
-        const dz = Math.abs(p.z - pos.z);
-
-        if (dx <= range && dy <= range && dz <= range) {
-            const pvpState = pvpConfig.get(player.realName, false);
-       try {
-            if (!pvpState) {
-                player.sendToast(
-                    info , lang.get("pvp.player.isoff")
-                        .replace("${player.realName}", player.realName)
-                );
-                return false;
-            }} catch (e) {
-                logger.error("onEntityExplode 事件处理失败: " + e);}
+            // 如果附近有 2 人以上且受害者关了 PVP，伤害降为 0 (彻底无敌)
+            if (nearbyCount >= 2) {
+                return false; 
+            }
         }
-    }
+        return true;
+    });
+    // 5. 监听物理攻击伤害 (PVP)
+    mc.listen("onMobHurt", function (mob, source, damage, cause) {
+        if (!mob.isPlayer()) return true;
 
-    return true;
-});
+        const victim = mob.toPlayer();
 
-// 5. 监听物理攻击伤害 (PVP)
-mc.listen("onMobHurt", function(mob, source, damage, cause) {
-    if (!mob.isPlayer()) return true;
+        // 全局 PVP 开关
+        if (!conf.get("PVP").EnabledModule) return true;
 
-    const victim = mob.toPlayer();
+        // 玩家互殴检测
+        if (source && source.isPlayer()) {
+            const attacker = source.toPlayer();
+            const attackerPVP = pvpConfig.get(attacker.realName, false);
+            const victimPVP = pvpConfig.get(victim.realName, false);
 
-    // 全局 PVP 开关
-    if (!conf.get("PVP").EnabledModule) return true;
+            if (!attackerPVP) {
+                attacker.tell(lang.get("your.pvp.isoff"), 4);
+                return false;
+            } else if (!victimPVP) {
+                attacker.tell(lang.get("then.pvp.isoff"), 4);
+                return false;
+            }
+        }
 
-    // 玩家互殴
-    if (!source || !source.isPlayer()) return true;
-    const attacker = source.toPlayer();
+        // 【额外建议】：为了像 LKinvincibleTime 一样彻底，
+        // 如果爆炸拦截漏网（例如非实体爆炸），可以在这里通过 cause 再次拦截伤害
+        const victimPVP = pvpConfig.get(victim.realName, false);
+        // 如果是爆炸伤害 (cause 2 或 3 通常是爆炸) 且玩家 PVP 关闭
+        if (!victimPVP && (cause === 2 || cause === 3 || cause === 11)) {
+            return false;
+        }
 
-    const attackerPVP = pvpConfig.get(attacker.realName, false);
-    const victimPVP = pvpConfig.get(victim.realName, false);
-
-    if (!attackerPVP) {
-        attacker.tell(lang.get("your.pvp.isoff"), 4);
-        return false;
-    } else if (!victimPVP) {
-        attacker.tell(lang.get("then.pvp.isoff"), 4);
-        return false;
-    }
-
-    mob.stopFire(); // 可选
-    return true;
-});
-
-
+        // mob.stopFire(); // 可选
+        return true;
+    });
 }
-
+function Motd(){
+    let motds = conf.get("Motd")
+    if(motds == []) return
+    
+    let items = motds
+    let index = 0;
+    let intervalId; // 存储 setInterval 的返回值，以便后续清除
+    
+    intervalId = setInterval(() => {
+        let item = items[index];
+        index = (index + 1) % items.length; // 计算下一个元素的索引，如果到达末尾则回到开头
+        mc.setMotd(item)
+    }, 5000); // 每 5000 毫秒（即 5下· 秒）执行一次
+}
 
 // 灵魂出窍（FCAM）
 function initFcamModule() {
@@ -1770,8 +1839,8 @@ function redpacketgui(plname) {
                     lang.get("rp.random.packet"), 
                     lang.get("rp.average.packet")
                 ]);
-                sendFm.addInput(lang.get("rp.send.amount"), "请输入总金额");
-                sendFm.addInput(lang.get("rp.send.count"), "请输入红包个数");
+                sendFm.addInput(lang.get("rp.send.amount"), "请输入红包个数");
+                sendFm.addInput(lang.get("rp.send.count"), "请输入总金额");
 
                 pl.sendForm(sendFm, (pl, data) => {
                     if (data === null) return pl.runcmd("moneygui");
