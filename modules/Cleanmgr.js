@@ -2,7 +2,7 @@
 
 /**
  * YEssential - CleanMgr Module (LSE-safe Ultimate)
- * Compatible with Legacy Script Engine / QuickJS
+ * 修改版：增加了低 TPS 连续清理无效后的长冷却机制
  */
 
 var CleanMgr = (function () {
@@ -15,7 +15,7 @@ var CleanMgr = (function () {
   var LANG_PATH   = LANG_DIR + "lang.json";
 
   /* ================= 默认语言 ================= */
- var DEFAULT_LANG = {
+  var DEFAULT_LANG = {
     prefix: "§l§6[-YEST-] §l§e[清理系统] §r",
     toast_title: "§l§6[-YEST-] §l§e[清理系统] §r",
     messages: {
@@ -31,6 +31,8 @@ var CleanMgr = (function () {
       cleanup_complete: "§a已清理 {0} 个实体",
       cleanup_stats: "§a清理统计 - 总计: {0}, 保留: {1}, 清理: {2}",
       low_tps_clean: "§cTPS 过低({0})，已自动清理",
+      low_tps_clean_cooldown: "§6TPS 过低但清理冷却中，将在 {0} 分钟后重试",
+      low_tps_ineffective: "§c连续清理后TPS仍未改善，系统将暂停低TPS自动清理 {0} 分钟",
       scheduled_clean: "§d计划清理已启动，{0} 秒后执行",
       manual_trigger: "§6玩家触发了手动清理",
       cancel_success: "§c已取消计划清理",
@@ -53,47 +55,40 @@ var CleanMgr = (function () {
   var DEFAULT_CONFIG = {
     enable: true,
     interval: 600,
-    debug: false, // 调试模式开关
+    debug: false,
     whitelist: [
-      "^minecraft:netherite_",
-      "^minecraft:ancient_debris$",
-      "^minecraft:dragon_egg$",
-      "^minecraft:nether_star$",
-      "^minecraft:elytra$",
-      "^minecraft:emerald$",
-      "^minecraft:beacon$",
-      "^minecraft:ender_eye$",
-      "^minecraft:shulker_box$",
-      "^minecraft:sea_lantern$",
-      "^minecraft:enchanted_book$",
-      "^minecraft:diamond",
-      "^minecraft:totem_of_undying$",
-      "^minecraft:ender_pearl$",
-      "^minecraft:villager_v2$",
-      "^minecraft:ender_crystal$",
-      "^minecraft:ender_dragon$",
-      "^minecraft:parrot$",
-      "^minecraft:chest_minecart$",
-      "^minecraft:minecart$",
-      "^minecraft:hopper_minecart$",
-      "^minecraft:armor_stand$",
-      "^minecraft:boat$",
-      "^minecraft:sheep$",
-      "^minecraft:cow$",
-      "^minecraft:pig$",
-      "^minecraft:painting$"
+      "^minecraft:netherite_", "^minecraft:ancient_debris$", "^minecraft:dragon_egg$",
+      "^minecraft:nether_star$", "^minecraft:elytra$", "^minecraft:emerald$",
+      "^minecraft:beacon$", "^minecraft:ender_eye$", "^minecraft:shulker_box$",
+      "^minecraft:sea_lantern$", "^minecraft:enchanted_book$", "^minecraft:diamond",
+      "^minecraft:totem_of_undying$", "^minecraft:ender_pearl$", "^minecraft:villager_v2$",
+      "^minecraft:ender_crystal$", "^minecraft:ender_dragon$", "^minecraft:parrot$",
+      "^minecraft:chest_minecart$", "^minecraft:minecart$", "^minecraft:hopper_minecart$",
+      "^minecraft:armor_stand$", "^minecraft:boat$", "^minecraft:sheep$",
+      "^minecraft:cow$", "^minecraft:pig$", "^minecraft:painting$"
     ],
     notice: { notice1: 30, notice2: 10 },
-    LowTpsClean: { enable: true, minimum: 15 },
+    LowTpsClean: { 
+      enable: true, 
+      minimum: 15,
+      maxConsecutiveCleans: 2, // 最大连续无效清理次数
+      longCooldown: 450        // 长冷却时间（秒），默认7.5分钟 (5-10分钟中间值)
+    },
     clean_Cmd: "clean",
-    playerCooldown: 300 // 玩家触发清理冷却时间（秒）
+    playerCooldown: 300
   };
+
 
   /* ================= 状态 ================= */
   var state = {
     phase: "idle",
     scheduledTimeouts: [],
-    lastPlayerClean: {} // 玩家冷却记录
+    lastPlayerClean: {}, 
+    // 低TPS清理专用状态
+    lowTpsCleanCount: 0,      // 连续无效清理计数
+    lowTpsRetryTime: 0,       // 下次允许低TPS清理的时间戳
+    tpsBeforeClean: 20,       // 清理前的TPS记录
+    isLowTpsTrigger: false    // 当前清理是否由TPS触发
   };
 
   var config = null;
@@ -114,114 +109,35 @@ var CleanMgr = (function () {
     return o;
   }
   
-  // 调试日志函数
   function debug(msg) {
-    if (config && config.debug) {
-      logger.info("[DEBUG] " + msg);
-    }
+    if (config && config.debug) logger.info("[CleanMgr-DEBUG] " + msg);
   }
   
-  // 翻译函数 - 支持多个参数
   function t(path, arg0, arg1, arg2) {
-    if (!lang) {
-      debug("警告: lang 未初始化");
-      // 尝试从 DEFAULT_LANG 获取
-      var parts = path.split(".");
-      var obj = DEFAULT_LANG;
-      for (var i = 0; i < parts.length; i++) {
-        if (!obj) return path;
-        obj = obj[parts[i]];
-      }
-      if (typeof obj !== "string") return path;
-      var result = obj;
-      if (arg0 !== undefined) result = result.replace(/\{0\}/g, String(arg0));
-      if (arg1 !== undefined) result = result.replace(/\{1\}/g, String(arg1));
-      if (arg2 !== undefined) result = result.replace(/\{2\}/g, String(arg2));
-      return result;
-    }
-    
     var parts = path.split(".");
-    var obj = lang;
+    var obj = lang || DEFAULT_LANG;
     for (var i = 0; i < parts.length; i++) {
-      if (!obj || typeof obj !== "object") {
-        debug("翻译失败: 路径 " + path + " 在索引 " + i + " 处为空或非对象");
-        // 回退到 DEFAULT_LANG
-        obj = DEFAULT_LANG;
-        for (var j = 0; j < parts.length; j++) {
-          if (!obj) return path;
-          obj = obj[parts[j]];
-        }
-        break;
-      }
+      if (!obj) break;
       obj = obj[parts[i]];
     }
-    
-    if (typeof obj !== "string") {
-      debug("翻译失败: 路径 " + path + " 的值不是字符串，类型: " + typeof obj + "，值: " + JSON.stringify(obj));
-      return path;
-    }
-    
-    var result = String(obj);
+    if (typeof obj !== "string") return path;
+    var result = obj;
     if (arg0 !== undefined) result = result.replace(/\{0\}/g, String(arg0));
     if (arg1 !== undefined) result = result.replace(/\{1\}/g, String(arg1));
     if (arg2 !== undefined) result = result.replace(/\{2\}/g, String(arg2));
     return result;
   }
 
-  /* ================= 语言 & 配置 ================= */
+  /* ================= 加载 ================= */
   function loadLang() {
     ensureDir(LANG_DIR);
-    
-    // 确保语言文件存在
-    if (!File.exists(LANG_PATH)) {
-      logger.info("语言文件不存在，创建默认语言文件");
-      try {
-        File.writeTo(LANG_PATH, JSON.stringify(DEFAULT_LANG, null, 2));
-        logger.info("默认语言文件创建成功: " + LANG_PATH);
-      } catch (e) {
-        logger.error("创建语言文件失败: " + e);
-        return clone(DEFAULT_LANG);
-      }
-    }
-    
-    // 尝试加载语言文件
+    if (!File.exists(LANG_PATH)) File.writeTo(LANG_PATH, JSON.stringify(DEFAULT_LANG, null, 2));
     try { 
-      var content = File.readFrom(LANG_PATH);
-     // logger.info("读取语言文件，长度: " + content.length);
-      
-      var loaded = JSON.parse(content);
-      //logger.info("JSON解析成功");
-      
-      // 深度合并
-      var merged = merge(DEFAULT_LANG, loaded);
-      
-      // 验证关键字段
-      if (!merged.prefix) {
-        logger.warn("语言文件缺少 prefix 字段，使用默认值");
-        merged.prefix = DEFAULT_LANG.prefix;
-      }
-      if (!merged.messages || typeof merged.messages !== "object") {
-        logger.warn("语言文件缺少 messages 对象，使用默认值");
-        merged.messages = DEFAULT_LANG.messages;
-      }
-      
-      // 验证几个关键消息
-      var testKeys = ["cleanup_start", "system_starting", "config_loaded"];
-      for (var i = 0; i < testKeys.length; i++) {
-        if (!merged.messages[testKeys[i]]) {
-          logger.warn("语言文件缺少消息: " + testKeys[i]);
-          merged.messages[testKeys[i]] = DEFAULT_LANG.messages[testKeys[i]];
-        }
-      }
-      
-      //logger.info("语言文件加载并验证成功");
-      return merged;
-    } catch (e) { 
-      logger.error("加载语言文件失败: " + e);
-      logger.error("使用内置默认语言");
-      return clone(DEFAULT_LANG); 
-    }
+      var loaded = JSON.parse(File.readFrom(LANG_PATH));
+      return merge(DEFAULT_LANG, loaded);
+    } catch (e) { return clone(DEFAULT_LANG); }
   }
+
   function loadConfig() {
     ensureDir(CONFIG_DIR);
     if (!File.exists(CONFIG_PATH)) new JsonConfigFile(CONFIG_PATH).init("cleanmgr", DEFAULT_CONFIG);
@@ -232,7 +148,7 @@ var CleanMgr = (function () {
     return raw.cleanmgr;
   }
 
-  /* ================= TPS ================= */
+  /* ================= TPS 采样 ================= */
   function initTpsSampler() {
     var tick = 0, start = Date.now(), last = 20;
     mc.listen("onTick", function () {
@@ -249,176 +165,130 @@ var CleanMgr = (function () {
   /* ================= 白名单 ================= */
   function compileWhitelist() {
     whitelistRegex = [];
-    var successCount = 0;
-    var failCount = 0;
-    
     for (var i = 0; i < config.whitelist.length; i++) {
-      try { 
-        whitelistRegex.push(new RegExp(config.whitelist[i]));
-        successCount++;
-        debug("白名单规则编译成功: " + config.whitelist[i]);
-      } catch (e) {
-        if (config.debug) {
-          logger.warn("编译白名单正则失败: " + config.whitelist[i] + " - " + e);
-        }
-        failCount++;
-      }
-    }
-    
-    //logger.info("白名单编译完成: 成功 " + successCount + " 个，失败 " + failCount + " 个");
-    //mc.broadcast(lang.prefix + t("messages.whitelist_loaded", successCount));
-    
-    // 调试模式下输出白名单规则
-    if (config.debug && whitelistRegex.length > 0) {
-      logger.info("白名单规则列表 (共 " + config.whitelist.length + " 条):");
-      for (var i = 0; i < config.whitelist.length; i++) {
-        logger.info("  [" + (i + 1) + "] " + config.whitelist[i]);
-      }
-    } else if (whitelistRegex.length > 0) {
-      //logger.info("白名单示例 (前5条):");
-      //for (var i = 0; i < Math.min(5, config.whitelist.length); i++) {
-      //logger.info("  - " + config.whitelist[i]);
-      //}
+      try { whitelistRegex.push(new RegExp(config.whitelist[i])); } catch (e) {}
     }
   }
 
-  /* ================= 实体判断 ================= */
   function shouldKeep(e) {
     if (!e) return true;
+    try { if (e.type === "minecraft:player") return true; } catch (ex) {}
     
-    // 保留玩家
-    try { 
-      if (e.type === "minecraft:player") {
-        debug("保留玩家实体");
-        return true;
+    try {
+      var type = e.type;
+      for (var i = 0; i < whitelistRegex.length; i++) {
+        if (whitelistRegex[i].test(type)) return true;
       }
     } catch (ex) {}
-    
-    // 检查实体类型是否在白名单中
-    try {
-      var entityType = e.type;
-      if (entityType) {
-        for (var i = 0; i < whitelistRegex.length; i++) {
-          if (whitelistRegex[i].test(entityType)) {
-            debug("实体类型匹配白名单: " + entityType + " (规则: " + config.whitelist[i] + ")");
-            return true;
-          }
-        }
-      }
-    } catch (ex) {
-      debug("检查实体类型时出错: " + ex);
-    }
-    
-    // 检查物品实体
+
     try {
       if (typeof e.isItemEntity === "function" && e.isItemEntity()) {
         var it = e.toItem();
         if (it && it.type) {
           for (var i = 0; i < whitelistRegex.length; i++) {
-            if (whitelistRegex[i].test(it.type)) {
-              debug("物品类型匹配白名单: " + it.type + " (规则: " + config.whitelist[i] + ")");
-              return true;
-            }
+            if (whitelistRegex[i].test(it.type)) return true;
           }
         }
       }
-    } catch (ex) {
-      debug("检查物品实体时出错: " + ex);
-    }
-    
-    // 检查命名和驯服的实体
+    } catch (ex) {}
+
     try {
       var nbt = e.getNbt();
       if (nbt) { 
         var obj = nbt.toObject(); 
-        if (obj && (obj.CustomName || obj.IsTamed)) {
-          debug("保留命名/驯服实体: " + (obj.CustomName || "已驯服"));
-          return true;
-        }
+        if (obj && (obj.CustomName || obj.IsTamed)) return true;
       }
-    } catch (ex) {
-      debug("检查NBT时出错: " + ex);
-    }
-    
+    } catch (ex) {}
     return false;
   }
-  /* ================= Toast通知 ================= */
+
   function sendToastToAll(title, message) {
     var players = mc.getOnlinePlayers();
     for (var i = 0; i < players.length; i++) {
-      try {
-        players[i].sendToast(title, message);
-      } catch (e) {
-        if (config.debug) {
-          logger.warn("发送Toast通知失败: " + e);
-        }
-      }
+      try { players[i].sendToast(title, message); } catch (e) {}
     }
   }
 
- /* ================= 清理 ================= */
+  /* ================= 执行清理 ================= */
   function executeClean() {
     state.phase = "cleaning";
-    var removed = 0;
-    var kept = 0;
-    var total = 0;
+    var removed = 0, kept = 0, total = 0;
     
     mc.broadcast(lang.prefix + t("messages.cleanup_start"));
-    debug("开始清理实体...");
-    
     var all = mc.getAllEntities();
     total = all.length;
-    debug("获取到 " + total + " 个实体");
     
     for (var i = 0; i < all.length; i++) {
       var entity = all[i];
       if (shouldKeep(entity)) {
         kept++;
-        debug("保留实体: " + (entity.type || "unknown"));
       } else {
-        try { 
-          entity.despawn(); 
-          removed++;
-          debug("清理实体: " + (entity.type || "unknown"));
-        } catch (e) {
-          if (config.debug) {
-            logger.warn("清理实体失败: " + e);
-          }
-        }
+        try { entity.despawn(); removed++; } catch (e) {}
       }
     }
     
     mc.broadcast(lang.prefix + t("messages.cleanup_complete", removed));
     sendToastToAll(t("toast_title"), t("messages.cleanup_complete", removed));
-    if (config.debug) {
-     mc.broadcast(lang.prefix + t("messages.cleanup_stats", total, kept, removed));
-     logger.info("清理完成 - 总计: " + total + ", 保留: " + kept + ", 清理: " + removed);
+
+    // --- 低 TPS 效果评估逻辑 ---
+    if (state.isLowTpsTrigger) {
+      // 延迟5秒检查TPS改善情况
+      setTimeout(function() {
+        var currentTps = getTps();
+        // 如果清理后 TPS 提升小于 2.0，认为此次清理对恢复服务器性能无效
+        var improved = currentTps > (state.tpsBeforeClean + 2.0);
+        
+        debug("TPS清理评估: 前=" + state.tpsBeforeClean.toFixed(2) + " 后=" + currentTps.toFixed(2));
+
+        if (improved) {
+          state.lowTpsCleanCount = 0; // 恢复了，重置计数
+          debug("TPS已改善，重置连续清理计数");
+        } else {
+          state.lowTpsCleanCount++;
+          debug("TPS未明显改善，连续无效计数: " + state.lowTpsCleanCount);
+          
+          if (state.lowTpsCleanCount >= config.LowTpsClean.maxConsecutiveCleans) {
+            var coolMin = Math.round(config.LowTpsClean.longCooldown / 60);
+            mc.broadcast(lang.prefix + t("messages.low_tps_ineffective", coolMin));
+            
+            // 设置长冷却截止时间戳
+            state.lowTpsRetryTime = Date.now() + (config.LowTpsClean.longCooldown * 1000);
+            state.lowTpsCleanCount = 0; // 进入长冷却后重置计数
+            logger.warn("[清理系统] 低TPS清理连续无效，进入长冷却模式：" + coolMin + "分钟");
+          }
+        }
+        state.isLowTpsTrigger = false;
+      }, 5000);
     }
+
     state.phase = "idle";
     state.scheduledTimeouts = [];
   }
 
-  function scheduleClean(triggerByPlayer, playerName) {
+  function scheduleClean(isManual, playerName, isLowTps) {
     if (state.phase !== "idle") return;
-    state.phase = "scheduled";
-
-    var n1 = config.notice.notice1;
-    var n2 = config.notice.notice2;
-
-    if (triggerByPlayer && playerName) {
+    
+    if (isManual && playerName) {
       var now = Date.now();
       var last = state.lastPlayerClean[playerName] || 0;
       if ((now - last) / 1000 < config.playerCooldown) {
-        mc.broadcast(lang.prefix + t("messages.cooldown_warning", playerName));
-        state.phase = "idle";
+        var p = mc.getPlayer(playerName);
+        if(p) p.tell(lang.prefix + t("messages.cooldown_warning"));
         return;
       }
       state.lastPlayerClean[playerName] = now;
       mc.broadcast(lang.prefix + t("messages.manual_trigger"));
     }
 
+    state.phase = "scheduled";
+    state.isLowTpsTrigger = !!isLowTps;
+
+    var n1 = config.notice.notice1;
+    var n2 = config.notice.notice2;
+
     mc.broadcast(lang.prefix + t("messages.cleanup_notice", n1));
     sendToastToAll(t("toast_title"), t("messages.cleanup_notice", n1));
+
     if (n2 > 0 && n2 < n1) {
       state.scheduledTimeouts.push(setTimeout(function () {
         mc.broadcast(lang.prefix + t("messages.cleanup_notice2", n2));
@@ -429,49 +299,22 @@ var CleanMgr = (function () {
     state.scheduledTimeouts.push(setTimeout(executeClean, n1 * 1000));
   }
 
-  /* ================= 命令处理函数 ================= */
+  /* ================= 命令处理 ================= */
   function handleCleanCommand(player, action) {
     var playerName = player.realName || player.name;
-    
-    // 没有参数或 help 参数 - 显示帮助
     if (!action || action === "help") {
       player.tell(lang.prefix + t("messages.help_message"));
       return true;
     }
-    
-    // tps 参数 - 查询TPS
     if (action === "tps") {
-      var currentTps = getTps();
-      var tpsStr = currentTps.toFixed(2);
-      var message;
-      
-      if (currentTps >= 19.5) {
-        message = t("messages.tps_excellent", tpsStr);
-      } else if (currentTps >= 18) {
-        message = t("messages.tps_good", tpsStr);
-      } else if (currentTps >= 15) {
-        message = t("messages.tps_poor", tpsStr);
-      } else {
-        message = t("messages.tps_critical", tpsStr);
-      }
-      
-      player.tell(lang.prefix + message);
+      var cur = getTps();
+      player.tell(lang.prefix + t("messages.tps_info", cur.toFixed(2)));
       return true;
     }
-    
-    // status 参数 - 查询状态
     if (action === "status") {
-      if (state.phase === "idle") {
-        player.tell(lang.prefix + t("messages.status_idle"));
-      } else if (state.phase === "scheduled") {
-        player.tell(lang.prefix + t("messages.status_scheduled", config.notice.notice1));
-      } else if (state.phase === "cleaning") {
-        player.tell(lang.prefix + t("messages.status_cleaning"));
-      }
+      player.tell(lang.prefix + "状态: " + state.phase + (state.lowTpsRetryTime > Date.now() ? " (TPS清理长冷却中)" : ""));
       return true;
     }
-    
-    // cancel 参数 - 取消清理
     if (action === "cancel") {
       if (state.phase === "scheduled") {
         state.scheduledTimeouts.forEach(clearTimeout);
@@ -483,133 +326,64 @@ var CleanMgr = (function () {
       }
       return true;
     }
-    
-    // now 参数或无效参数 - 触发清理
-    if (action === "now" || action) {
-      if (state.phase !== "idle") {
-        player.tell(lang.prefix + t("messages.cleanup_in_progress"));
-        return true;
-      }
-      scheduleClean(true, playerName);
+    if (action === "now") {
+      scheduleClean(true, playerName, false);
       return true;
     }
-    
     return false;
   }
 
-  /* ================= 命令注册 ================= */
+  /* ================= 注册命令 ================= */
   function registerCommand() {
-    debug("开始注册命令...");
-    
-    // 方案1：尝试使用枚举参数
-    try {
-      var cmd = mc.newCommand(config.clean_Cmd, "实体清理系统", PermType.Any);
-      
-      // 尝试使用枚举类型
-      cmd.setEnum("CleanAction", ["now", "status", "cancel", "tps", "help"]);
-      cmd.optional("action", ParamType.Enum, "CleanAction", 1);
-      cmd.overload(["CleanAction"]);
-      
-      cmd.setCallback(function(_cmd, _ori, _out, _res) {
-        var player = _ori.player;
-        if (!player) return false;
-        
-        var action = _res.action || "now";
-        debug("命令执行: action=" + action + ", player=" + (player.realName || player.name));
-        return handleCleanCommand(player, action);
-      });
-      
-      cmd.setup();
-      return;
-    } catch (e) {
-      if (config.debug) {
-        logger.warn("方案1失败: " + e);
-      }
-    }
-    
-    // 方案2：尝试无参数命令
-    try {
-      var cmd2 = mc.newCommand(config.clean_Cmd, "实体清理系统", PermType.Any);
-      
-      cmd2.setCallback(function(_cmd, _ori, _out, _res) {
-        var player = _ori.player;
-        if (!player) return false;
-        
-        // 无参数时显示帮助
-        player.tell(lang.prefix + t("messages.help_message"));
-        player.tell(lang.prefix + t("messages.chat_mode_tip"));
-        return true;
-      });
-      
-      cmd2.setup();
-      logger.info("清理命令 /" + config.clean_Cmd + " 注册成功 (方案2: 无参数)");
-      logger.info("请使用聊天模式输入命令，如: /clean tps");
-    } catch (e2) {
-      if (config.debug) {
-        logger.error("方案2也失败: " + e2);
-      }
-    }
-    
-    // 备用方案：聊天监听（总是启用）
-    debug("启用聊天监听模式");
-    mc.listen("onChat", function(player, msg) {
-      var cmdName = config.clean_Cmd.toLowerCase();
-      var msgLower = msg.toLowerCase().trim();
-      
-      // 匹配 /clean 或 /clean xxx
-      if (msgLower === "/" + cmdName || msgLower.indexOf("/" + cmdName + " ") === 0) {
-        var parts = msg.trim().split(/\s+/);
-        var action = parts.length > 1 ? parts[1].toLowerCase() : "help";
-        
-        debug("聊天命令触发: " + msg + ", action=" + action);
-        handleCleanCommand(player, action);
-        return false; // 阻止消息发送到聊天
-      }
-      return true;
+    var cmd = mc.newCommand(config.clean_Cmd, "实体清理系统", PermType.Any);
+    cmd.setEnum("CleanAction", ["now", "status", "cancel", "tps", "help"]);
+    cmd.optional("action", ParamType.Enum, "CleanAction", 1);
+    cmd.overload(["CleanAction"]);
+    cmd.setCallback(function(_cmd, _ori, _out, _res) {
+      var p = _ori.player;
+      if (!p) return false;
+      return handleCleanCommand(p, _res.action || "now");
     });
-    logger.info("聊天监听模式已启用，命令格式: /clean [now|status|cancel|tps|help]");
+    cmd.setup();
   }
 
-  /* ================= 定时 ================= */
+  /* ================= 定时任务 ================= */
   function startTimers() {
+    // 周期性自动清理
     timers.push(setInterval(function () {
-      if (config.enable) scheduleClean(false);
+      if (config.enable && state.phase === "idle") scheduleClean(false, null, false);
     }, config.interval * 1000));
 
+    // TPS 监测逻辑
     timers.push(setInterval(function () {
-      if (config.LowTpsClean.enable && getTps() <= config.LowTpsClean.minimum) {
-        mc.broadcast(lang.prefix + t("messages.low_tps_clean", getTps().toFixed(2)));
-        scheduleClean(false);
+      if (!config.LowTpsClean.enable) return;
+      
+      var now = Date.now();
+      // 检查是否处于长冷却期
+      if (now < state.lowTpsRetryTime) {
+        return; 
       }
-    }, 1000));
+
+      var currentTps = getTps();
+      if (currentTps <= config.LowTpsClean.minimum) {
+        if (state.phase === "idle") {
+          state.tpsBeforeClean = currentTps; // 记录清理前的TPS
+          mc.broadcast(lang.prefix + t("messages.low_tps_clean", currentTps.toFixed(2)));
+          scheduleClean(false, null, true); // 触发带标记的清理
+        }
+      }
+    }, 5000)); // 每5秒检查一次TPS，避免过于频繁
   }
 
   /* ================= 初始化 ================= */
   function init() {
-
-    //logger.info("CleanMgr 模块初始化中…");
-
-    
-    // 先加载配置（用于debug设置）
     config = loadConfig();
-    
-    // 显示调试模式状态
-    if (config.debug) {
-      logger.info("调试模式: 已启用");
-    }
-    
-    // 加载语言
     lang = loadLang();
- 
     compileWhitelist();
-    
     initTpsSampler();
-    
     registerCommand();
-    
     startTimers();
-  
-    //logger.info("CleanMgr 启动完成"); 
+    logger.info("CleanMgr 启动完成 (带有TPS无效清理长冷却机制)"); 
   }
 
   return { init: init };
