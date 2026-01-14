@@ -260,8 +260,10 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
       "notice2": 10
     },
     "LowTpsClean": {  //低tps自动清理
-      "enable": true,
-      "minimum": 15
+      "enable": true,   //是否启用该功能
+      "minimum": 15,   //最小tps清理限制
+      "maxConsecutiveCleans": 2, // 最大连续无效清理次数
+      "longCooldown": 450        // 长冷却时间（秒），默认7.5分钟 (5-10分钟中间值)
     },
     "clean_Cmd": "clean",  //清理命令自定义
     "playerCooldown": 300  //玩家执行清理冷却时长（单位/秒）
