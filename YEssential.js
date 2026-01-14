@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.7.7";
-const regversion =[2,7,7];
+const version = "2.7.9";
+const regversion =[2,7,9];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("x.x"));
@@ -463,6 +463,7 @@ class AsyncFileManager {
       if (currentIndex >= modules.length) {
         initPvpModule();
         initFcamModule();
+        Motd();
         let whConfig = conf.get("wh") || { EnableModule: true, status: 0 };
         stats = whConfig.status === 1;
         
@@ -1335,12 +1336,9 @@ function initPvpModule() {
 }
 function Motd(){
     let motds = conf.get("Motd")
-    if(motds == []) return
-    
     let items = motds
     let index = 0;
     let intervalId; // 存储 setInterval 的返回值，以便后续清除
-    
     intervalId = setInterval(() => {
         let item = items[index];
         index = (index + 1) % items.length; // 计算下一个元素的索引，如果到达末尾则回到开头
