@@ -2,7 +2,7 @@
 
 /**
  * YEssential - CleanMgr Module (LSE-safe Ultimate)
- * 修改版：增加了低 TPS 连续清理无效后的长冷却机制
+
  */
 
 var CleanMgr = (function () {
@@ -383,7 +383,6 @@ var CleanMgr = (function () {
     initTpsSampler();
     registerCommand();
     startTimers();
-    logger.info("CleanMgr 启动完成 (带有TPS无效清理长冷却机制)"); 
   }
 
   return { init: init };
