@@ -2,7 +2,7 @@
     "entry": "YEssential.js",
     "name": "YEssential",
     "type": "lse-quickjs",
-    "version": "2.7.9",
+    "version": "2.8.0",
     "author": "Nico6719",
     "description": "YEssential多功能基础插件 ",
     "extraInfo": {
@@ -11,13 +11,7 @@
     },
     "dependencies": [
         {
-            "name": "GMLIB-LegacyRemoteCallApi"
-        },
-        {
             "name": "legacy-script-engine-quickjs"
-        },
-        {
-            "name": "GMLIB"
         }
     ]
 }
