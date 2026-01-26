@@ -165,6 +165,11 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
         "enableSound": true,  //传送成功音效
         "logToFile": true   // 记录日志
     },
+    "Bstats": {  //Bstats开关
+          "EnableModule": true, // 模块总开关
+          "serverUUID": "",      // 服务器唯一标识，留空会自动生成
+          "logSentData": false   // 是否在控制台显示发送的数据内容
+    },
     "Hub": { //Hub坐标配置
           "EnabledModule": false,  //Hub功能开关，默认为关闭
           "x": 58776.7,  //x轴
