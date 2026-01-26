@@ -68,6 +68,7 @@ class AsyncUpdateChecker {
             { url: 'modules/ConfigManager.js', path: './modules/ConfigManager.js' },
             { url: 'modules/AsyncUpdateChecker.js', path: './modules/AsyncUpdateChecker.js' },
             { url: 'modules/RadomTeleportSystem.js', path: './modules/RadomTeleportSystem.js' },
+            { url: 'modules/Bstats.js', path: './modules/Bstats.js' },
             { url: 'modules/Cd.js', path: './modules/Cd.js' }
         ],
         reloadDelay: 1000,
