@@ -7,8 +7,8 @@ class ConfigManager {
         
         // 默认配置
         this.configDefaults = {
-            "Version": 268,
-            "AutoUpdate": 1,
+            "Version": 281,
+            "AutoUpdate": true,
             "PVP": {
                 // 新增：PVP 模块的高级配置
                 "EnabledModule": true,
@@ -40,6 +40,11 @@ class ConfigManager {
                 "EnableModule": false,
                 "CostMoney": 0,
                 "TimeOut": 0
+            },
+            "Bstats": {
+                "EnableModule": true, // 模块总开关
+                "serverUUID": "",      // 服务器唯一标识，留空会自动生成
+                "logSentData": false   // 是否在控制台显示发送的数据内容
             },
             "RedPacket": {
                 "EnabledModule": false,

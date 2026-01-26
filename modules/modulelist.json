@@ -5,6 +5,10 @@
             "name": "AsyncUpdateChecker"
         },
         {
+            "path": "Bstats.js",
+            "name": "Bstats"
+        },
+        {
             "path": "Cd.js",
             "name": "Cd"
         },
