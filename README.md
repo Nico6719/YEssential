@@ -41,6 +41,7 @@
 |PVP	PVP 功能， |防止玩家恶意攻击。	 |✅|
 |Keepinventory	 |开服自动开启死亡不掉落。 |	✅|
 |AutoUpdate	 |自动更新插件本体并重载。	 |✅|
+|Bstat统计	 |统计BDS信息，BDS版本，服务器在线人数及更多东西（可在Config内关闭） |	✅|
 |Gui修改插件配置	 |网页编辑器。 |	✅|
 |Plugin for Endstone	|Endstone 版本的 YEssential。|	🚧 开发中|
 |SideBar|	支持自定义侧边栏以及支持 PAPI 变量。|	📅 计划中|
