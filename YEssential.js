@@ -15,16 +15,16 @@
 该插件仅在[github,MineBBS,KLPBBS]发布
 禁止二次发布插件
 ----------------------------------*/
-// LiteLoader-AIDS automatic generateds
-/// <reference path="c:\Users\Admin/dts/helperlib/src/index.d.ts"/> 
+// LiteLoader-AIDS automatic generated
+/// <reference path="c:\Users\Admin\ku/dts/helperlib/src/index.d.ts"/> 
 const { PAPI } = require('./GMLIB-LegacyRemoteCallApi/lib/BEPlaceholderAPI-JS');
 const YEST_LangDir = "./plugins/YEssential/lang/";
 const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.8.1";
-const regversion =[2,8,1];
+const version = "2.8.2";
+const regversion =[2,8,2];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("x.x"));
