@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.8.2";
-const regversion =[2,8,2];
+const version = "2.8.3";
+const regversion =[2,8,3];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("x.x"));
@@ -631,13 +631,38 @@ function initializePlugin() {
         }
     });
     
-    // 第七步：异步检查更新
+    // 第七步：异步初始化更新检查器并检查更新
     setTimeout(() => {
-    if (conf.get("AutoUpdate")) {
-        AsyncUpdateChecker.checkForUpdates(version).catch(error => {
-            logger.error("后台更新检查失败: " + error.message);
-        });
-    }  }, 1000);
+        (async () => {
+            try {
+                // 先初始化更新检查器（检查缺失文件）
+                await AsyncUpdateChecker.init();
+                
+                // 获取更新配置
+                const updateConfig = conf.get("Update");
+                
+                // 检查是否启用更新模块
+                if (updateConfig && updateConfig.EnableModule) {
+                    
+                    // 执行更新检查
+                    await AsyncUpdateChecker.checkForUpdates(version);
+                    
+                    // 设置定时检查（如果配置了检查间隔）
+                    if (updateConfig.CheckInterval > 0) {
+                        setInterval(async () => {
+                            try {
+                                await AsyncUpdateChecker.checkForUpdates(version);
+                            } catch (error) {
+                                logger.error(`定时更新检查失败: ${error.message}`);
+                            }
+                        }, updateConfig.CheckInterval * 60 * 1000);
+                    }
+                } 
+            } catch (error) {
+                logger.error(`更新检查失败: ${error.message}`);
+            }
+        })();
+    }, 1000);
 }
 // 异步语言文件管理器
 class AsyncLanguageManager {
