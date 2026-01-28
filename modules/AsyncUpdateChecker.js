@@ -58,23 +58,50 @@ function compareVersions(v1, v2) {
 }
 
 class AsyncUpdateChecker {
-    // 更新配置
-    static UPDATE_CONFIG = {
-        versionUrl: 'https://dl.mcmcc.cc/file/Version.json',
-        baseUrl: 'https://dl.mcmcc.cc/file/',
-        files: [
-            { url: 'YEssential.js', path: 'YEssential.js' },
-            { url: 'modules/Cleanmgr.js', path: './modules/Cleanmgr.js' },
-            { url: 'modules/ConfigManager.js', path: './modules/ConfigManager.js' },
-            { url: 'modules/AsyncUpdateChecker.js', path: './modules/AsyncUpdateChecker.js' },
-            { url: 'modules/RadomTeleportSystem.js', path: './modules/RadomTeleportSystem.js' },
-            { url: 'modules/Bstats.js', path: './modules/Bstats.js' },
-            { url: 'modules/Cd.js', path: './modules/Cd.js' }
-        ],
-        reloadDelay: 1000,
-        timeout: 30000, // 30秒超时
-        checkMissingFilesOnStart: true // 启动时检查缺失文件
-    };
+    /**
+     * 获取更新配置
+     * 从ConfigManager读取，如果不存在则使用默认配置
+     */
+    static getConfig() {
+        try {
+            // 从配置文件读取
+            const updateConfig = conf.get("Update");
+            
+            if (updateConfig && typeof updateConfig === 'object') {
+                // 返回配置，确保所有必需字段都存在
+                return {
+                    versionUrl: updateConfig.versionUrl || 'https://dl.mcmcc.cc/file/Version.json',
+                    baseUrl: updateConfig.baseUrl || 'https://dl.mcmcc.cc/file/',
+                    files: updateConfig.files || [],
+                    reloadDelay: updateConfig.reloadDelay || 1000,
+                    timeout: updateConfig.timeout || 30000,
+                    checkMissingFilesOnStart: updateConfig.checkMissingFilesOnStart !== undefined 
+                        ? updateConfig.checkMissingFilesOnStart 
+                        : true
+                };
+            }
+        } catch (error) {
+            logger.warn(`读取更新配置失败: ${error.message}，使用默认配置`);
+        }
+        
+        // 返回默认配置（作为后备方案）
+        return {
+            versionUrl: 'https://dl.mcmcc.cc/file/Version.json',
+            baseUrl: 'https://dl.mcmcc.cc/file/',
+            files: [
+                { url: 'YEssential.js', path: 'YEssential.js' },
+                { url: 'modules/Cleanmgr.js', path: './modules/Cleanmgr.js' },
+                { url: 'modules/ConfigManager.js', path: './modules/ConfigManager.js' },
+                { url: 'modules/AsyncUpdateChecker.js', path: './modules/AsyncUpdateChecker.js' },
+                { url: 'modules/RadomTeleportSystem.js', path: './modules/RadomTeleportSystem.js' },
+                { url: 'modules/Bstats.js', path: './modules/Bstats.js' },
+                { url: 'modules/Cd.js', path: './modules/Cd.js' }
+            ],
+            reloadDelay: 1000,
+            timeout: 30000,
+            checkMissingFilesOnStart: true
+        };
+    }
 
     /**
      * 初始化更新检查器
@@ -82,8 +109,10 @@ class AsyncUpdateChecker {
      */
     static async init() {
         try {
+            const config = this.getConfig();
+            
             // 检查缺失文件
-            if (this.UPDATE_CONFIG.checkMissingFilesOnStart) {
+            if (config.checkMissingFilesOnStart) {
                 const missingFiles = await this.checkMissingFiles();
                 
                 if (missingFiles.length > 0) {
@@ -107,9 +136,10 @@ class AsyncUpdateChecker {
      * @returns {Array} 缺失文件列表
      */
     static async checkMissingFiles() {
+        const config = this.getConfig();
         const missingFiles = [];
         
-        for (const file of this.UPDATE_CONFIG.files) {
+        for (const file of config.files) {
             const fullPath = pluginpath + file.path;
             
             try {
@@ -166,13 +196,15 @@ class AsyncUpdateChecker {
      * @param {Array} fileList 要下载的文件列表
      */
     static async downloadSpecificFiles(fileList) {
+        const config = this.getConfig();
+        
         const downloadPromises = fileList.map(async (file) => {
             try {
                 logger.info(`下载文件: ${file.url}`);
                 
                 const data = await AsyncNetworkManager.httpGet(
-                    this.UPDATE_CONFIG.baseUrl + file.url,
-                    this.UPDATE_CONFIG.timeout
+                    config.baseUrl + file.url,
+                    config.timeout
                 );
                 
                 // 移除回车符,统一换行符
@@ -245,10 +277,12 @@ class AsyncUpdateChecker {
      * 获取远程版本信息
      */
     static async fetchRemoteVersion() {
+        const config = this.getConfig();
+        
         try {
             const result = await AsyncNetworkManager.httpGet(
-                this.UPDATE_CONFIG.versionUrl,
-                this.UPDATE_CONFIG.timeout
+                config.versionUrl,
+                config.timeout
             );
             
             const jsonData = JSON.parse(result);
@@ -313,7 +347,8 @@ class AsyncUpdateChecker {
      * 下载所有更新文件
      */
     static async downloadAllFiles() {
-        return await this.downloadSpecificFiles(this.UPDATE_CONFIG.files);
+        const config = this.getConfig();
+        return await this.downloadSpecificFiles(config.files);
     }
 
     /**
@@ -349,6 +384,8 @@ class AsyncUpdateChecker {
      * 创建备份
      */
     static async createBackup() {
+        const config = this.getConfig();
+        
         try {
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
             const backupDir = pluginpath + `./backups/backup_${timestamp}/`;
@@ -361,7 +398,7 @@ class AsyncUpdateChecker {
             }
             
             // 备份所有文件
-            for (const file of this.UPDATE_CONFIG.files) {
+            for (const file of config.files) {
                 const sourcePath = pluginpath + file.path;
                 const backupPath = backupDir + file.path;
                 
@@ -405,6 +442,8 @@ class AsyncUpdateChecker {
      * 恢复备份
      */
     static async restoreBackup() {
+        const config = this.getConfig();
+        
         if (!this._lastBackupPath) {
             logger.warn(lang.get("No.backup.canuse"));
             return false;
@@ -413,7 +452,7 @@ class AsyncUpdateChecker {
         try {
             logger.warn(lang.get("Upd.fail.backing"));
             
-            for (const file of this.UPDATE_CONFIG.files) {
+            for (const file of config.files) {
                 const backupPath = this._lastBackupPath + file.path;
                 const targetPath = pluginpath + file.path;
                 
@@ -446,8 +485,10 @@ class AsyncUpdateChecker {
      * 重载插件
      */
     static async reloadPlugin() {
+        const config = this.getConfig();
+        
         return new Promise((resolve) => {
-            logger.info(`${this.UPDATE_CONFIG.reloadDelay / 1000} 秒后重载插件...`);
+            logger.info(`${config.reloadDelay / 1000} 秒后重载插件...`);
             
             setTimeout(() => {
                 try {
@@ -458,7 +499,7 @@ class AsyncUpdateChecker {
                     logger.warn('请手动执行: ll reload YEssential');
                     resolve(false);
                 }
-            }, this.UPDATE_CONFIG.reloadDelay);
+            }, config.reloadDelay);
         });
     }
 
@@ -513,9 +554,11 @@ class AsyncUpdateChecker {
      * 检查网络连接
      */
     static async checkNetworkConnection() {
+        const config = this.getConfig();
+        
         try {
             await AsyncNetworkManager.httpGet(
-                this.UPDATE_CONFIG.versionUrl,
+                config.versionUrl,
                 5000 // 5秒超时
             );
             return true;

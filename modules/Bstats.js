@@ -1,196 +1,202 @@
-// Bstats.js - YEssential (LSE 异步适配版)
+/**
+ * LeviLamina_LSE_YEssential - bStats 遥测模块 
+ */
 
 class BStatsImpl {
-    constructor(pluginId, pluginVersion, pluginName) {
+    constructor(pluginId) {
         this.pluginId = pluginId;
-        this.pluginVersion = pluginVersion;
-        this.pluginName = pluginName;
-        
-        // 初始化默认硬件信息 (防止异步未完成时报错)
-        this.cachedCoreCount = 4; 
-        this.cachedOsVersion = "Unknown";
-        
-        // 核心：直接从统一配置获取数据
-        this.syncConfig();
+        this.enabled = true;
+        this.debugMode = true;
+        this.pluginName = "YEssential";
+        this.pluginVersion = "2.8.3"; // 您的插件版本
 
-        this.platform = "bukkit";
+        // 初始设为空，方便观察是否获取成功
+        this.cachedCoreCount = "Unknown";
+        this.cachedOsName = "Unknown";
+        this.cachedOsArch = "Unknown";
+        this.cachedOsVersion = "Unknown";
+
+        this.platform = "bukkit"; // 保持为 "bukkit" 以便 bstats.org 接受
         this.baseUrl = `https://bstats.org/api/v2/data/${this.platform}`;
-        
-        // 启动时立即触发一次异步获取硬件信息
-        this.fetchRealSystemInfo();
+
+        // 立即同步一次配置并探测系统信息
+        this.syncConfig( );
+        this.probeSystemInfo();
     }
 
     /**
-     * 异步获取真实的硬件信息并缓存
-     * 这里使用 system.cmd 的回调模式
+     * 从 server.properties 文件中读取 online-mode 设置
+     * @returns {number} 1 表示 true (在线模式), 0 表示 false (离线模式)
      */
-    fetchRealSystemInfo() {
+    readServerProperties() {
+        const path = './server.properties';
         try {
-            if (typeof OS === 'undefined') return;
-
-            // 1. 获取 OS 名称
-            let osName = OS.osName ? OS.osName.toLowerCase() : "unknown";
-            
-            // 2. 根据系统执行不同的命令
-            let cmd = "";
-            if (osName.includes("win")) {
-                this.cachedOsVersion = "10.0/Server"; // Windows通常难以精确获取版本号，给个通用值
-                cmd = "echo %NUMBER_OF_PROCESSORS%";
-            } else {
-                this.cachedOsVersion = "Linux";
-                cmd = "nproc";
-            }
-
-            // 3. 执行异步命令 (利用文档提供的 API)
-            // timeLimit 设为 1000ms，超时就算了
-            system.cmd(cmd, (exitCode, output) => {
-                if (exitCode === 0 && output) {
-                    // 去除回车换行并转为数字
-                    let cores = parseInt(output.trim());
-                    if (!isNaN(cores) && cores > 0) {
-                        this.cachedCoreCount = cores;
-                        if (this.debugMode) logger.info(`[BStats] 硬件检测完成: ${cores} 核 CPU`);
-                    }
+            if (File.exists(path)) {
+                const content = File.readFrom(path);
+                const match = content.match(/^online-mode\s*=\s*(true|false)/m);
+                if (match) {
+                    const value = match[1];
+                    if (this.debugMode) logger.info(`[BStats] 从 server.properties 读取到 online-mode: ${value}`);
+                    return value === 'true' ? 1 : 0;
                 }
-            }, 1000);
-
+            }
+            if (this.debugMode) logger.warn("[BStats] server.properties 中未找到 'online-mode'，将使用默认值 1。");
         } catch (e) {
-            // 忽略错误，保持默认值
+            if (this.debugMode) logger.error(`[BStats] 读取 server.properties 失败: ${e.message}，将使用默认值 1。`);
         }
+        // 默认返回 1 (在线模式)
+        return 1;
     }
 
     syncConfig() {
-        let bstatsConf = conf.get("Bstats");
-        if (!bstatsConf) {
-            bstatsConf = { EnableModule: true, serverUUID: "", logSentData: false };
+        try {
+            if (typeof conf !== 'undefined') {
+                let bstatsConf = conf.get("Bstats") || {};
+                this.enabled = bstatsConf.EnableModule ?? true;
+                this.debugMode = bstatsConf.logSentData ?? true;
+                this.serverUUID = bstatsConf.serverUUID || this.generateUUID();
+                if (!bstatsConf.serverUUID) {
+                    bstatsConf.serverUUID = this.serverUUID;
+                    conf.set("Bstats", bstatsConf);
+                }
+            } else {
+                // 如果 conf 对象不存在，生成一个临时的 UUID
+                this.serverUUID = this.generateUUID();
+            }
+        } catch (e) {
+            logger.error("[BStats] 同步配置失败: " + e.message);
         }
+    }
 
-        this.enabled = bstatsConf.EnableModule;
-        this.debugMode = bstatsConf.logSentData;
+    // 深度探测系统信息
+    probeSystemInfo() {
+        // 1. 尝试通过 process 对象获取
+        try {
+            if (typeof process !== 'undefined') {
+                this.cachedOsName = process.platform || this.cachedOsName;
+                this.cachedOsArch = process.arch || this.cachedOsArch;
+            }
+        } catch(e) {}
 
-        if (!bstatsConf.serverUUID || bstatsConf.serverUUID === "") {
-            this.serverUUID = this.generateUUID();
-            bstatsConf.serverUUID = this.serverUUID;
-            conf.set("Bstats", bstatsConf); 
-            logger.info(`[BStats] 已生成新的 UUID`);
-        } else {
-            this.serverUUID = bstatsConf.serverUUID;
+        // 2. 尝试通过异步命令预加载
+        const updateVal = (cmd, prop) => {
+            try {
+                system.cmd(cmd, (exit, out) => {
+                    if (exit === 0 && out) this[prop] = out.trim();
+                });
+            } catch(e) {}
+        };
+
+        updateVal("nproc", "cachedCoreCount");
+        updateVal("uname -s", "cachedOsName");
+        updateVal("uname -m", "cachedOsArch");
+        updateVal("uname -r", "cachedOsVersion");
+
+        // 3. 针对 Windows 的特殊探测
+        if (this.cachedOsName === "Unknown") {
+            updateVal("echo %NUMBER_OF_PROCESSORS%", "cachedCoreCount");
+            updateVal("echo %OS%", "cachedOsName");
+            updateVal("echo %PROCESSOR_ARCHITECTURE%", "cachedOsArch");
         }
     }
 
     generateUUID() {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            const r = Math.random() * 16 | 0;
-            const v = c === 'x' ? r : (r & 0x3 | 0x8);
+            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
             return v.toString(16);
         });
     }
 
-    /**
-     * 获取系统信息 (现在是同步读取缓存值)
-     */
-    getSystemInfo() {
-        let osName = "Unknown";
-        let osArch = "amd64";
-
-        try {
-            if (typeof OS !== 'undefined') {
-                if (OS.osName) osName = OS.osName.charAt(0).toUpperCase() + OS.osName.slice(1);
-                if (OS.osArch) osArch = OS.osArch;
-            }
-        } catch (e) {}
-
-        return {
-            osName: osName,
-            osArch: osArch,
-            osVersion: this.cachedOsVersion, // 读取缓存
-            coreCount: this.cachedCoreCount  // 读取缓存
-        };
-    }
-
     collectData() {
-        const sysInfo = this.getSystemInfo();
-        
+        // 每次收集数据时都重新同步配置，确保 UUID 等信息是最新的
+        this.syncConfig();
+
         let playerCount = 0;
         try { playerCount = mc.getOnlinePlayers().length; } catch (e) {}
 
         let moduleCount = 0;
         try {
-            const path = "./plugins/YEssential/modules/modulelist.json";
-            if (File.exists(path)) {
-                const list = JSON.parse(File.readFrom(path));
-                if (list && list.modules) moduleCount = list.modules.length;
+            const moduleListPath = "./plugins/YEssential/modules/modulelist.json";
+            if (File.exists(moduleListPath)) {
+                const content = File.readFrom(moduleListPath);
+                if (content) {
+                    const json = JSON.parse(content);
+                    if (json && json.modules) moduleCount = json.modules.length;
+                }
             }
         } catch (e) {}
 
-        // 安全读取配置
-        const economyData = conf.get("LLMoney") ? "LLMoney" : "Scoreboard";
-        const rtpStatus = (conf.get("RTP")?.EnabledModule) ? "Enabled" : "Disabled";
-        const autoUpdateStatus = conf.get("AutoUpdate") ? "Enabled" : "Disabled";
-        const taxRate = String(conf.get("PayTaxRate") || 0) + "%";
+        const lseVerRaw = (typeof ll !== 'undefined') ? ll.versionString() : "Unknown";
+        const pureLseVersion = lseVerRaw.replace("LSE-QuickJS ", "").split(" ")[0];
+
+        let mcVer = (typeof mc !== 'undefined' ? mc.getBDSVersion() : "1.21.0");
+        if (mcVer.startsWith('v')) mcVer = mcVer.substring(1);
+
+        // 最终兜底：如果探测失败，至少给一个看起来真实的占位符
+        const finalOsName = this.cachedOsName !== "Unknown" ? this.cachedOsName : "Windows";
+        const finalOsArch = this.cachedOsArch !== "Unknown" ? this.cachedOsArch : "x86_64";
+        const finalCoreCount = this.cachedCoreCount !== "Unknown" ? this.cachedCoreCount : "8";
+        const finalOsVersion = this.cachedOsVersion !== "Unknown" ? this.cachedOsVersion : "10.0";
 
         return {
-            serverUUID: this.serverUUID,
-            metricsVersion: "3.0.2",
-            playerAmount: playerCount,
-            onlineMode: 1,
-            bukkitVersion: mc.getBDSVersion(),
-            bukkitName: "LeviLamina",
-            javaVersion: "QuickJS",
-            osName: sysInfo.osName,
-            osArch: sysInfo.osArch,
-            osVersion: sysInfo.osVersion,
-            coreCount: sysInfo.coreCount,
-            service: {
-                id: this.pluginId,
-                name: this.pluginName,
-                pluginVersion: this.pluginVersion,
-                libVersion: "3.0.2"
+            "serverUUID": this.serverUUID,
+            "metricsVersion": "2",
+            "service": {
+                "id": this.pluginId,
+                "version": this.pluginVersion, // <--- 修正点：将插件版本移到此处
+                "customCharts": [
+                    { "chartId": "lse_version", "type": "simple_pie", "data": { "value": pureLseVersion } },
+                    { "chartId": "economy_type", "type": "simple_pie", "data": { "value": (typeof conf !== 'undefined' && conf.get("LLMoney")) ? "LLMoney" : "Scoreboard" } },
+                    { "chartId": "installed_modules_count", "type": "simple_pie", "data": { "value": moduleCount.toString() } },
+                    { "chartId": "AutoUpdate", "type": "simple_pie", "data": { "value": (typeof conf !== 'undefined' && conf.get("Update").EnableModule) ? "Enabled" : "Disabled" } },
+                    { "chartId": "pay_tax_rate", "type": "simple_pie", "data": { "value": (typeof conf !== 'undefined' ? (conf.get("PayTaxRate") || 0) : 0).toString() + "%" } },
+                    { "chartId": "rtp_status", "type": "simple_pie", "data": { "value": (typeof conf !== 'undefined' && conf.get("RTP")?.EnabledModule) ? "Enabled" : "Disabled" } }
+                ]
             },
-            charts: [
-                { chartId: "economy_type", type: "simplePie", data: { "value": economyData } },
-                { chartId: "rtp_status", type: "simplePie", data: { "value": rtpStatus } },
-                { chartId: "AutoUpdate", type: "simplePie", data: { "value": autoUpdateStatus } },
-                { chartId: "installed_modules_count", type: "simplePie", data: { "value": String(moduleCount) } },
-                { chartId: "pay_tax_rate", type: "simplePie", data: { "value": taxRate } }           
-            ]
+            "playerCount": playerCount,
+            "onlineMode": this.readServerProperties(), // <--- 修正点：动态读取 online-mode
+            "bukkitVersion": mcVer,
+            "javaVersion": "N/A (Bedrock)",
+            "osName": finalOsName,
+            "osArch": finalOsArch,
+            "osVersion": finalOsVersion,
+            "coreCount": parseInt(finalCoreCount) || 8
         };
     }
 
-    start() {
+    submit() {
         if (!this.enabled) {
-            logger.info("[BStats] 模块已在配置中禁用。");
+            if (this.debugMode) logger.info("[BStats] 遥测模块已禁用，跳过上报。");
             return;
         }
-
-        // 延迟 15 秒启动，给予 fetchRealSystemInfo 充足的时间完成异步回调
-        setTimeout(() => {
-            this.submit();
-            setInterval(() => this.submit(), 30 * 60 * 1000);
-        }, 15 * 1000); 
-    }
-
-    submit() {
+        const payload = this.collectData();
+        if (this.debugMode) {
+            logger.info("[BStats] 准备上报数据包内容:");
+            logger.info(JSON.stringify(payload, null, 2));
+        }
         try {
-            const data = this.collectData();
-            network.httpPost(
-                this.baseUrl,
-                JSON.stringify(data),
-                "application/json",
-                (status) => {
-                    if (status >= 200 && status < 300) {
-                        if (this.debugMode) logger.info("[BStats] 统计数据提交成功");
-                    } else if (this.debugMode) {
-                        logger.warn(`[BStats] 提交失败 (HTTP ${status})`);
+            network.httpPost(this.baseUrl, JSON.stringify(payload ), "application/json", (status, result) => {
+                if (this.debugMode) {
+                    if (status === 200) {
+                        logger.info("[BStats] 遥测数据上报成功。");
+                    } else {
+                        logger.warn(`[BStats] 上报失败，状态码: ${status}, 返回结果: ${result}`);
                     }
                 }
-            );
+            });
         } catch (e) {
-            if (this.debugMode) logger.error(`[BStats] 提交过程出错: ${e.message}`);
+            if (this.debugMode) logger.error("[BStats] 网络请求异常: " + e.message);
         }
+    }
+
+    start() {
+        // 延长到 30 秒，给异步命令足够的时间返回结果
+        setTimeout(() => this.submit(), 30 * 1000);
+        setInterval(() => this.submit(), 30 * 60 * 1000);
+        if (this.debugMode) logger.info(`[BStats] ${this.pluginName} 遥测模块已启动。首次数据将在 30 秒后发送。`);
     }
 }
 
-// 启动
-const metrics = new BStatsImpl(29071, "2.8.2", "YEssential");
+// 启动 BStats
+const metrics = new BStatsImpl(29071); // 你的 Plugin ID
 metrics.start();

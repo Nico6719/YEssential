@@ -8,7 +8,24 @@ class ConfigManager {
         // 默认配置
         this.configDefaults = {
             "Version": 281,
-            "AutoUpdate": true,
+            "Update": {
+                "EnableModule": true,
+                "CheckInterval": 120,
+                "versionUrl": "https://dl.mcmcc.cc/file/Version.json",
+                "baseUrl": "https://dl.mcmcc.cc/file/",
+                "files": [
+                    { "url": "YEssential.js", "path": "YEssential.js" },
+                    { "url": "modules/Cleanmgr.js", "path": "./modules/Cleanmgr.js" },
+                    { "url": "modules/ConfigManager.js", "path": "./modules/ConfigManager.js" },
+                    { "url": "modules/AsyncUpdateChecker.js", "path": "./modules/AsyncUpdateChecker.js" },
+                    { "url": "modules/RadomTeleportSystem.js", "path": "./modules/RadomTeleportSystem.js" },
+                    { "url": "modules/Bstats.js", "path": "./modules/Bstats.js" },
+                    { "url": "modules/Cd.js", "path": "./modules/Cd.js" }
+                ],
+                "reloadDelay": 1000,
+                "timeout": 30000,
+                "checkMissingFilesOnStart": true
+            },
             "PVP": {
                 // 新增：PVP 模块的高级配置
                 "EnabledModule": true,
@@ -349,7 +366,8 @@ class ConfigManager {
             { version: 263, handler: () => this.migrateTo263() },
             { version: 264, handler: () => this.migrateTo264() },
             { version: 265, handler: () => this.migrateTo265() },
-            { version: 268, handler: () => this.migrateTo268() }
+            { version: 268, handler: () => this.migrateTo268() },
+            { version: 270, handler: () => this.migrateTo270() }
         ];
 
         migrations.forEach(migration => {
@@ -416,6 +434,27 @@ class ConfigManager {
         // 确保 PVP 配置对象存在，如果不存在则写入默认值
         this.ensureObjectConfig("PVP", this.configDefaults.PVP);
     }
+    migrateTo270() {
+        logger.info("正在将更新配置重构为对象格式...");
+    
+        // 读取旧值
+        let oldEnabled = conf.get("AutoUpdate");
+        let oldInterval = conf.get("AutoUpdateInterval");
+
+        // 如果旧值存在，则保留用户之前的设置，否则使用默认值
+        let newUpdateCfg = {
+            "EnableModule": (oldEnabled !== undefined) ? !!oldEnabled : true,
+            "CheckInterval": (oldInterval !== undefined) ? oldInterval : 120
+    };
+
+    // 写入新对象
+    conf.set("Update", newUpdateCfg);
+
+    // 删除旧的独立键（清理配置文件）
+    conf.delete("AutoUpdate");
+    conf.delete("AutoUpdateInterval");
+}
+    
     // ========== 配置管理核心方法 ==========
 
     setIfMissing(key, defaultValue) {
