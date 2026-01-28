@@ -127,7 +127,45 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
 主配置文件
 ```json
 {
-    "AutoUpdate": 1,  //自动更新，默认为开启
+    "Update": {  //自动更新配置项
+        "EnableModule": true,  //是否开启自动更新功能
+        "CheckInterval": 120,  //定时检查新版本（单位分钟，0关闭，最小值120）
+        "versionUrl": "https://dl.mcmcc.cc/file/Version.json",  //区别版本号的网址
+        "baseUrl": "https://dl.mcmcc.cc/file/",  //下载文件的网址
+        "files": [ //需要更新的模块/本体
+            {
+                "url": "YEssential.js",
+                "path": "YEssential.js"
+            },
+            {
+                "url": "modules/Cleanmgr.js",
+                "path": "./modules/Cleanmgr.js"
+            },
+            {
+                "url": "modules/ConfigManager.js",
+                "path": "./modules/ConfigManager.js"
+            },
+            {
+                "url": "modules/AsyncUpdateChecker.js",
+                "path": "./modules/AsyncUpdateChecker.js"
+            },
+            {
+                "url": "modules/RadomTeleportSystem.js",
+                "path": "./modules/RadomTeleportSystem.js"
+            },
+            {
+                "url": "modules/Bstats.js",
+                "path": "./modules/Bstats.js"
+            },
+            {
+                "url": "modules/Cd.js",
+                "path": "./modules/Cd.js"
+            }
+        ],
+        "reloadDelay": 1000,  //自动重载延迟
+        "timeout": 30000,  //检查更新超时时间
+        "checkMissingFilesOnStart": true  //是否在开服时检查有无缺失文件
+    },
      "PVP": {
         "EnabledModule": true,  //PVP模块，默认为开启
         "DangerousBlocks": [  //自定义拦截玩家放置的爆炸实体
