@@ -2,17 +2,27 @@
 
 /**
  * YEssential - CleanMgr Module (LSE-safe Ultimate)
-
+ * 修改版 v3：
+ * 1. 修复命令补全：使用 LSE 标准的双重 Overload 写法，完美支持客户端枚举提示。
+ * 2. 玩家数据保存路径分离至 /data/CleanmgrSettingData.json
  */
 
 var CleanMgr = (function () {
 
   /* ================= 路径 ================= */
   var BASE = "./plugins/YEssential/";
+  
+  // 配置文件路径
   var CONFIG_DIR = BASE + "config/cleanmgr/";
-  var LANG_DIR   = BASE + "lang/cleanmgr/";
   var CONFIG_PATH = CONFIG_DIR + "config.json";
+  
+  // 语言文件路径
+  var LANG_DIR   = BASE + "lang/cleanmgr/";
   var LANG_PATH   = LANG_DIR + "lang.json";
+
+  // 玩家数据路径: plugins/YEssential/data/CleanmgrSettingData.json
+  var DATA_DIR = BASE + "data/";
+  var PLAYER_SETTINGS_PATH = DATA_DIR + "CleanmgrSettingData.json"; 
 
   /* ================= 默认语言 ================= */
   var DEFAULT_LANG = {
@@ -41,13 +51,11 @@ var CleanMgr = (function () {
       status_cleaning: "§c正在清理实体...",
       no_scheduled_clean: "§c当前没有计划清理可取消",
       tps_info: "§a当前TPS: §e{0}§a / 20.00",
-      tps_excellent: "§a当前TPS: §2{0}§a / 20.00 §7(优秀)",
-      tps_good: "§a当前TPS: §e{0}§a / 20.00 §7(良好)",
-      tps_poor: "§a当前TPS: §6{0}§a / 20.00 §7(较差)",
-      tps_critical: "§a当前TPS: §c{0}§a / 20.00 §7(危险)",
-      help_message: "§e用法:\n§a/clean §7- 触发清理\n§a/clean status §7- 查询状态\n§a/clean cancel §7- 取消清理\n§a/clean tps §7- 查询TPS",
-      chat_mode_tip: "§e您可以使用聊天命令: /clean [now|status|cancel|tps|help]",
-      cooldown_warning: "§c触发清理冷却中，请稍后再试"
+      help_message: "§e用法:\n§a/clean §7- 触发清理\n§a/clean status §7- 查询状态\n§a/clean cancel §7- 取消清理\n§a/clean tps §7- 查询TPS\n§a/clean toast §7- 开关顶部弹窗",
+      chat_mode_tip: "§e您可以使用聊天命令: /clean [now|status|cancel|tps|help|toast]",
+      cooldown_warning: "§c触发清理冷却中，请稍后再试",
+      toast_enabled: "§a您已开启清理系统的顶部弹窗通知",
+      toast_disabled: "§c您已关闭清理系统的顶部弹窗通知"
     }
   };
 
@@ -71,8 +79,8 @@ var CleanMgr = (function () {
     LowTpsClean: { 
       enable: true, 
       minimum: 15,
-      maxConsecutiveCleans: 2, // 最大连续无效清理次数
-      longCooldown: 450        // 长冷却时间（秒），默认7.5分钟 (5-10分钟中间值)
+      maxConsecutiveCleans: 2, 
+      longCooldown: 450        
     },
     clean_Cmd: "clean",
     playerCooldown: 300
@@ -84,15 +92,15 @@ var CleanMgr = (function () {
     phase: "idle",
     scheduledTimeouts: [],
     lastPlayerClean: {}, 
-    // 低TPS清理专用状态
-    lowTpsCleanCount: 0,      // 连续无效清理计数
-    lowTpsRetryTime: 0,       // 下次允许低TPS清理的时间戳
-    tpsBeforeClean: 20,       // 清理前的TPS记录
-    isLowTpsTrigger: false    // 当前清理是否由TPS触发
+    lowTpsCleanCount: 0,      
+    lowTpsRetryTime: 0,       
+    tpsBeforeClean: 20,       
+    isLowTpsTrigger: false    
   };
 
   var config = null;
   var lang = null;
+  var playerSettings = {}; 
   var whitelistRegex = [];
   var timers = [];
   var getTps = function () { return 20; };
@@ -146,6 +154,25 @@ var CleanMgr = (function () {
     raw.cleanmgr = merge(DEFAULT_CONFIG, raw.cleanmgr || {});
     File.writeTo(CONFIG_PATH, JSON.stringify(raw, null, 2));
     return raw.cleanmgr;
+  }
+
+  function loadPlayerSettings() {
+    ensureDir(DATA_DIR); 
+    if (File.exists(PLAYER_SETTINGS_PATH)) {
+      try {
+        playerSettings = JSON.parse(File.readFrom(PLAYER_SETTINGS_PATH));
+      } catch (e) {
+        playerSettings = {};
+        logger.warn("[CleanMgr] 玩家数据文件损坏，已重置");
+      }
+    } else {
+      playerSettings = {};
+    }
+  }
+
+  function savePlayerSettings() {
+    ensureDir(DATA_DIR);
+    File.writeTo(PLAYER_SETTINGS_PATH, JSON.stringify(playerSettings, null, 2));
   }
 
   /* ================= TPS 采样 ================= */
@@ -205,7 +232,12 @@ var CleanMgr = (function () {
   function sendToastToAll(title, message) {
     var players = mc.getOnlinePlayers();
     for (var i = 0; i < players.length; i++) {
-      try { players[i].sendToast(title, message); } catch (e) {}
+      try { 
+        var p = players[i];
+        if (playerSettings[p.xuid] !== false) {
+          p.sendToast(title, message); 
+        }
+      } catch (e) {}
     }
   }
 
@@ -230,18 +262,15 @@ var CleanMgr = (function () {
     mc.broadcast(lang.prefix + t("messages.cleanup_complete", removed));
     sendToastToAll(t("toast_title"), t("messages.cleanup_complete", removed));
 
-    // --- 低 TPS 效果评估逻辑 ---
     if (state.isLowTpsTrigger) {
-      // 延迟5秒检查TPS改善情况
       setTimeout(function() {
         var currentTps = getTps();
-        // 如果清理后 TPS 提升小于 2.0，认为此次清理对恢复服务器性能无效
         var improved = currentTps > (state.tpsBeforeClean + 2.0);
         
         debug("TPS清理评估: 前=" + state.tpsBeforeClean.toFixed(2) + " 后=" + currentTps.toFixed(2));
 
         if (improved) {
-          state.lowTpsCleanCount = 0; // 恢复了，重置计数
+          state.lowTpsCleanCount = 0; 
           debug("TPS已改善，重置连续清理计数");
         } else {
           state.lowTpsCleanCount++;
@@ -251,9 +280,8 @@ var CleanMgr = (function () {
             var coolMin = Math.round(config.LowTpsClean.longCooldown / 60);
             mc.broadcast(lang.prefix + t("messages.low_tps_ineffective", coolMin));
             
-            // 设置长冷却截止时间戳
             state.lowTpsRetryTime = Date.now() + (config.LowTpsClean.longCooldown * 1000);
-            state.lowTpsCleanCount = 0; // 进入长冷却后重置计数
+            state.lowTpsCleanCount = 0; 
             logger.warn("[清理系统] 低TPS清理连续无效，进入长冷却模式：" + coolMin + "分钟");
           }
         }
@@ -302,6 +330,8 @@ var CleanMgr = (function () {
   /* ================= 命令处理 ================= */
   function handleCleanCommand(player, action) {
     var playerName = player.realName || player.name;
+    var xuid = player.xuid; 
+
     if (!action || action === "help") {
       player.tell(lang.prefix + t("messages.help_message"));
       return true;
@@ -330,55 +360,89 @@ var CleanMgr = (function () {
       scheduleClean(true, playerName, false);
       return true;
     }
+    if (action === "toast") {
+      var current = playerSettings[xuid];
+      if (current === undefined) current = true; 
+      
+      playerSettings[xuid] = !current;
+      savePlayerSettings();
+      
+      if (playerSettings[xuid]) {
+        player.tell(lang.prefix + t("messages.toast_enabled"));
+        player.sendToast(t("toast_title"), "测试弹窗：开启成功");
+      } else {
+        player.tell(lang.prefix + t("messages.toast_disabled"));
+      }
+      return true;
+    }
     return false;
   }
 
-  /* ================= 注册命令 ================= */
+/* ================= 注册命令 (LSE 补全增强版) ================= */
   function registerCommand() {
+    // 销毁旧命令（如果存在，防止热加载冲突）
+    if (mc.newCommand(config.clean_Cmd, "实体清理系统", PermType.Any)) {
+        // 命令已存在，这里通常会被 LSE 自动处理，但手动定义结构更稳妥
+    }
+    
     var cmd = mc.newCommand(config.clean_Cmd, "实体清理系统", PermType.Any);
-    cmd.setEnum("CleanAction", ["now", "status", "cancel", "tps", "help"]);
-    cmd.optional("action", ParamType.Enum, "CleanAction", 1);
-    cmd.overload(["CleanAction"]);
+
+    // 1. 设置枚举：这是补全的核心列表
+    // 确保枚举名 "CleanActions" 在当前脚本中唯一
+    cmd.setEnum("CleanActions", ["now", "status", "cancel", "tps", "help", "toast"]);
+
+    // 2. 定义参数：将 action 绑定到上述枚举
+    // 第四个参数 1 表示该枚举在客户端显示为列表
+    cmd.mandatory("action", ParamType.Enum, "CleanActions", 1);
+
+    // 3. 注册重载路径 (Overloads)
+    // 路径 A: 只输入 /clean (不带参数)
+    cmd.overload([]);
+    // 路径 B: 输入 /clean <action> (带参数，此时会强制触发枚举补全)
+    cmd.overload(["action"]);
+
+    // 4. 设置回调
     cmd.setCallback(function(_cmd, _ori, _out, _res) {
-      var p = _ori.player;
-      if (!p) return false;
-      return handleCleanCommand(p, _res.action || "now");
+        var p = _ori.player;
+        if (!p) return false;
+
+        // 如果用户直接按回车 (/clean)，_res.action 为空，执行 "now"
+        // 如果用户选择了补全 (/clean tps)，_res.action 会获得对应的字符串
+        var act = _res.action;
+        if (!act) act = "now";
+        
+        return handleCleanCommand(p, act);
     });
+
     cmd.setup();
   }
-
   /* ================= 定时任务 ================= */
   function startTimers() {
-    // 周期性自动清理
     timers.push(setInterval(function () {
       if (config.enable && state.phase === "idle") scheduleClean(false, null, false);
     }, config.interval * 1000));
 
-    // TPS 监测逻辑
     timers.push(setInterval(function () {
       if (!config.LowTpsClean.enable) return;
-      
       var now = Date.now();
-      // 检查是否处于长冷却期
-      if (now < state.lowTpsRetryTime) {
-        return; 
-      }
+      if (now < state.lowTpsRetryTime) return; 
 
       var currentTps = getTps();
       if (currentTps <= config.LowTpsClean.minimum) {
         if (state.phase === "idle") {
-          state.tpsBeforeClean = currentTps; // 记录清理前的TPS
+          state.tpsBeforeClean = currentTps; 
           mc.broadcast(lang.prefix + t("messages.low_tps_clean", currentTps.toFixed(2)));
-          scheduleClean(false, null, true); // 触发带标记的清理
+          scheduleClean(false, null, true); 
         }
       }
-    }, 5000)); // 每5秒检查一次TPS，避免过于频繁
+    }, 5000));
   }
 
   /* ================= 初始化 ================= */
   function init() {
     config = loadConfig();
     lang = loadLang();
+    loadPlayerSettings(); 
     compileWhitelist();
     initTpsSampler();
     registerCommand();
