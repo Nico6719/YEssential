@@ -23,14 +23,19 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.8.3";
-const regversion =[2,8,3];
+const version = "2.8.4";
+const regversion =[2,8,4];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("x.x"));
 // 创建语言文件（如果不存在）      
 const langFilePath = YEST_LangDir + "zh_cn.json";
 const defaultLangContent = {
+    "gui.insufficient.money.title": "§c余额不足",
+    "gui.insufficient.money.content": "§f操作失败！\n您的余额不足以支付 §e${cost} ${coin}§f。\n请检查您的账户余额。",
+    "gui.button.confirm": "确定",
+    "gui.button.back": "返回主菜单",
+
     
     // moneys指令相关
     "moneys.set.success": "成功将玩家 ${player} 的${coin}设置为 ${amount}",
@@ -600,7 +605,7 @@ function initializePlugin() {
     AsyncLanguageManager.mergeLangFiles();
     
     // 第三步：提示维护功能是否开启
-    if (stats) {
+    if (Maintenance.isActive) {
         setTimeout(() => {
             logger.warn(lang.get("wh.warn"));
         }, 3000);
@@ -1590,35 +1595,31 @@ function initFcamModule() {
 
 //维护模块
 // 初始化维护状态变量，从配置读取
-let whConfig = conf.get("wh") || { EnableModule: true, status: 0 };
-let stats = whConfig.status === 1;
+
+const Maintenance = {
+    get config() { return conf.get("wh") || { EnableModule: true, status: 0 }; },
+    get isActive() { return this.config.status === 1; },
+    setStatus: function(status) {
+        let c = this.config;
+        c.status = status ? 1 : 0;
+        conf.set("wh", c);
+        return status;
+    }
+};
+
 
 let whcmd = mc.newCommand("wh", "维护模式", PermType.GameMasters)
 whcmd.overload([])
-whcmd.setCallback((cmd, ori, out, res) => {
-    // 检查模块是否启用
-    let currentConfig = conf.get("wh") || { EnableModule: true, status: 0 };
-    if (!currentConfig.EnableModule) {
-        out.error("维护模式模块未启用");
-        return;
-    }
-    
-    // 切换状态
-    stats = !stats;
-    let newStatus = stats ? 1 : 0;
-    
-    // 更新配置
-    currentConfig.status = newStatus;
-    conf.set("wh", currentConfig);
-    
-    let pl = ori.player;
-    out.success(`维护模式已${stats ? "开启" : "关闭"}`);
 
-    if (stats) {
+whcmd.setCallback((cmd, ori, out, res) => {
+    if (!Maintenance.config.EnableModule) return out.error("维护模式模块未启用");
+    const newState = Maintenance.setStatus(!Maintenance.isActive);
+    out.success(`维护模式已${newState ? "开启" : "关闭"}`);
+    if (newState) {
         mc.getOnlinePlayers().forEach((player) => {
-            if (player.isSimulatedPlayer()) return;
-            if (player.isOP()) return;
-            player.kick(lang.get("weihu.msg"));
+            if (!player.isSimulatedPlayer() && !player.isOP()) {
+                player.kick(lang.get("weihu.msg"));
+            }
         });
     }
 })
@@ -1631,21 +1632,13 @@ mc.listen("onPreJoin", (pl) => {
     
     if (pl.isSimulatedPlayer()) return;
     if (pl.isOP()) return;
-    if (stats) {
+    if (Maintenance.isActive) {
         pl.kick(lang.get("weihu.msg"));
     }
 })
 
 function getRandomLetter() {
-    // 获取当前时间的毫秒数
-    let ms = new Date().getTime();
-    // 使用 Math.random 生成一个 0 到 1 之间的随机数，并乘以 26
-    let randomIndex = Math.floor(Math.random() * 26);
-    // 将随机数转换为对应的 ASCII 码，65 是 'A' 的 ASCII 码
-    let charCode = 65 + randomIndex;
-    // 将 ASCII 码转换为字符
-    let letter = String.fromCharCode(charCode);
-    return letter;
+    return String.fromCharCode(65 + Math.floor(Math.random() * 26));
 }
 // moneys指令相关
 const moneycmd = mc.newCommand("moneys", lang.get("CoinName"), PermType.GameMasters);
@@ -1654,80 +1647,49 @@ moneycmd.optional("player", ParamType.String);
 moneycmd.optional("amount", ParamType.Int);
 moneycmd.overload(["option", "player", "amount"]);
 
+
 moneycmd.setCallback((cmd, ori, out, res) => {
-    const pl = mc.getPlayer(res.player);
-    if (!pl) return out.error(info+lang.get("money.tr.noonline"));
+    const targetPl = mc.getPlayer(res.player);
+    if (!targetPl) return out.error(info + lang.get("money.tr.noonline"));
 
     const coinName = lang.get("CoinName");
-    const playerName = lang.get("player"); 
-    const moneyhisdata = MoneyHistory.get(pl.realName);
+    const history = MoneyHistory.get(targetPl.realName);
     const timestamp = `${system.getTimeStr()}§${getRandomLetter()}`;
 
-    const logHistory = (action, amount) => {
-        moneyhisdata[timestamp] = `${coinName}${action}${amount}`;
-        MoneyHistory.set(pl.realName, moneyhisdata);
+    const logAndNotify = (actionKey, successKey, economyMethod, amount) => {
+        if (amount === undefined || amount === null) {
+            return out.error(`§c请指定数量！用法: /moneys ${res.option} <玩家> <数量>`);
+        }
+        Economy.execute(targetPl, economyMethod, amount);
+        history[timestamp] = `${coinName}${lang.get(actionKey)}${amount}`;
+        MoneyHistory.set(targetPl.realName, history);
+        out.success(info + lang.get(successKey)
+            .replace("${player}", res.player)
+            .replace("${coin}", coinName)
+            .replace("${amount}", amount));
     };
 
-    const actions = {
-        set: () => {
-            // 验证 amount 参数
-            if (res.amount === undefined || res.amount === null) {
-                return out.error("§c请指定数量！用法: /moneys set <玩家> <数量>");
-            }
-            Economy.execute(pl, 'set', res.amount);
-            logHistory(lang.get("money.op.set"), res.amount);
-            out.success(info + lang.get("moneys.set.success")
-                .replace("${player}", res.player)
-                .replace("${coin}", coinName)
-                .replace("${amount}", res.amount));
-        },
-        add: () => {
-            // 验证 amount 参数
-            if (res.amount === undefined || res.amount === null) {
-                return out.error("§c请指定数量！用法: /moneys add <玩家> <数量>");
-            }
-            Economy.execute(pl, 'add', res.amount);
-            logHistory(lang.get("money.op.add"), res.amount);
-            out.success(info + lang.get("moneys.add.success")
-                .replace("${player}", res.player)
-                .replace("${coin}", coinName)
-                .replace("${amount}", res.amount));
-        },
-        del: () => {
-            // 验证 amount 参数
-            if (res.amount === undefined || res.amount === null) {
-                return out.error("§c请指定数量！用法: /moneys del <玩家> <数量>");
-            }
-            Economy.execute(pl, 'reduce', res.amount);
-            logHistory(lang.get("money.op.remove"), res.amount);
-            out.success(info + lang.get("moneys.del.success")
-                .replace("${player}", res.player)
-                .replace("${coin}", coinName)
-                .replace("${amount}", res.amount));
-        },
+    const handlers = {
+        set: () => logAndNotify("money.op.set", "moneys.set.success", "set", res.amount),
+        add: () => logAndNotify("money.op.add", "moneys.add.success", "add", res.amount),
+        del: () => logAndNotify("money.op.remove", "moneys.del.success", "reduce", res.amount),
         get: () => {
-            const balance = Economy.get(pl);
             out.success(info + lang.get("moneys.get.result")
                 .replace("${player}", res.player)
                 .replace("${coin}", coinName)
-                .replace("${amount}", balance));
+                .replace("${amount}", Economy.get(targetPl)));
         },
         history: () => {
-            const items = Object.entries(moneyhisdata).slice(0, 50);
-            out.success(info + lang.get("moneys.history.title")
-                .replace("${player}", res.player)
-                .replace("${coin}", coinName));
-            items.forEach(([key, value]) => out.success(`${key}: ${value}`));
+            out.success(info + lang.get("moneys.history.title").replace("${player}", res.player).replace("${coin}", coinName));
+            Object.entries(history).slice(-50).forEach(([time, val]) => out.success(`${time}: ${val}`));
         }
     };
 
-    // 验证操作是否存在
-    if (!actions[res.option]) {
-        return out.error("§c无效的操作！可用操作: set, add, del, get, history");
-    }
-
-    actions[res.option]();
+    const handler = handlers[res.option];
+    if (handler) handler();
+    else out.error("§c无效的操作！可用: set, add, del, get, history");
 });
+
 moneycmd.setup();
 let moneygui = mc.newCommand("moneygui",lang.get("CoinName"),PermType.Any)
 moneygui.overload([])
@@ -2047,6 +2009,32 @@ const Economy = {
     }
 };
 
+const EconomyManager = {
+    getScoreboard: () => conf.get("Scoreboard") || "money",
+    isLLMoney: () => !!conf.get("LLMoney"),
+    
+    checkAndReduce: function(playerName, amount) {
+        const player = mc.getPlayer(playerName);
+        if (!player) return false;
+        
+        if (this.isLLMoney()) {
+            const balance = player.getMoney();
+            if (balance === null || balance === undefined) {
+                player.setMoney(0);
+                return false;
+            }
+            if (balance < amount) return false;
+            return player.reduceMoney(amount);
+        } else {
+            const sb = this.getScoreboard();
+            const score = player.getScore(sb);
+            if (score < amount) return false;
+            return player.reduceScore(sb, amount);
+        }
+    }
+};
+
+
 // --- 玩家加入事件监听 ---
 mc.listen("onJoin", (player) => {
     // 应用离线货币操作
@@ -2343,16 +2331,12 @@ function WarpGui(plname) {
         confirmFm.addLabel(lang.get("warp.teleport.name") + warpName);
         confirmFm.addLabel(lang.get("warp.teleport.coord") + `${warpInfo.x},${warpInfo.y},${warpInfo.z} ${transdimid[warpInfo.dimid]}`);
         confirmFm.addLabel(lang.get("warp.teleport.cost") + cost);
-        confirmFm.addLabel(displayMoneyInfo(pl, pl, true));
+        confirmFm.addLabel("您的" + lang.get("CoinName") + "：" + String(Economy.get(pl)));
         
         pl.sendForm(confirmFm, (pl, data) => {
             if (data == null) return pl.tell(info + lang.get("gui.exit"));
             
-            if (Economy.get(pl) < cost) {
-                return pl.tell(info + lang.get("money.no.enough"));
-            }
-            
-            Economy.execute(pl, 'reduce', cost);
+            if (!EconomyManager.checkAndReduce(pl.realName, cost)) return showInsufficientMoneyGui(pl, cost, "warp");
             pl.teleport(
                 parseFloat(warpInfo.x),
                 parseFloat(warpInfo.y),
@@ -2647,16 +2631,12 @@ function TpHome(plname){
         let fm = mc.newCustomForm()
         fm.setTitle(lang.get("home.tp"))
         fm.addLabel("确认传送家 "+lst[id]+"？")
-        fm.addLabel("您的"+lang.get("CoinName")+"："+String(pl.getScore(conf.get("Scoreboard"))))
+        fm.addLabel("您的" + lang.get("CoinName") + "：" + String(Economy.get(pl)))
         fm.addLabel("传送家需要花费"+cost+lang.get("CoinName"))
         fm.addLabel("坐标："+pldata[lst[id]].x+","+pldata[lst[id]].y+","+pldata[lst[id]].z+" "+transdimid[pldata[lst[id]].dimid])
         pl.sendForm(fm,(pl,data)=>{
             if(data == null) return pl.runcmd("home")
-            if(!conf.get("LLMoney")){
-            if(!ValueCheck(pl.realName,cost)) return pl.sendText(info+"传送失败！\n传送家需要花费 "+conf.get("Home").tp+lang.get("CoinName"))
-            }else{
-            if(!LLValueCheck(pl.realName,cost)) return pl.sendText(info+"传送失败！\n传送家需要花费 "+conf.get("Home").tp+lang.get("CoinName"))
-            }
+            if (!EconomyManager.checkAndReduce(pl.realName, cost)) return showInsufficientMoneyGui(pl, cost, "home");
             pl.teleport(parseFloat(pldata[lst[id]].x),parseFloat(pldata[lst[id]].y),parseFloat(pldata[lst[id]].z),parseInt(pldata[lst[id]].dimid))
             pl.sendText(info+"传送家 "+lst[id]+" 成功！")
         })
@@ -2681,16 +2661,12 @@ function DelHome(plname){
         let fm = mc.newCustomForm()
         fm.setTitle(lang.get("home.del"))
         fm.addLabel("§c§l请问您确认要删除家 "+lst[id]+"？此操作不可撤销！！！")
-        fm.addLabel("您的"+lang.get("CoinName")+"："+String(pl.getScore(conf.get("Scoreboard"))))
+        fm.addLabel("您的" + lang.get("CoinName") + "：" + String(Economy.get(pl)))
         fm.addLabel("删除家需要花费"+cost+lang.get("CoinName"))
         fm.addLabel("坐标："+pldata[lst[id]].x+","+pldata[lst[id]].y+","+pldata[lst[id]].z+" "+transdimid[pldata[lst[id]].dimid])
         pl.sendForm(fm,(pl,data)=>{
             if(data == null) return pl.tell(info + lang.get("gui.exit"));
-            if(!conf.get("LLMoney")){
-            if(!ValueCheck(pl.realName,cost)) return pl.sendText(info+"删除失败！\n删除家需要花费 "+conf.get("Home").del+lang.get("CoinName"))
-            }else{
-            if(!LLValueCheck(pl.realName,cost)) return pl.sendText(info+"删除失败！\n删除家需要花费 "+conf.get("Home").del+lang.get("CoinName"))
-            }
+            if (!EconomyManager.checkAndReduce(pl.realName, cost)) return showInsufficientMoneyGui(pl, cost, "home");
             delete pldata[lst[id]]
             homedata.set(pl.realName,pldata)
             pl.sendText(info+"删除家 "+lst[id]+" 成功！")
@@ -2710,7 +2686,7 @@ function AddHome(plname){
         let fm = mc.newCustomForm()
         fm.setTitle(lang.get("home.add"))
         fm.addLabel("当前坐标："+String(pl.pos))
-        fm.addLabel("您的"+lang.get("CoinName")+"："+String(pl.getScore(conf.get("Scoreboard"))))
+        fm.addLabel("您的" + lang.get("CoinName") + "：" + String(Economy.get(pl)))
         fm.addLabel("添加花费："+String(cost)+lang.get("CoinName"))
         fm.addInput((lang.get("home.add.input")))
         pl.sendForm(fm,(pl,data)=>{
@@ -2718,11 +2694,7 @@ function AddHome(plname){
             if(data[3] == "" || !data[3]) return pl.tell(info + lang.get("home.name.noinput"));
             let pldata = homedata.get(pl.realName)
             if(Object.keys(pldata).includes(data[3])) return pl.tell(info + lang.get("home.name.repetitive"));
-            if(!conf.get("LLMoney")){
-            if(!ValueCheck(pl.realName,conf.get("Home").add)) return pl.sendText(info+"添加失败！\n添加家需要花费 "+cost+lang.get("CoinName"))
-            }else{
-            if(!LLValueCheck(pl.realName,conf.get("Home").add)) return pl.sendText(info+"添加失败！\n添加家需要花费 "+cost+lang.get("CoinName"))
-            }
+            if (!EconomyManager.checkAndReduce(pl.realName, cost)) return showInsufficientMoneyGui(pl, cost, "home");
             pldata[data[3]] = {
                 "x":JSON.parse(pl.pos.x).toFixed(1),
                 "y":JSON.parse(pl.pos.y).toFixed(1),
@@ -3061,20 +3033,12 @@ function acceptTpaRequest(targetName) {
     
     to.tell(info +lang.get("tpa.accpet.request"));
     from.tell(`${info}§a对方已同意请求，` + (delay > 0 ? `将在${delay}秒后传送...` : "正在传送..."));
-    if (cost > 0) {
-                const balance = conf.get("LLMoney") ? from.getMoney() : from.getScore(conf.get("Scoreboard"));
-                if (balance < cost) {
-                    from.sendText(info + `§c您需要 ${cost}${lang.get("CoinName")} 才能传送！`);
-                    return false;
-                }
-            }
-    if (cost > 0) {
-                if (conf.get("LLMoney")) {
-                    from.reduceMoney(cost);
-                } else {
-                    from.reduceScore(conf.get("Scoreboard"), cost);
-                }
-                from.sendText(info + `§e传送花费 ${cost}${lang.get("CoinName")}`);
+        if (cost > 0) {
+        if (!EconomyManager.checkAndReduce(from.realName, cost)) {
+            showInsufficientMoneyGui(from, cost);
+            return false;
+        }
+        from.sendText(info + `§e传送花费 ${cost}${lang.get("CoinName")}`);
     }
     if (delay > 0) {
         let secondBarId = Math.floor(Math.random() * 1e9);
@@ -3798,3 +3762,21 @@ mc.listen("onServerStarted", () => {
         });
     }}, 1000);
 });         
+
+
+function showInsufficientMoneyGui(pl, cost, returnCmd) {
+    let fm = mc.newSimpleForm();
+    fm.setTitle(lang.get("gui.insufficient.money.title"));
+    fm.setContent(lang.get("gui.insufficient.money.content")
+        .replace("${cost}", cost)
+        .replace("${coin}", lang.get("CoinName")));
+    fm.addButton(lang.get("gui.button.confirm"));
+    if (returnCmd) {
+        fm.addButton(lang.get("gui.button.back"));
+    }
+    pl.sendForm(fm, (p, id) => {
+        if (id === 1 && returnCmd) {
+            p.runcmd(returnCmd);
+        }
+    });
+}
