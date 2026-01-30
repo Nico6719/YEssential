@@ -404,7 +404,7 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
 /notice	 #查看公告
 /noticeset	 #更改公告
 /wh	 #打开或关闭维护状态
-/clean {air} status & cancel & tps &help	 #清理掉落物 & 清理状态 & 取消清理 & 查询tps & 帮助
+/clean {air} status & cancel & tps &toast &help	 #清理掉落物 & 清理状态 & 取消清理 & 查询tps & 关闭顶部弹出通知 & 帮助
 /suicide	 #自杀
 /fcam	 #开关灵魂出窍功能
 /rtpreset	 #重置冷却时间（Only 管理员）
