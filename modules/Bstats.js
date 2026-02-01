@@ -141,6 +141,14 @@ class BStatsImpl {
         return {
             "serverUUID": this.serverUUID,
             "metricsVersion": "2",
+            "playerAmount": playerCount,
+            "onlineMode": this.readServerProperties(), 
+            "bukkitVersion": mcVer,
+            "javaVersion": "N/A (Bedrock)",
+            "osName": finalOsName,
+            "osArch": finalOsArch,
+            "osVersion": finalOsVersion,
+            "coreCount": parseInt(finalCoreCount) || 8,
             "service": {
                 "id": this.pluginId,
                 "pluginVersion": this.pluginVersion, // <--- 修正点：将插件版本移到此处
@@ -152,15 +160,7 @@ class BStatsImpl {
                     { "chartId": "pay_tax_rate", "type": "simple_pie", "data": { "value": (typeof conf !== 'undefined' ? (conf.get("PayTaxRate") || 0) : 0).toString() + "%" } },
                     { "chartId": "rtp_status", "type": "simple_pie", "data": { "value": (typeof conf !== 'undefined' && conf.get("RTP")?.EnabledModule) ? "Enabled" : "Disabled" } }
                 ]
-            },
-            "playerAmount": playerCount,
-            "onlineMode": this.readServerProperties(), // <--- 修正点：动态读取 online-mode
-            "bukkitVersion": mcVer,
-            "javaVersion": "N/A (Bedrock)",
-            "osName": finalOsName,
-            "osArch": finalOsArch,
-            "osVersion": finalOsVersion,
-            "coreCount": parseInt(finalCoreCount) || 8
+            }
         };
     }
 

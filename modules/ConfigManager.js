@@ -1,13 +1,13 @@
 // 配置版本管理类
 class ConfigManager {
     constructor() {
-        this.currentVersion = 268;
+        this.currentVersion = 286;
         this.pluginPath = pluginpath || "./plugins/YEssential";
         this.moduleListPath = `${this.pluginPath}/modules/modulelist.json`;
         
         // 默认配置
         this.configDefaults = {
-            "Version": 281,
+            "Version": 286,
             "Update": {
                 "EnableModule": true,
                 "CheckInterval": 120,
@@ -36,10 +36,15 @@ class ConfigManager {
                     "minecraft:undyed_shulker_box"
                 ]
             },
+            "CrossServerTransfer": {
+                "EnabledModule": false,
+                "servers": [
+                    { "server_name": "生存服", "server_ip": "127.0.0.1", "server_port": 19132 }
+                ]
+            },
             "HubEnabled": 0,
             "NoticeEnabled": 0,
             "CrashModuleEnabled": 0,
-            "TRServersEnabled": false,
             "RankingModel": 1,
             "LLMoney": 0,
             "Scoreboard": "money",
@@ -361,13 +366,7 @@ class ConfigManager {
         this.backupConfig(oldVersion);
         
         const migrations = [
-            { version: 261, handler: () => this.migrateTo261() },
-            { version: 262, handler: () => this.migrateTo262() },
-            { version: 263, handler: () => this.migrateTo263() },
-            { version: 264, handler: () => this.migrateTo264() },
-            { version: 265, handler: () => this.migrateTo265() },
-            { version: 268, handler: () => this.migrateTo268() },
-            { version: 270, handler: () => this.migrateTo270() }
+            { version: 286, handler: () => this.migrateTo286() }
         ];
 
         migrations.forEach(migration => {
@@ -405,55 +404,44 @@ class ConfigManager {
 
     // ========== 版本特定迁移方法 ==========
 
-    migrateTo261() {
-        logger.info("迁移到版本2.6.1...");
-        this.setIfMissing("BackTipAfterDeath", false);
-    }
-
-    migrateTo262() {
-        logger.info("迁移到版本2.6.2...");
-    }
-
-    migrateTo263() {
-        logger.info("迁移到版本2.6.3...");
-        this.ensureObjectConfig("tpa", this.configDefaults.tpa);
-    }
-
-    migrateTo264() {
-        logger.info("迁移到版本2.6.4...");
-        this.ensureObjectConfig("Fcam", this.configDefaults.Fcam);
-        this.ensureObjectConfig("wh", this.configDefaults.wh);
-    }
-
-    migrateTo265() {
-        logger.info("迁移到版本2.6.5...");
-    }
-   
-    migrateTo268() {
-        logger.info("迁移到版本2.6.8...");
-        // 确保 PVP 配置对象存在，如果不存在则写入默认值
-        this.ensureObjectConfig("PVP", this.configDefaults.PVP);
-    }
-    migrateTo270() {
-        logger.info("正在将更新配置重构为对象格式...");
+   migrateTo286() {
+    logger.info("迁移到版本2.8.6...");
     
-        // 读取旧值
-        let oldEnabled = conf.get("AutoUpdate");
-        let oldInterval = conf.get("AutoUpdateInterval");
+    // 迁移 TRServersEnabled 到 CrossServerTransfer
+    let oldEnabled = conf.get("TRServersEnabled");
+    let config = conf.get("CrossServerTransfer");
+    
+    if (!this.isValidObject(config)) {
+        config = JSON.parse(JSON.stringify(this.configDefaults.CrossServerTransfer));
+    }
+    
+    if (oldEnabled !== undefined) {
+        config.EnabledModule = !!oldEnabled;
+        logger.info(`迁移TRServersEnabled值: ${oldEnabled} -> CrossServerTransfer.EnabledModule`);
+    }
+    
+    // 自动迁移 server.json 内容
+    try {
+        const serverJsonPath = "./plugins/YEssential/data/TrSeverData/server.json";
+        if (file.exists(serverJsonPath)) {
+            const serverJsonContent = file.readFrom(serverJsonPath);
+            if (serverJsonContent) {
+                const serverData = JSON.parse(serverJsonContent);
+                if (serverData.servers && Array.isArray(serverData.servers)) {
+                    config.servers = serverData.servers;
+                    logger.info(`成功迁移 server.json 中的 ${serverData.servers.length} 个服务器配置`);
+                }
+            }
+        }
+    } catch (e) {
+        logger.warn(`迁移 server.json 失败: ${e.message}，将使用默认服务器配置`);
+    }
+    
+    conf.set("CrossServerTransfer", config);
+    conf.delete("TRServersEnabled");
+    logger.info("TRServersEnabled已迁移到CrossServerTransfer配置对象");
+    }
 
-        // 如果旧值存在，则保留用户之前的设置，否则使用默认值
-        let newUpdateCfg = {
-            "EnableModule": (oldEnabled !== undefined) ? !!oldEnabled : true,
-            "CheckInterval": (oldInterval !== undefined) ? oldInterval : 120
-    };
-
-    // 写入新对象
-    conf.set("Update", newUpdateCfg);
-
-    // 删除旧的独立键（清理配置文件）
-    conf.delete("AutoUpdate");
-    conf.delete("AutoUpdateInterval");
-}
     
     // ========== 配置管理核心方法 ==========
 
