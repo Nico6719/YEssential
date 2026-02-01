@@ -23,8 +23,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.8.5";
-const regversion =[2,8,5];
+const version = "2.8.6";
+const regversion =[2,8,6];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("x.x"));
@@ -832,12 +832,13 @@ setInterval(() => {
         }
     });
 }, 10000);
-// 跨服传送命令模块
+// YEssential.js - servers 命令
 let Sercmd = mc.newCommand("servers", "§l§a跨服传送", PermType.Any);
 Sercmd.overload([]);
 Sercmd.setCallback((cmd, ori, out, res) => {
     const pl = ori.player;
-    if (!conf.get("TRServersEnabled")) {
+    let config = conf.get("CrossServerTransfer");
+    if (!config || !config.EnabledModule) {
         pl.tell(info + lang.get("module.no.Enabled"));
         return;
     }
@@ -847,9 +848,9 @@ Sercmd.setCallback((cmd, ori, out, res) => {
     }
     let serverList = [];
     try {
-        serverList = servertp.get("servers") || [];
+        serverList = config.servers || [];
     } catch (e) {
-        logger.error("读取 server.json 失败:", e);
+        logger.error("读取 CrossServerTransfer 配置失败:", e);
         pl.tell(info + lang.get("server.load.error"));
         return;
     }
@@ -860,7 +861,6 @@ Sercmd.setCallback((cmd, ori, out, res) => {
         return;
     }
 
-    // 构建表单
     let form = mc.newSimpleForm();
     form.setContent(lang.get("choose.a.server"))
     form.setTitle(lang.get("server.from.title"));
@@ -868,7 +868,6 @@ Sercmd.setCallback((cmd, ori, out, res) => {
         form.addButton(`§l§b${server.server_name}\n§7IP: ${server.server_ip}:${server.server_port}`);
     });
 
-    // 发送表单
     pl.sendForm(form, (pl, id) => {
         if (id === null) return;
 
@@ -878,7 +877,6 @@ Sercmd.setCallback((cmd, ori, out, res) => {
             return;
         }
 
-        // 执行传送
         try {
             pl.transServer(targetServer.server_ip, targetServer.server_port);
             mc.broadcast(`§a[提示] ${pl.realName} 前往了 ${targetServer.server_name}`);
