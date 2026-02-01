@@ -8,7 +8,7 @@ class BStatsImpl {
         this.enabled = true;
         this.debugMode = true;
         this.pluginName = "YEssential";
-        this.pluginVersion = "2.8.3"; // 您的插件版本
+        this.pluginVersion = "2.8.5"; // 您的插件版本
 
         // 初始设为空，方便观察是否获取成功
         this.cachedCoreCount = "Unknown";
@@ -143,7 +143,7 @@ class BStatsImpl {
             "metricsVersion": "2",
             "service": {
                 "id": this.pluginId,
-                "version": this.pluginVersion, // <--- 修正点：将插件版本移到此处
+                "pluginVersion": this.pluginVersion, // <--- 修正点：将插件版本移到此处
                 "customCharts": [
                     { "chartId": "lse_version", "type": "simple_pie", "data": { "value": pureLseVersion } },
                     { "chartId": "economy_type", "type": "simple_pie", "data": { "value": (typeof conf !== 'undefined' && conf.get("LLMoney")) ? "LLMoney" : "Scoreboard" } },
@@ -153,7 +153,7 @@ class BStatsImpl {
                     { "chartId": "rtp_status", "type": "simple_pie", "data": { "value": (typeof conf !== 'undefined' && conf.get("RTP")?.EnabledModule) ? "Enabled" : "Disabled" } }
                 ]
             },
-            "playerCount": playerCount,
+            "playerAmount": playerCount,
             "onlineMode": this.readServerProperties(), // <--- 修正点：动态读取 online-mode
             "bukkitVersion": mcVer,
             "javaVersion": "N/A (Bedrock)",
