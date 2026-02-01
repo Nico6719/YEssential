@@ -179,7 +179,6 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
     "DebugMode": 0,  //Debug模式，默认为关闭
     "CrashModuleEnabled": 0,  //崩端功能开关，默认为关闭
     "NoticeEnabled":0,  //Notice 功能开关，默认为关闭
-    "TRServersEnabled": 0,  // 跨服传送开关，默认为关闭
     "RedPacket": {
         "EnabledModule": false,   //红包模块开关，默认为关闭
         "expireTime": 300,
@@ -187,6 +186,15 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
         "maxCount": 50,
         "minAmount": 1
     },
+    "CrossServerTransfer": {  //跨服传送配置项
+        "EnabledModule": false,  //是否开启该功能
+        "servers": [  //配置详情
+                    { "server_name": "生存服", "server_ip": "127.0.0.1", "server_port": 19132 }
+        ],
+        "servers1": [
+                    {"server_name":"下北泽服务器","server_ip":"1.14.5.14","server_port": 11451 }
+        ]
+     },
     "RTP": {  //随机传送模块
         "EnabledModule": false,   //随机传送模块开关，默认为关闭
         "minRadius": 100,    // 最小传送半径
@@ -314,18 +322,6 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
     "playerCooldown": 300  //玩家执行清理冷却时长（单位/秒）
   }
 }
-```
-- ./data/TrSeverData/server.json
-跨服传送配置文件
-```json
-{
-    "servers": [
-      {"server_name":"下北泽服务器","server_ip":"1.14.5.14","server_port":19181}
-    ],
-    "servers1": [
-      {"server_name":"下北泽服务器","server_ip":"1.14.5.14","server_port":11451}
-    ]
-  }
 ```
 - ./modules/modulelist.json
 模块列表
