@@ -1,7 +1,7 @@
 {
   "format_version": 3,
   "format_uuid": "289f771f-2c9a-4d73-9f3f-8492495a924d",
-  "tooth": "github.com/Nico6719/YEssential-For-Levilamina",
+  "tooth": "github.com/Nico6719/YEssential",
   "version": "2.6.2",
     "info": {
     "name": "YEssential",
@@ -18,8 +18,8 @@
                     "placements": [
                         {
                             "type": "dir",
-                            "src": "YEssential-For-Levilamina/",
-                            "dest": "plugins/YEssential-For-Levilamina/"
+                            "src": "YEssential",
+                            "dest": "plugins/YEssential"
                         }
                     ]
                 }
