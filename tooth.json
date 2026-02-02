@@ -9,6 +9,7 @@
   },
   "variants": [
     {
+      "selector": {},
       "assets": [
         {
           "type": "zip",
