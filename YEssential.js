@@ -17,14 +17,13 @@
 ----------------------------------*/
 // LiteLoader-AIDS automatic generated
 /// <reference path="c:\Users\Admin\ku/dts/helperlib/src/index.d.ts"/> 
-const { PAPI } = require('./GMLIB-LegacyRemoteCallApi/lib/BEPlaceholderAPI-JS');
 const YEST_LangDir = "./plugins/YEssential/lang/";
 const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.8.6";
-const regversion =[2,8,6];
+const version = "2.8.7";
+const regversion =[2,8,7];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("x.x"));
@@ -580,7 +579,7 @@ function printGradientLogo() {
     colorLog("blue",lang.get("Tip3"));
 }
 function initializePlugin() {
-    // 第零步：获取并创建计分板
+    // 第一步：获取并创建计分板
     const scoreboardName = conf.get("Scoreboard") || "money";
     
     // 检查计分板是否存在，不存在则创建
@@ -596,10 +595,6 @@ function initializePlugin() {
         // 尝试强制创建
         mc.runcmdEx(`scoreboard objectives add ${scoreboardName} dummy`);
     }
-    
-    // 第一步：注册PAPI
-    PAPI.registerPlayerPlaceholder(getScoreMoney, "YEssential", "player_money");
-    PAPI.registerPlayerPlaceholder(getLLMoney, "YEssential", "player_LLmoney");
     
     // 第二步：异步合并语言文件
     AsyncLanguageManager.mergeLangFiles();
