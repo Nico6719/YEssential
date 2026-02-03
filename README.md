@@ -5,10 +5,10 @@
 ## 📌 基本信息
 
 - **名称**：YEssential  
-- **类型**：基础插件 / 多功能前置  
+- **类型**：基础插件 / 多功能模块化插件
 - **平台**：LegacyScriptEngine (LSE)  
 - **主要功能**：提供服务器基础功能（如：Home Tpr Tpa Warp Money 等）  
-- **支持迁移其他插件数据**：如TMEssential 的 home 和 warp 数据可迁移到本插件等
+- **支持迁移其他插件数据**：如 TMEssential 的 home 和 warp 数据可迁移到本插件等
 
 ---
 
