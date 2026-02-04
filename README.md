@@ -31,7 +31,7 @@
 |WeiHu |	维护服务器功能，禁止其他非管理成员进入服务器。	 |✅|
 |Clean	 |自动清理掉落物和实体，掉落物过多时 & 定时自动清理，支持白名单。	 |✅|
 |Suicide	 |玩家紫砂（kill myself）。	 |✅|
-|BStopMsg |	自定义关服提示。	 |✅|
+|BetterStopMsg |	自定义关服提示。	 |✅|
 |MoreLangSupport |	多语言支持。	 |✅|
 |Notice |	自定义公告，支持颜色符号，\n换行，支持游戏内在线编辑！	 |✅|
 |FixExpLag	 |防止经验球卡服。 |	✅|
@@ -46,6 +46,7 @@
 |Plugin for Endstone	|Endstone 版本的 YEssential。|	🚧 开发中|
 |SideBar|	支持自定义侧边栏以及支持 PAPI 变量。|	📅 计划中|
 ### 相关PAPI变量
+注意！这些变量已从2.8.7版本起废弃。
 |变量名 |描述	                      |
 |--------|----------------------------|
 |%player_money% |显示玩家的计分板经济|
