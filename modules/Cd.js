@@ -1,5 +1,5 @@
 // LiteLoader-AIDS automatic generated
-// v2.7.4 - 修复热重载无法注册指令的问题
+// v2.7.5 - 修复删除菜单退出问题，补全删除按钮和编辑菜单功能
 
 // ==================== 常量定义 ====================
 const info = "§l§6[-YEST-] §r";
@@ -301,25 +301,32 @@ class MenuDataManager {
         );
     }
 
-    static deleteButton(fileName, button) {
+    static deleteButton(fileName, buttonIndex) {
         var menuData = this.getMenu(fileName);
-        var index = -1;
         
-        for (var i = 0; i < menuData.buttons.length; i++) {
-            var b = menuData.buttons[i];
-            if (b.text === button.text && b.command === button.command) {
-                index = i;
-                break;
-            }
-        }
-        
-        if (index !== -1) {
-            menuData.buttons.splice(index, 1);
+        if (buttonIndex >= 0 && buttonIndex < menuData.buttons.length) {
+            menuData.buttons.splice(buttonIndex, 1);
             File.writeTo(
                 MENU_CONFIG.menusPath + fileName,
                 JSON.stringify(menuData, null, 4)
             );
+            return true;
         }
+        return false;
+    }
+
+    static updateButton(fileName, buttonIndex, newButton) {
+        var menuData = this.getMenu(fileName);
+        
+        if (buttonIndex >= 0 && buttonIndex < menuData.buttons.length) {
+            menuData.buttons[buttonIndex] = newButton;
+            File.writeTo(
+                MENU_CONFIG.menusPath + fileName,
+                JSON.stringify(menuData, null, 4)
+            );
+            return true;
+        }
+        return false;
     }
 
     static collectCommands() {
@@ -363,12 +370,12 @@ class MenuPlayerHandler {
         menuData = MenuDataManager.filterButtonsForPlayer(player, menuData);
 
         if (!menuData.title || !menuData.content || !menuData.buttons) {
-            player.tell(info+lang.get("cd.config.error"), 5);
+            player.tell(info+"菜单配置错误", 5);
             return;
         }
 
         if (menuData.buttons.length === 0) {
-            player.tell(info+lang.get("cd.button.isnull"), 5);
+            player.tell(info+"菜单按钮为空", 5);
             return;
         }
 
@@ -396,7 +403,7 @@ class MenuPlayerHandler {
 
         if (requiredMoney > 0 && playerMoney < requiredMoney) {
             this.showMenu(player, currentMenu);
-            player.tell(info+lang.get("cd.yourmoney.iszero"), 5);
+            player.tell(info+"金币不足", 5);
             return;
         }
 
@@ -421,7 +428,7 @@ class MenuPlayerHandler {
                 break;
             default:
                 this.showMenu(player, currentMenu);
-                player.tell(info+lang.get("cd.thisbutton.error"), 5);
+                player.tell(info+"按钮类型错误", 5);
                 return;
         }
 
@@ -432,14 +439,14 @@ class MenuPlayerHandler {
 
     static handleVipForm(player, button, currentMenu) {
         this.showMenu(player, currentMenu);
-        player.tell(info+lang.get("cd.vip.deny"), 5);
+        player.tell(info+"此功能仅限VIP使用", 5);
     }
 
     static handleOpForm(player, button, currentMenu) {
         var opList = button.oplist || [];
         if (!player.isOP() && opList.length > 0 && opList.indexOf(player.realName) === -1) {
             this.showMenu(player, currentMenu);
-            player.tell(info+lang.get("cd.op.deny"), 5);
+            player.tell(info+"此功能仅限管理员使用", 5);
             return;
         }
         this.showMenu(player, button.command);
@@ -461,14 +468,14 @@ class MenuPlayerHandler {
 
     static handleVipCommand(player, button, currentMenu) {
         this.showMenu(player, currentMenu);
-        player.tell(info+lang.get("cd.vip.deny"), 5);
+        player.tell(info+"此功能仅限VIP使用", 5);
     }
 
     static handleOpCommand(player, button, currentMenu) {
         var opList = button.oplist || [];
         if (!player.isOP() && opList.length > 0 && opList.indexOf(player.realName) === -1) {
             this.showMenu(player, currentMenu);
-            player.tell(info+lang.get("cd.op.deny"), 5);
+            player.tell(info+"此功能仅限管理员使用", 5);
             return;
         }
         this.executeCommand(player, button.command);
@@ -479,8 +486,8 @@ class MenuPlayerHandler {
 class MenuCommandHandler {
     static register() {
         var commands = [
-            { cmd: "menu", des: "YEssential--菜单", per: PermType.Any },
-            { cmd: "cd", des: "YEssential--菜单", per: PermType.Any }
+            { cmd: "menu", des: "menu", per: PermType.Any },
+            { cmd: "cd", des: "menu", per: PermType.Any }
         ];
 
         var self = this;
@@ -507,7 +514,7 @@ class MenuCommandHandler {
             MenuPlayerHandler.showMenu(ori.player, menuConfig.getMain());
         } else if (res.menuset === "set") {
             if (!ori.player.isOP()) {
-                ori.player.tell(MENU_CONFIG.prefix + "your are not op!");
+                ori.player.tell(MENU_CONFIG.prefix + "你不是管理员!");
             } else {
                 MenuAdminHandler.showMainSettings(ori.player);
             }
@@ -529,6 +536,7 @@ class MenuAdminHandler {
 
         var self = this;
         player.sendForm(form, function(pl, id) {
+            if (id == null) return;
             switch (id) {
                 case 0: self.showMoneySettings(player); break;
                 case 1: self.showAddMenu(player); break;
@@ -576,13 +584,17 @@ class MenuAdminHandler {
         if (!type) {
             var form = mc.newSimpleForm();
             form.setTitle("添加菜单");
+            form.setContent("选择操作:");
             form.addButton("添加二级菜单");
             form.addButton("添加菜单按钮");
+            form.addButton("返回上级");
+            
             var self = this;
             player.sendForm(form, function(pl, id) {
+                if (id == null) return;
                 if (id === 0) self.showAddMenu(player, "add_menu");
                 else if (id === 1) self.showAddMenu(player, "add_button");
-                else self.showMainSettings(player);
+                else if (id === 2) self.showMainSettings(player);
             });
             return;
         }
@@ -633,6 +645,12 @@ class MenuAdminHandler {
     static showAddButton(player, error, formData) {
         formData = formData || {};
         var menuFiles = MenuUtils.getMenuFiles();
+        if (menuFiles.length === 0) {
+            player.tell(MENU_CONFIG.prefix + "§c没有可用的菜单文件");
+            this.showAddMenu(player);
+            return;
+        }
+        
         var fileOptions = menuFiles.map(f => MenuDataManager.getMenu(f).title + " | " + f);
         var buttonTypes = ["玩家二级菜单", "会员二级菜单", "管理员二级菜单", "玩家执行指令", "会员执行指令", "管理员执行指令"];
 
@@ -679,78 +697,414 @@ class MenuAdminHandler {
         if (!type) {
             var form = mc.newSimpleForm();
             form.setTitle("删除菜单");
+            form.setContent("选择操作:");
             form.addButton("删除二级菜单");
             form.addButton("删除菜单按钮");
+            form.addButton("返回上级");
+            
             var self = this;
             player.sendForm(form, function(pl, id) {
+                if (id == null) return;
                 if (id === 0) self.showDeleteMenu(player, "del_menu");
                 else if (id === 1) self.showDeleteMenu(player, "del_button");
-                else self.showMainSettings(player);
+                else if (id === 2) self.showMainSettings(player);
             });
             return;
         }
 
         if (type === "del_menu") {
             var files = MenuUtils.getMenuFiles(true);
-            if (!files.length) { player.tell("无菜单可删"); return; }
+            if (!files.length) { 
+                player.tell(MENU_CONFIG.prefix + "§c无可删除的菜单");
+                this.showDeleteMenu(player);
+                return;
+            }
+            
             var form = mc.newSimpleForm();
+            form.setTitle("删除二级菜单");
+            form.setContent("选择要删除的菜单:");
             files.forEach(f => form.addButton(MenuDataManager.getMenu(f).title + " | " + f));
+            form.addButton("§c返回上级");
+            
             var self = this;
             player.sendForm(form, function(pl, id) {
-                if (id != null) {
-                    MenuDataManager.deleteMenu(files[id]);
-                    player.tell("删除成功");
+                if (id == null) {
+                    self.showDeleteMenu(player);
+                    return;
                 }
-                self.showDeleteMenu(player, type);
+                
+                // 最后一个按钮是返回按钮
+                if (id === files.length) {
+                    self.showDeleteMenu(player);
+                    return;
+                }
+                
+                if (id >= 0 && id < files.length) {
+                    MenuDataManager.deleteMenu(files[id]);
+                    player.tell(MENU_CONFIG.prefix + "§2删除成功: " + files[id]);
+                    self.showDeleteMenu(player, type);
+                } else {
+                    self.showDeleteMenu(player);
+                }
             });
-        } else {
-            // del_button 逻辑省略以简化代码，建议使用配置界面操作
-            player.tell("请使用配置文件删除按钮");
-            this.showMainSettings(player);
+        } else if (type === "del_button") {
+            var files = MenuUtils.getMenuFiles();
+            if (!files.length) {
+                player.tell(MENU_CONFIG.prefix + "§c无可用的菜单");
+                this.showDeleteMenu(player);
+                return;
+            }
+            
+            var form = mc.newSimpleForm();
+            form.setTitle("删除菜单按钮");
+            form.setContent("选择菜单:");
+            files.forEach(f => form.addButton(MenuDataManager.getMenu(f).title + " | " + f));
+            form.addButton("§c返回上级");
+            
+            var self = this;
+            player.sendForm(form, function(pl, fileId) {
+                if (fileId == null) {
+                    self.showDeleteMenu(player);
+                    return;
+                }
+                
+                // 最后一个按钮是返回按钮
+                if (fileId === files.length) {
+                    self.showDeleteMenu(player);
+                    return;
+                }
+                
+                if (fileId >= 0 && fileId < files.length) {
+                    self.showDeleteButtonList(player, files[fileId]);
+                } else {
+                    self.showDeleteMenu(player);
+                }
+            });
         }
     }
 
-    static showEditMenu(player) {
-        player.tell(MENU_CONFIG.prefix + "§e该功能正在开发中");
-        this.showMainSettings(player);
+    static showDeleteButtonList(player, fileName) {
+        var menuData = MenuDataManager.getMenu(fileName);
+        
+        if (!menuData.buttons || menuData.buttons.length === 0) {
+            player.tell(MENU_CONFIG.prefix + "§c该菜单没有按钮");
+            this.showDeleteMenu(player, "del_button");
+            return;
+        }
+        
+        var form = mc.newSimpleForm();
+        form.setTitle("删除按钮 - " + menuData.title);
+        form.setContent("选择要删除的按钮:");
+        
+        menuData.buttons.forEach(function(btn) {
+            var btnText = btn.text + " [" + btn.type + "]";
+            if (btn.money > 0) btnText += " (需" + btn.money + "金币)";
+            form.addButton(btnText);
+        });
+        form.addButton("§c返回上级");
+        
+        var self = this;
+        player.sendForm(form, function(pl, btnId) {
+            if (btnId == null) {
+                self.showDeleteMenu(player, "del_button");
+                return;
+            }
+            
+            // 最后一个按钮是返回按钮
+            if (btnId === menuData.buttons.length) {
+                self.showDeleteMenu(player, "del_button");
+                return;
+            }
+            
+            if (btnId >= 0 && btnId < menuData.buttons.length) {
+                var deletedBtn = menuData.buttons[btnId];
+                if (MenuDataManager.deleteButton(fileName, btnId)) {
+                    player.tell(MENU_CONFIG.prefix + "§2删除成功: " + deletedBtn.text);
+                } else {
+                    player.tell(MENU_CONFIG.prefix + "§c删除失败");
+                }
+                self.showDeleteButtonList(player, fileName);
+            } else {
+                self.showDeleteMenu(player, "del_button");
+            }
+        });
+    }
+
+    static showEditMenu(player, type) {
+        if (!type) {
+            var form = mc.newSimpleForm();
+            form.setTitle("修改菜单");
+            form.setContent("选择操作:");
+            form.addButton("修改菜单信息");
+            form.addButton("修改菜单按钮");
+            form.addButton("返回上级");
+            
+            var self = this;
+            player.sendForm(form, function(pl, id) {
+                if (id == null) return;
+                if (id === 0) self.showEditMenu(player, "edit_menu");
+                else if (id === 1) self.showEditMenu(player, "edit_button");
+                else if (id === 2) self.showMainSettings(player);
+            });
+            return;
+        }
+        
+        if (type === "edit_menu") {
+            this.showEditMenuInfo(player);
+        } else if (type === "edit_button") {
+            this.showEditButtonSelect(player);
+        }
+    }
+
+    static showEditMenuInfo(player) {
+        var files = MenuUtils.getMenuFiles();
+        if (!files.length) {
+            player.tell(MENU_CONFIG.prefix + "§c无可用的菜单");
+            this.showEditMenu(player);
+            return;
+        }
+        
+        var form = mc.newSimpleForm();
+        form.setTitle("修改菜单信息");
+        form.setContent("选择要修改的菜单:");
+        files.forEach(f => form.addButton(MenuDataManager.getMenu(f).title + " | " + f));
+        form.addButton("§c返回上级");
+        
+        var self = this;
+        player.sendForm(form, function(pl, id) {
+            if (id == null) {
+                self.showEditMenu(player);
+                return;
+            }
+            
+            // 最后一个按钮是返回按钮
+            if (id === files.length) {
+                self.showEditMenu(player);
+                return;
+            }
+            
+            if (id >= 0 && id < files.length) {
+                self.showEditMenuInfoForm(player, files[id]);
+            } else {
+                self.showEditMenu(player);
+            }
+        });
+    }
+
+    static showEditMenuInfoForm(player, fileName, error) {
+        var menuData = MenuDataManager.getMenu(fileName);
+        
+        var form = mc.newCustomForm();
+        form.setTitle("修改菜单: " + fileName);
+        form.addInput("菜单标题", "当前: " + menuData.title, menuData.title);
+        form.addInput("菜单内容", "当前: " + menuData.content, menuData.content);
+        
+        if (error) form.addLabel(error);
+        
+        var self = this;
+        player.sendForm(form, function(pl, data) {
+            if (!data) {
+                self.showEditMenuInfo(player);
+                return;
+            }
+            
+            var [newTitle, newContent] = data;
+            
+            if (!newTitle || !newContent) {
+                self.showEditMenuInfoForm(player, fileName, "§c标题和内容不能为空");
+                return;
+            }
+            
+            menuData.title = newTitle;
+            menuData.content = newContent;
+            MenuDataManager.setMenu(fileName, menuData);
+            
+            player.tell(MENU_CONFIG.prefix + "§2修改成功");
+            self.showEditMenuInfo(player);
+        });
+    }
+
+    static showEditButtonSelect(player) {
+        var files = MenuUtils.getMenuFiles();
+        if (!files.length) {
+            player.tell(MENU_CONFIG.prefix + "§c无可用的菜单");
+            this.showEditMenu(player);
+            return;
+        }
+        
+        var form = mc.newSimpleForm();
+        form.setTitle("修改菜单按钮");
+        form.setContent("选择菜单:");
+        files.forEach(f => form.addButton(MenuDataManager.getMenu(f).title + " | " + f));
+        form.addButton("§c返回上级");
+        
+        var self = this;
+        player.sendForm(form, function(pl, id) {
+            if (id == null) {
+                self.showEditMenu(player);
+                return;
+            }
+            
+            // 最后一个按钮是返回按钮
+            if (id === files.length) {
+                self.showEditMenu(player);
+                return;
+            }
+            
+            if (id >= 0 && id < files.length) {
+                self.showEditButtonList(player, files[id]);
+            } else {
+                self.showEditMenu(player);
+            }
+        });
+    }
+
+    static showEditButtonList(player, fileName) {
+        var menuData = MenuDataManager.getMenu(fileName);
+        
+        if (!menuData.buttons || menuData.buttons.length === 0) {
+            player.tell(MENU_CONFIG.prefix + "§c该菜单没有按钮");
+            this.showEditButtonSelect(player);
+            return;
+        }
+        
+        var form = mc.newSimpleForm();
+        form.setTitle("修改按钮 - " + menuData.title);
+        form.setContent("选择要修改的按钮:");
+        
+        menuData.buttons.forEach(function(btn) {
+            var btnText = btn.text + " [" + btn.type + "]";
+            form.addButton(btnText);
+        });
+        form.addButton("§c返回上级");
+        
+        var self = this;
+        player.sendForm(form, function(pl, btnId) {
+            if (btnId == null) {
+                self.showEditButtonSelect(player);
+                return;
+            }
+            
+            // 最后一个按钮是返回按钮
+            if (btnId === menuData.buttons.length) {
+                self.showEditButtonSelect(player);
+                return;
+            }
+            
+            if (btnId >= 0 && btnId < menuData.buttons.length) {
+                self.showEditButtonForm(player, fileName, btnId);
+            } else {
+                self.showEditButtonSelect(player);
+            }
+        });
+    }
+
+    static showEditButtonForm(player, fileName, buttonIndex, error) {
+        var menuData = MenuDataManager.getMenu(fileName);
+        var button = menuData.buttons[buttonIndex];
+        
+        var typeMap = ["form", "vipfm", "opfm", "comm", "vipcm", "opcm"];
+        var buttonTypes = ["玩家二级菜单", "会员二级菜单", "管理员二级菜单", "玩家执行指令", "会员执行指令", "管理员执行指令"];
+        var currentTypeIndex = typeMap.indexOf(button.type);
+        if (currentTypeIndex === -1) currentTypeIndex = 0;
+        
+        var form = mc.newCustomForm();
+        form.setTitle("修改按钮: " + button.text);
+        form.addDropdown("按钮类型", buttonTypes, currentTypeIndex);
+        form.addSwitch("是否开启按钮贴图", button.images || false);
+        form.addInput("按钮贴图地址", "textures/items/apple", button.image || "");
+        form.addInput("按钮标题", "例如: 说你好", button.text);
+        form.addInput("按钮执行的结果", "例如: say @a 你好", button.command);
+        form.addInput("按钮所需金币", "例如:999", String(button.money || 0));
+        
+        if (error) form.addLabel(error);
+        
+        var self = this;
+        player.sendForm(form, function(pl, data) {
+            if (!data) {
+                self.showEditButtonList(player, fileName);
+                return;
+            }
+            
+            var [typeIndex, enableImage, imagePath, buttonText, command, money] = data;
+            
+            if (!buttonText || !command) {
+                self.showEditButtonForm(player, fileName, buttonIndex, "§c标题和指令不能为空");
+                return;
+            }
+            
+            var newButton = {
+                images: enableImage,
+                image: enableImage ? (imagePath || "textures/items/apple") : "",
+                money: parseInt(money) || 0,
+                text: buttonText,
+                command: command,
+                type: typeMap[typeIndex]
+            };
+            
+            if (typeMap[typeIndex].includes("op")) {
+                newButton.oplist = button.oplist || [];
+            }
+            
+            if (MenuDataManager.updateButton(fileName, buttonIndex, newButton)) {
+                player.tell(MENU_CONFIG.prefix + "§2修改成功");
+            } else {
+                player.tell(MENU_CONFIG.prefix + "§c修改失败");
+            }
+            
+            self.showEditButtonList(player, fileName);
+        });
     }
 
     static showOtherSettings(player, error) {
         var files = MenuUtils.getMenuFiles();
+        var currentMain = menuConfig.getMain();
+        var currentItem = menuConfig.getItem();
+        
         var form = mc.newCustomForm();
         form.setTitle("其他设置");
         form.addLabel("更多设置请直接修改配置文件");
         form.addDropdown("主菜单文件", ["不修改", ...files], 0);
+        form.addInput("触发物品ID", "当前: " + currentItem, "");
         
         if (error) form.addLabel(error);
 
         var self = this;
         player.sendForm(form, function(pl, data) {
             if (!data) { self.showMainSettings(player); return; }
-            if (data[1] > 0) menuConfig.set({ main: files[data[1]-1].replace(".json","") });
-            self.showOtherSettings(player, "§2修改成功");
+            
+            var changed = false;
+            
+            if (data[1] > 0) {
+                menuConfig.set({ main: files[data[1]-1].replace(".json","") });
+                changed = true;
+            }
+            
+            if (data[2] && data[2] !== "") {
+                menuConfig.set({ item: data[2] });
+                changed = true;
+            }
+            
+            if (changed) {
+                self.showOtherSettings(player, "§2修改成功");
+            } else {
+                self.showOtherSettings(player, "§e未做任何修改");
+            }
         });
     }
 }
 
 // ==================== 事件与初始化 ====================
 class MenuEventListeners {
-    // 启动入口
     static register() {
-
         this.initializeResources();
-
-        // 2. 注册运行时监听器
         this.onUseItem();
         this.onUseItemOn();
-        //this.onPlayerCommand();
         this.onJoin();
     }
 
     static initializeResources() {
-        // 注册命令
         MenuCommandHandler.register();
-        // 初始化数据
         MenuDataManager.initializeAdminMenu();
         menuConfig.validate();
 
@@ -808,6 +1162,5 @@ if (typeof module !== 'undefined' && module.exports) {
         MenuAdminHandler 
     };
 }
-
 
 MenuEventListeners.register();
