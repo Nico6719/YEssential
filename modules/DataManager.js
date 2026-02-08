@@ -3,7 +3,7 @@
     负责初始化和管理所有数据文件
 ----------------------------------*/
 
-const ctx = require("./GlobalContext");
+const ctx = require("./YEssential/modules/GlobalContext");
 
 const DataManager = {
     init() {

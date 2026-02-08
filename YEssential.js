@@ -4,8 +4,9 @@
     Refactored by Manus
 ----------------------------------*/
 
-const ctx = require("./modules/GlobalContext");
-const DataManager = require("./modules/DataManager");
+// 在 LSE-QuickJS 中，require 路径通常相对于 plugins 目录或需要完整路径
+const ctx = require("./YEssential/modules/GlobalContext");
+const DataManager = require("./YEssential/modules/DataManager");
 
 // 基础配置路径
 const YEST_LangDir = "./plugins/YEssential/lang/";
@@ -35,7 +36,7 @@ globalThis.homedata = ctx.homedata;
 globalThis.warpdata = ctx.warpdata;
 globalThis.info = ctx.info;
 globalThis.datapath = ctx.datapath;
-globalThis.Economy = require("./modules/EconomyManager");
+globalThis.Economy = require("./YEssential/modules/EconomyManager");
 ctx.Economy = globalThis.Economy;
 globalThis.EconomyManager = ctx.Economy;
 ctx.EconomyManager = ctx.Economy;
@@ -45,10 +46,9 @@ ctx.EconomyManager = ctx.Economy;
  */
 (function() {
     const modulesToLoad = [
-        "./modules/HomeManager",
-        "./modules/WarpManager",
-        "./modules/EconomyManager",
-        // 可以继续添加其他模块
+        "./YEssential/modules/HomeManager",
+        "./YEssential/modules/WarpManager",
+        "./YEssential/modules/EconomyManager",
     ];
 
     function initModules() {
@@ -76,10 +76,10 @@ ctx.EconomyManager = ctx.Economy;
             const data = JSON.parse(file.readFrom(moduleListFile));
             data.modules.forEach(m => {
                 // 跳过已经重构的模块
-                if (m.name === "ConfigManager") return; 
+                if (m.name === "ConfigManager" || m.name === "Home" || m.name === "Warp") return; 
                 
                 try {
-                    const mod = require("./modules/" + m.path);
+                    const mod = require("./YEssential/modules/" + m.path);
                     if (mod && typeof mod.init === "function") mod.init();
                 } catch (e) {
                     logger.warn(`旧版模块加载失败: ${m.name}`);
@@ -92,7 +92,6 @@ ctx.EconomyManager = ctx.Economy;
 
     function printLogo() {
         logger.info(`YEssential v${version} 正在启动...`);
-        // 这里可以保留原有的渐变 Logo 逻辑
     }
 
     mc.listen("onServerStarted", () => {
