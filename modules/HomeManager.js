@@ -3,7 +3,7 @@
     处理家园系统逻辑
 ----------------------------------*/
 
-const ctx = require("./YEssential/modules/GlobalContext");
+const ctx = require("./GlobalContext");
 
 const HomeManager = {
     init() {

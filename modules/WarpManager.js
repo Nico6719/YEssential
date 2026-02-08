@@ -3,7 +3,7 @@
     处理公共传送点逻辑
 ----------------------------------*/
 
-const ctx = require("./YEssential/modules/GlobalContext");
+const ctx = require("./GlobalContext");
 
 const WarpManager = {
     init() {

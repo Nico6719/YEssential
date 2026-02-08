@@ -4,9 +4,9 @@
     Refactored by Manus
 ----------------------------------*/
 
-// 在 LSE-QuickJS 中，require 路径通常相对于 plugins 目录或需要完整路径
-const ctx = require("./YEssential/modules/GlobalContext");
-const DataManager = require("./YEssential/modules/DataManager");
+// 根据报错信息，require 应相对于当前文件所在目录
+const ctx = require("./modules/GlobalContext");
+const DataManager = require("./modules/DataManager");
 
 // 基础配置路径
 const YEST_LangDir = "./plugins/YEssential/lang/";
@@ -36,7 +36,7 @@ globalThis.homedata = ctx.homedata;
 globalThis.warpdata = ctx.warpdata;
 globalThis.info = ctx.info;
 globalThis.datapath = ctx.datapath;
-globalThis.Economy = require("./YEssential/modules/EconomyManager");
+globalThis.Economy = require("./modules/EconomyManager");
 ctx.Economy = globalThis.Economy;
 globalThis.EconomyManager = ctx.Economy;
 ctx.EconomyManager = ctx.Economy;
@@ -46,9 +46,9 @@ ctx.EconomyManager = ctx.Economy;
  */
 (function() {
     const modulesToLoad = [
-        "./YEssential/modules/HomeManager",
-        "./YEssential/modules/WarpManager",
-        "./YEssential/modules/EconomyManager",
+        "./modules/HomeManager",
+        "./modules/WarpManager",
+        "./modules/EconomyManager",
     ];
 
     function initModules() {
@@ -79,7 +79,7 @@ ctx.EconomyManager = ctx.Economy;
                 if (m.name === "ConfigManager" || m.name === "Home" || m.name === "Warp") return; 
                 
                 try {
-                    const mod = require("./YEssential/modules/" + m.path);
+                    const mod = require("./modules/" + m.path);
                     if (mod && typeof mod.init === "function") mod.init();
                 } catch (e) {
                     logger.warn(`旧版模块加载失败: ${m.name}`);
