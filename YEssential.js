@@ -4,10 +4,8 @@
     Refactored by Manus
 ----------------------------------*/
 
-// 根据报错信息，require 是相对于 plugins/ 目录解析的
-// 路径应从插件文件夹名开始
-const pluginName = "YEssential";
-const modulesPath = pluginName + "/modules/";
+// 参考用户示例，统一使用 ./插件名/路径 格式
+const modulesPath = "./YEssential/modules/";
 
 const ctx = require(modulesPath + "GlobalContext");
 const DataManager = require(modulesPath + "DataManager");
