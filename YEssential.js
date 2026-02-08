@@ -4,14 +4,16 @@
     Refactored by Manus
 ----------------------------------*/
 
-// 根据报错信息，require 应相对于当前文件所在目录
-const ctx = require("./modules/GlobalContext");
-const DataManager = require("./modules/DataManager");
-
 // 基础配置路径
-const YEST_LangDir = "./plugins/YEssential/lang/";
 const pluginpath = "./plugins/YEssential/";
-const datapath = "./plugins/YEssential/data/";
+const modulesPath = pluginpath + "modules/";
+
+// 采用绝对路径拼接方式加载模块，解决 LSE 路径解析歧义
+const ctx = require(modulesPath + "GlobalContext");
+const DataManager = require(modulesPath + "DataManager");
+
+const YEST_LangDir = pluginpath + "lang/";
+const datapath = pluginpath + "data/";
 
 // 插件信息
 const NAME = "YEssential";
@@ -36,7 +38,7 @@ globalThis.homedata = ctx.homedata;
 globalThis.warpdata = ctx.warpdata;
 globalThis.info = ctx.info;
 globalThis.datapath = ctx.datapath;
-globalThis.Economy = require("./modules/EconomyManager");
+globalThis.Economy = require(modulesPath + "EconomyManager");
 ctx.Economy = globalThis.Economy;
 globalThis.EconomyManager = ctx.Economy;
 ctx.EconomyManager = ctx.Economy;
@@ -46,9 +48,9 @@ ctx.EconomyManager = ctx.Economy;
  */
 (function() {
     const modulesToLoad = [
-        "./modules/HomeManager",
-        "./modules/WarpManager",
-        "./modules/EconomyManager",
+        modulesPath + "HomeManager",
+        modulesPath + "WarpManager",
+        modulesPath + "EconomyManager",
     ];
 
     function initModules() {
@@ -71,7 +73,7 @@ ctx.EconomyManager = ctx.Economy;
     }
 
     function loadLegacyModules() {
-        const moduleListFile = "./plugins/YEssential/modules/modulelist.json";
+        const moduleListFile = modulesPath + "modulelist.json";
         try {
             const data = JSON.parse(file.readFrom(moduleListFile));
             data.modules.forEach(m => {
@@ -79,7 +81,7 @@ ctx.EconomyManager = ctx.Economy;
                 if (m.name === "ConfigManager" || m.name === "Home" || m.name === "Warp") return; 
                 
                 try {
-                    const mod = require("./modules/" + m.path);
+                    const mod = require(modulesPath + m.path);
                     if (mod && typeof mod.init === "function") mod.init();
                 } catch (e) {
                     logger.warn(`旧版模块加载失败: ${m.name}`);

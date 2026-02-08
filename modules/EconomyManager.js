@@ -3,7 +3,7 @@
     处理经济系统逻辑
 ----------------------------------*/
 
-const ctx = require("./GlobalContext");
+const ctx = require("./plugins/YEssential/modules/GlobalContext");
 
 const EconomyManager = {
     init() {
