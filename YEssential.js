@@ -4,14 +4,16 @@
     Refactored by Manus
 ----------------------------------*/
 
-// 基础配置路径
-const pluginpath = "./plugins/YEssential/";
-const modulesPath = pluginpath + "modules/";
+// 根据报错信息，require 是相对于 plugins/ 目录解析的
+// 路径应从插件文件夹名开始
+const pluginName = "YEssential";
+const modulesPath = pluginName + "/modules/";
 
-// 采用绝对路径拼接方式加载模块，解决 LSE 路径解析歧义
 const ctx = require(modulesPath + "GlobalContext");
 const DataManager = require(modulesPath + "DataManager");
 
+// 基础配置路径
+const pluginpath = "./plugins/YEssential/";
 const YEST_LangDir = pluginpath + "lang/";
 const datapath = pluginpath + "data/";
 
@@ -73,7 +75,7 @@ ctx.EconomyManager = ctx.Economy;
     }
 
     function loadLegacyModules() {
-        const moduleListFile = modulesPath + "modulelist.json";
+        const moduleListFile = "./plugins/YEssential/modules/modulelist.json";
         try {
             const data = JSON.parse(file.readFrom(moduleListFile));
             data.modules.forEach(m => {
