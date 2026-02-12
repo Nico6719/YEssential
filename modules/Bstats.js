@@ -8,7 +8,7 @@ class BStatsImpl {
         this.enabled = true;
         this.debugMode = true;
         this.pluginName = "YEssential";
-        this.pluginVersion = "2.8.8"; // 您的插件版本
+        this.pluginVersion = "2.8.9"; // 您的插件版本
 
         // 初始设为空，方便观察是否获取成功
         this.cachedCoreCount = "Unknown";
