@@ -22,10 +22,12 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.8.8";
-const regversion =[2,8,8];
+const version = "2.8.9";
+const regversion =[2,8,9];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
+// 全局MOTD定时器管理
+let motdTimerId = null;
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("x.x"));
 // 创建语言文件（如果不存在）      
 const langFilePath = YEST_LangDir + "zh_cn.json";
@@ -467,9 +469,18 @@ class AsyncFileManager {
       if (currentIndex >= modules.length) {
         initPvpModule();
         initFcamModule();
-        Motd();
+        
+        // 检查维护模式状态，决定MOTD显示
         let whConfig = conf.get("wh") || { EnableModule: true, status: 0 };
         stats = whConfig.status === 1;
+        
+        if (whConfig.EnableModule && whConfig.status === 1) {
+            // 如果维护模式已开启，设置维护MOTD
+            mc.setMotd("服务器维护中，请勿进入！");
+        } else {
+            // 否则启动正常的MOTD轮播
+            Motd();
+        }
         
         try {
             initializePlugin();
@@ -810,23 +821,46 @@ let transdimid = {
     2:"末地"
 }
 /////////////////////////////////////////////////////////////////////////////////////////////
-// 定时更新玩家金币排行榜
+// 金币排行榜更新优化 - 使用内存缓存减少文件I/O
+let moneyCache = {};
+let moneyDirty = false;
+
+// 每10秒更新内存缓存
 setInterval(() => {
     mc.getOnlinePlayers().forEach((pl) => {
         let moneyValue;
         if (conf.get("LLMoney") == 0) {
-            // 使用记分板
             moneyValue = pl.getScore(conf.get("Scoreboard"));
         } else {
-            // 使用LLMoney
             moneyValue = pl.getMoney();
         }
         
         if (moneyValue !== null && moneyValue !== undefined) {
-            moneyranking.set(pl.realName, moneyValue);
+            if (moneyCache[pl.realName] !== moneyValue) {
+                moneyCache[pl.realName] = moneyValue;
+                moneyDirty = true;
+            }
         }
     });
 }, 10000);
+
+// 每60秒批量写入文件（仅在有变化时）
+setInterval(() => {
+    if (moneyDirty) {
+        Object.keys(moneyCache).forEach(name => {
+            moneyranking.set(name, moneyCache[name]);
+        });
+        moneyDirty = false;
+    }
+}, 60000);
+
+// 玩家退出时立即保存其数据
+mc.listen("onLeft", (pl) => {
+    if (moneyCache[pl.realName] !== undefined) {
+        moneyranking.set(pl.realName, moneyCache[pl.realName]);
+        delete moneyCache[pl.realName];
+    }
+});
 // YEssential.js - servers 命令
 let Sercmd = mc.newCommand("servers", "§l§a跨服传送", PermType.Any);
 Sercmd.overload([]);
@@ -1320,7 +1354,42 @@ function initPvpModule() {
                 return false;
             }
         }
-
+         // ===== 情况 1附加：火焰附魔武器的附加伤害 =====
+        // 火焰附魔造成的伤害source为null，需要单独处理
+        const isFireDamage = (cause === 6 || cause === 7);
+        
+        if (isFireDamage) {
+            const victimPVP = pvpConfig.get(victim.realName, false);
+            
+            // 受害者关闭了PVP
+            if (!victimPVP) {
+                const p = victim.pos;
+                
+                // 检查附近是否有其他玩家（3格范围内，火焰附魔攻击距离）
+                const nearbyPlayers = mc.getOnlinePlayers().filter(other => {
+                    // 排除自己
+                    if (other.realName === victim.realName) return false;
+                    
+                    const op = other.pos;
+                    if (op.dimid !== p.dimid) return false;
+                    
+                    const dist = Math.sqrt(
+                        Math.pow(op.x - p.x, 2) + 
+                        Math.pow(op.y - p.y, 2) + 
+                        Math.pow(op.z - p.z, 2)
+                    );
+                    
+                    // 火焰附魔通常是近战攻击，检测范围3格足够
+                    return dist <= 3;
+                });
+                
+                // 如果附近有其他玩家，很可能是火焰附魔攻击
+                if (nearbyPlayers.length > 0) {
+                    // 拦截火焰伤害
+                    return false;
+                }
+            }
+        }
         // ===== 情况 2：爆炸伤害补充拦截 =====
         // 只有当伤害来源是【玩家造成的爆炸】时才拦截，不拦截敌对生物
         // cause 2: 实体爆炸, cause 3: 方块爆炸, cause 11: 其他爆炸
@@ -1358,15 +1427,23 @@ function initPvpModule() {
     });
 }
 function Motd(){
-    let motds = conf.get("Motd")
-    let items = motds
+    // 清理旧的定时器，防止内存泄漏
+    if (motdTimerId !== null) {
+        clearInterval(motdTimerId);
+        motdTimerId = null;
+    }
+    
+    let motds = conf.get("Motd");
+    if (!motds || motds.length === 0) {
+        logger.warn("MOTD配置为空，跳过轮播");
+        return;
+    }
+    
     let index = 0;
-    let intervalId; // 存储 setInterval 的返回值，以便后续清除
-    intervalId = setInterval(() => {
-        let item = items[index];
-        index = (index + 1) % items.length; // 计算下一个元素的索引，如果到达末尾则回到开头
-        mc.setMotd(item)
-    }, 5000); // 每 5000 毫秒（即 5下· 秒）执行一次
+    motdTimerId = setInterval(() => {
+        mc.setMotd(motds[index]);
+        index = (index + 1) % motds.length;
+    }, 5000);
 }
 
 // 灵魂出窍（FCAM）
@@ -1607,13 +1684,22 @@ whcmd.overload([])
 whcmd.setCallback((cmd, ori, out, res) => {
     if (!Maintenance.config.EnableModule) return out.error("维护模式模块未启用");
     const newState = Maintenance.setStatus(!Maintenance.isActive);
-    out.success(`维护模式已${newState ? "开启" : "关闭"}`);
+    out.success(info+`维护模式已${newState ? "开启" : "关闭"}`);
     if (newState) {
+        // 开启维护模式时：停止MOTD轮播，设置维护信息
+        if (motdTimerId !== null) {
+            clearInterval(motdTimerId);
+            motdTimerId = null;
+        }
+        mc.setMotd("服务器维护中，请勿进入！");
         mc.getOnlinePlayers().forEach((player) => {
             if (!player.isSimulatedPlayer() && !player.isOP()) {
                 player.kick(lang.get("weihu.msg"));
             }
         });
+    } else {
+        // 关闭维护模式时：恢复MOTD轮播
+        Motd();
     }
 })
 whcmd.setup()
@@ -1633,6 +1719,13 @@ mc.listen("onPreJoin", (pl) => {
 function getRandomLetter() {
     return String.fromCharCode(65 + Math.floor(Math.random() * 26));
 }
+
+// 优化的唯一时间戳生成器
+let operationCounter = 0;
+function getUniqueTimestamp() {
+    return `${system.getTimeStr()}-${operationCounter++}`;
+}
+
 // moneys指令相关
 const moneycmd = mc.newCommand("moneys", lang.get("CoinName"), PermType.GameMasters);
 moneycmd.mandatory("option", ParamType.String);
@@ -1647,7 +1740,7 @@ moneycmd.setCallback((cmd, ori, out, res) => {
 
     const coinName = lang.get("CoinName");
     const history = MoneyHistory.get(targetPl.realName);
-    const timestamp = `${system.getTimeStr()}§${getRandomLetter()}`;
+    const timestamp = getUniqueTimestamp(); // 使用优化后的时间戳
 
     const logAndNotify = (actionKey, successKey, economyMethod, amount) => {
         if (amount === undefined || amount === null) {
@@ -3257,8 +3350,11 @@ function LLValueCheck(plname, value) {
     }
 }
 // ======================
-// Rp
+// Rp 红包系统优化
 // ======================
+// 红包过期队列，按过期时间排序
+const redpacketExpiryQueue = [];
+
 const redpacketCmd = mc.newCommand("redpacket", "红包功能", PermType.Any);
 
 redpacketCmd.setAlias("rp");
@@ -3426,6 +3522,14 @@ function handleSendRedPacket(pl, amount, count, targetPlayer, message, packetTyp
     // 保存红包数据
     redpacketData.set(`packets.${packetId}`, packet);
     redpacketData.set("nextId", packetId + 1);
+    
+    // 优化：添加到过期队列
+    redpacketExpiryQueue.push({
+        id: packetId,
+        expireAt: packet.expireAt
+    });
+    // 保持队列按过期时间排序
+    redpacketExpiryQueue.sort((a, b) => a.expireAt - b.expireAt);
     
     // 广播红包消息
     const typeName = packetType === "random" ? "拼手气" : "普通";
@@ -3655,17 +3759,18 @@ function showRedPacketDetail(pl, packet) {
     });
 }
 
-// 修改红包过期检测逻辑
+// 优化的红包过期检测逻辑 - 使用优先队列
 setInterval(() => {
     const now = Date.now();
     const packets = redpacketData.get("packets") || {};
     let updated = false;
 
-    for (const id in packets) {
-        const packet = packets[id];
+    // 只检查队列中已过期的红包
+    while (redpacketExpiryQueue.length > 0 && redpacketExpiryQueue[0].expireAt < now) {
+        const expired = redpacketExpiryQueue.shift();
+        const packet = packets[expired.id];
         
-        // 检查红包是否过期
-        if (packet.expireAt < now) {
+        if (packet && packet.expireAt < now) {
             handleExpiredPacket(packet);
             updated = true;
         }
@@ -3675,7 +3780,7 @@ setInterval(() => {
     if (updated) {
         redpacketData.save();
     }
-}, 5 * 60 * 1000); // 每5分钟检查一次
+}, 60 * 1000); // 改为每分钟检查一次
 
 // 在插件初始化后添加红包帮助命令
 mc.listen("onServerStarted", () => {
