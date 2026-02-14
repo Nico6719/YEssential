@@ -22,12 +22,10 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.8.9";
-const regversion =[2,8,9];
+const version = "2.9.0";
+const regversion =[2,9,0];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
-// 全局MOTD定时器管理
-let motdTimerId = null;
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("x.x"));
 // 创建语言文件（如果不存在）      
 const langFilePath = YEST_LangDir + "zh_cn.json";
@@ -37,22 +35,21 @@ const defaultLangContent = {
     "gui.button.confirm": "确定",
     "gui.button.back": "返回主菜单",
 
-    
     // moneys指令相关
     "moneys.set.success": "成功将玩家 ${player} 的${coin}设置为 ${amount}",
     "moneys.add.success": "成功将玩家 ${player} 的${coin}增加 ${amount}",
     "moneys.del.success": "成功将玩家 ${player} 的${coin}减少 ${amount}",
     "moneys.get.result": "玩家 ${player} 的${coin}为 ${amount}",
     "moneys.history.title": "玩家 ${player} 的${coin}历史记录",
-    
-    //Cd相关
-    "cd.config.error": "§l§c打开菜单失败,配置文件的内容没有完善", 
-    "cd.button.isnull":"§l§c菜单中没有任何按钮",
-    "cd.yourmoney.iszero":"§l§c你没有足够的金币使用这个按钮",  
-    "cd.thisbutton.error":"§l§c这个按钮的类型错误,请联系管理员处理",
-    "cd.vip.deny":"§l§c会员功能未启用",
-    "cd.op.deny":"§l§c你没有权限使用这个按钮,抱歉",
+    "moneys.command.error": "§c无效的操作！可用: set, add, del, get, history",
 
+    // Cd相关
+    "cd.config.error": "§l§c打开菜单失败,配置文件的内容没有完善",
+    "cd.button.isnull": "§l§c菜单中没有任何按钮",
+    "cd.yourmoney.iszero": "§l§c你没有足够的金币使用这个按钮",
+    "cd.thisbutton.error": "§l§c这个按钮的类型错误,请联系管理员处理",
+    "cd.vip.deny": "§l§c会员功能未启用",
+    "cd.op.deny": "§l§c你没有权限使用这个按钮,抱歉",
 
     // warp相关
     "warp.command.desc": "公共传送点",
@@ -63,19 +60,19 @@ const defaultLangContent = {
     "warp.teleported": "已前往传送点 ${name}",
     "warp.del.success": "删除公共传送点 ${name} 成功！",
     "warp.add.success": "添加公共传送点 ${name} 成功！",
-    "warp.menu.public":"公共传送点",
-    "warp.menu.public.op":"(OP)公共传送点",
-    "warp.go.to":"前往传送点",
-    "warp.add":"添加传送点",
-    "warp.add.point":"添加公共传送点",
-    "warp.del":"删除传送点",
-    "warp.del.point":"删除公共传送点",
-    "warp.input.name":"请输入传送点名称",
-    "warp.name":"传送点名称",
-    "warp.list":"传送点列表",
-    "warp.add.point.xyz":"添加当前坐标为公共传送点",
-    "warp.noinput.name":"传送点名称不能为空！",
-    "warp.name.repetitive":"传送点名称已存在！",
+    "warp.menu.public": "公共传送点",
+    "warp.menu.public.op": "(OP)公共传送点",
+    "warp.go.to": "前往传送点",
+    "warp.add": "添加传送点",
+    "warp.add.point": "添加公共传送点",
+    "warp.del": "删除传送点",
+    "warp.del.point": "删除公共传送点",
+    "warp.input.name": "请输入传送点名称",
+    "warp.name": "传送点名称",
+    "warp.list": "传送点列表",
+    "warp.add.point.xyz": "添加当前坐标为公共传送点",
+    "warp.noinput.name": "传送点名称不能为空！",
+    "warp.name.repetitive": "传送点名称已存在！",
 
     // 转账相关
     "money.transfer.title": "转账",
@@ -87,196 +84,314 @@ const defaultLangContent = {
     "money.transfer.log.send": "转账给 ${target}, 数量:${amount}, 到账:${received}, 手续费:${tax}",
     "money.transfer.log.receive": "收到 ${sender} 转账, 数量:${amount}, 到账:${received}, 手续费:${tax}",
     "money.transfer.tax.notenough": "转账金额不足以支付手续费！",
-    "money.create.score":"计分板项目不存在，以为您自动创建",
-    "money.callback.menu":"§a正在返回经济系统主界面...",
-    "money.player.list":"排行榜",
-    "moneys.help":"您的语法有误！\n/moneys <name> add \n /monneys <name> del \n /moneys <name> set",
-    "money.transfer":"转账",
-    "moeny.view":"查看",
-    "money.query":"查询",
-    "money.history":"历史记录",
-    "money.success":"成功",
-    "money.decrease.number":"请输入要减少的",
-    "money.add.number":"请输入要增加的",
-    "moeny.set.number":"请输入要设置的",
-    "money.history":"历史记录(最近50条)：",
+    "money.gui.useplayer": "使用玩家的金钱菜单",
+    "money.create.score": "计分板项目不存在，以为您自动创建",
+    "money.callback.menu": "§a正在返回经济系统主界面...",
+    "money.player.list": "排行榜",
+    "moneys.help": "您的语法有误！\n/moneys <name> add \n /monneys <name> del \n /moneys <name> set",
+    "money.transfer": "转账",
+    "moeny.view": "查看",
+    "money.query": "查询",
+    "money.history": "历史记录(最近50条)：",
+    "money.history.empty": "暂无记录",
+    "money.success": "成功",
+    "money.decrease.number": "请输入要减少的",
+    "money.add.number": "请输入要增加的",
+    "moeny.set.number": "请输入要设置的",
     "money.no.enough": "您的余额不足！",
-    "money.tr.error1":"无效的接收方！",
-    "money.tr.error2":"不能给自己转账!",
-    "money.tr.noonline":"目标玩家离线",
-    "money.tr.noinput":"请输入转账数量!",
-    "money.tr.beizhu":"转账的备注（可以留空）",
-    "money.tr.amount":"输入转账数量(all为全部)",
-    "money.del.number":"请输入减少数量!",
-    "money.cannotpay.totax":"转账金额不足以支付手续费！",
-    "moeny.setting.number":"请输入设置数量",
-    "money.must.bigger0":"转账数量必须大于0！",
-    "money.cannot.smaller0":"§c实际到账金额不能为负数！",
-    "money.op.add":"增加玩家的",
-    "money.op.remove":"减少玩家的",
-    "money.op.set":"设置玩家的",
-    "money.op.look":"查看玩家的",
-    
-     //TPA相关
-    "tpa.cost":"传送将花费 ${cost} ${Scoreboard} ",
-    "tpa.d":"§c拒绝",
-    "tpa.d.request":"§c对方拒绝了传送请求。",
-    "tpa.d.request.you":"§e你已拒绝传送请求。",
-    "tpa.a":"§a同意",
-    "tpa.tp.okey":"§a传送成功!",
-    "tpa.accpet.request":"§a已同意传送请求。",
-    "tpa.request":"§a传送请求",
-    "tpa.request.cut":"§c传送中断，对方或你下线。",
-    "tpa.tp.fail.noonline":"§c传送失败，目标玩家已离线。",
-    "tpa.a.and.d":"§e可在表单点击【同意/拒绝】或输入 /tpayes(同意)/tpano(拒绝)",
-    "tpa.name.ls":"§d互传系统",
-    "tpa.tp.msg":"§a互传请求",
-    "tpa.exit":"§c操作已取消。",
-    "tpa.op.msg":"§c管理互传(开启后进入管理页面)",
-    "tpa.op.menu":"§c管理互传",
-    "tpa.send.time":"§e请求超时时间(秒)",
-    "tpa.send.fail":"§c目标玩家离线,无法发送请求",
-    "tpa.send.noway":"§c对方拒绝了所有传送请求",
-    "tpa.send.way":"§e请求提示方式",
-    "tpa.send.form":"form(对方弹窗)",
-    "tpa.send.bossbar":"bossbar(血条)",
-    "tpa.Enabled.lag":"§b是否启用延迟功能",
-    "tpa.max.lagnumber":"§b最大延迟秒数",
-    "tpa.player.offline":"§c对方(或你)下线,请求取消",
-    "tpa.request.timeout":"§c传送请求已超时",
-    "tpa.no.request":"§c你没有待处理的请求。",
-    "tpa.input.must.number":"§c请求超时必须是正整数！",
-    "tpa.must.biggerzero":"§c最大延迟必须>=0！",
-    "tpa.save.conf.ok":"保存配置成功！",
-    "tpa.no.callback":"§c对方已有未处理的请求, 稍后再试",
-    "tpa.choose.player":"§s选择目标玩家",
-    "tpa.allow.tp":"你现在 接受 所有传送请求。",
-    "tpa.noallow.tp":"你现在 拒绝 所有传送请求。",
-    "tpa.choose.fs":"§a传送方式",
-    "tpa.to.he.she":"§a传送到对方",
-    "tpa.to.here":"§e传送到我",
-    "tpa.noplayer.online":"§c当前没有其他在线玩家",
+    "money.tr.error1": "无效的接收方！",
+    "money.tr.error2": "不能给自己转账!",
+    "money.tr.noonline": "目标玩家离线",
+    "money.tr.noinput": "请输入转账数量!",
+    "money.tr.beizhu": "转账的备注（可以留空）",
+    "money.tr.amount": "输入转账数量(all为全部)",
+    "money.del.number": "请输入减少数量!",
+    "money.cannotpay.totax": "转账金额不足以支付手续费！",
+    "moeny.setting.number": "请输入设置数量",
+    "money.must.bigger0": "转账数量必须大于0！",
+    "money.cannot.smaller0": "§c实际到账金额不能为负数！",
+    "money.op.add": "增加玩家的",
+    "money.op.remove": "减少玩家的",
+    "money.op.set": "设置玩家的",
+    "money.op.look": "查看玩家的",
 
-    "wh.warn":"服务器启动时维护模式已启用，非OP玩家将无法加入!!!!!",
-    "Upd.check":"正在检查新版本中.... 您可在config.json禁用自动更新！",
-    "Upd.success":"更新成功！稍后将重载插件",
-    "Upd.timeout":"获取版本信息超时，请检查网络连接",
-    "Upd.json.error":"版本信息格式错误，无法解析JSON",
-    "Upd.backup.now":"正在创建备份...",
-    "No.backup.canuse":"没有可用的备份",
-    "Upd.fail.backing":"更新失败，正在恢复备份...",
-    "Upd.back.success":"已恢复到更新前的版本",
-    "Upd.fail":"更新失败",
-    "network.error.1":"网络连接失败，请检查网络设置或稍后重试",
-    "file.permission.error'":"文件写入权限不足，请检查插件目录权限",
-    "file.parse.error.":"数据解析失败，可能是服务器返回格式错误",
-    "Tip1":"如有Bug请联系作者反馈！！！！",
-    "Tip2":"感谢PHEyeji和小黑可爱喵提供技术支持和指导！感谢ender罗小黑提供在线网页支持！",
-    "Tip3":"在线config编辑器：https://jzrxh.work/projects/yessential/config.html",
-    "Version.Chinese":"版本:",
-    "notice.editor":"§l§e公告编辑器",
+    // TPA相关
+    "tpa.cost": "传送将花费 ${cost} ${Scoreboard} ",
+    "tpa.d": "§c拒绝",
+    "tpa.d.request": "§c对方拒绝了传送请求。",
+    "tpa.d.request.you": "§e你已拒绝传送请求。",
+    "tpa.a": "§a同意",
+    "tpa.tp.okey": "§a传送成功!",
+    "tpa.accpet.request": "§a已同意传送请求。",
+    "tpa.request": "§a传送请求",
+    "tpa.request.cut": "§c传送中断，对方或你下线。",
+    "tpa.tp.fail.noonline": "§c传送失败，目标玩家已离线。",
+    "tpa.a.and.d": "§e可在表单点击【同意/拒绝】或输入 /tpayes(同意)/tpano(拒绝)",
+    "tpa.name.ls": "§d互传系统",
+    "tpa.tp.msg": "§a互传请求",
+    "tpa.exit": "§c操作已取消。",
+    "tpa.op.msg": "§c管理互传(开启后进入管理页面)",
+    "tpa.op.menu": "§c管理互传",
+    "tpa.send.time": "§e请求超时时间(秒)",
+    "tpa.send.fail": "§c目标玩家离线,无法发送请求",
+    "tpa.send.noway": "§c对方拒绝了所有传送请求",
+    "tpa.send.way": "§e请求提示方式",
+    "tpa.send.form": "form(对方弹窗)",
+    "tpa.send.bossbar": "bossbar(血条)",
+    "tpa.Enabled.lag": "§b是否启用延迟功能",
+    "tpa.max.lagnumber": "§b最大延迟秒数",
+    "tpa.player.offline": "§c对方(或你)下线,请求取消",
+    "tpa.request.timeout": "§c传送请求已超时",
+    "tpa.no.request": "§c你没有待处理的请求。",
+    "tpa.input.must.number": "§c请求超时必须是正整数！",
+    "tpa.must.biggerzero": "§c最大延迟必须>=0！",
+    "tpa.save.conf.ok": "保存配置成功！",
+    "tpa.no.callback": "§c对方已有未处理的请求, 稍后再试",
+    "tpa.choose.player": "§s选择目标玩家",
+    "tpa.allow.tp": "你现在 接受 所有传送请求。",
+    "tpa.noallow.tp": "你现在 拒绝 所有传送请求。",
+    "tpa.choose.fs": "§a传送方式",
+    "tpa.to.he.she": "§a传送到对方",
+    "tpa.to.here": "§e传送到我",
+    "tpa.noplayer.online": "§c当前没有其他在线玩家",
+    "tpa.fail": "传送失败:",
+
+    // 公告相关
+    "notice.backupto": "§a原公告已备份为 notice.txt.bak",
+    "notice.cannot.del": "§c不能删除所有行，至少保留一行！",
+    "notice.editor": "§l§e公告编辑器",
     "notice.no.change": "§e公告内容未更改！",
-    "notice.exit.edit":"已取消编辑",
-    "notice.for.server":"§l§e服务器公告",
-    "notice.dont.showagain":"以后进服不自动弹出(除非公告更新或停用此开关)",
-    "notice.is.changed":"检测到新公告，玩家下次加入将强制显示",
-    "player.not.op":"§c权限不足！",
+    "notice.exit.edit": "已取消编辑",
+    "notice.for.server": "§l§e服务器公告",
+    "notice.dont.showagain": "以后进服不自动弹出(除非公告更新或停用此开关)",
+    "notice.is.changed": "检测到新公告，玩家下次加入将强制显示",
+    "notice.save.ok": "保存公告成功！",
+
+    // 更新相关
+    "Upd.check": "正在检查新版本中.... 您可在config.json禁用自动更新！",
+    "Upd.success": "更新成功！稍后将重载插件",
+    "Upd.timeout": "获取版本信息超时，请检查网络连接",
+    "Upd.json.error": "版本信息格式错误，无法解析JSON",
+    "Upd.backup.now": "正在创建备份...",
+    "Upd.fail.backing": "更新失败，正在恢复备份...",
+    "Upd.back.success": "已恢复到更新前的版本",
+    "Upd.fail": "更新失败",
+    "network.error.1": "网络连接失败，请检查网络设置或稍后重试",
+    "file.permission.error": "文件写入权限不足，请检查插件目录权限",
+    "file.parse.error": "数据解析失败，可能是服务器返回格式错误",
+    "No.backup.canuse": "没有可用的备份",
+
+    // Tip相关
+    "Tip1": "如有Bug请联系作者反馈！！！！",
+    "Tip2": "感谢PHEyeji和小黑可爱喵提供技术支持和指导！感谢ender罗小黑提供在线网页支持！",
+    "Tip3": "在线config编辑器：https://jzrxh.work/projects/yessential/config.html",
+    "Version.Chinese": "版本:",
+
+    "wh.warn": "服务器启动时维护模式已启用，非OP玩家将无法加入!!!!!",
+    "Motd.config.isemp": "MOTD配置为空，跳过轮播",
+    "player.isnull": "玩家对象无效或已离线！",
+    "player.not.op": "§c权限不足！",
     "gui.exit": "表单已关闭,未收到操作",
     "server.tp.ok": "传送成功！",
     "no.server.can.tp": "暂无可传送服务器!",
-    "ranking.list":"排行榜",
     "no.ranking.data": "§c暂无排行榜数据！",
+    "ranking.list": "排行榜",
+    "server.config.loaderror": "读取 跨服传送 配置失败:",
     "server.load.error": "服务器配置加载失败，请联系管理员！",
     "server.no.select": "§c服务器选择无效！",
-    "server.from.title":"跨服传送列表",
-    "choose.a.server":"请选择一个服务器",
+    "server.from.title": "跨服传送列表",
+    "choose.a.server": "请选择一个服务器",
     "server.tp.fail": "§c跨服传送失败，请检查目标服务器状态！",
-    "no.server.cantpto":"server.json 内容为空或 servers 键不存在！",
-    "save.notice.ok": "保存公告成功！",
+    "no.server.cantpto": "server.json 内容为空或 servers 键不存在！",
     "suicide.kill.ok": "自杀执行成功！",
-    "pls.input.number":"请输入增加数量!",
-    "key.not.number":"请输入数字！",
-    "rp.loading.error":"加载红包数据失败",
-    "rp.menu.1":"红包",
-    "rp.send.packet":"发送红包",
-    "rp.open.packet":"领取红包",
-    "rp.all.help":"红包使用帮助",
-    "rp.send.amount":"要发送的红包数量：",
-    "rp.send.count":"红包金额：",
-    "rp.count.bigger.yourmoney":"红包总额度不能大于你的",
-    "redpacket.type":"红包类型：",
-    "rp.random.packet":"拼手气红包",
-    "rp.average.packet":"普通红包",
-    "back.to.point":"返回死亡点",
-    "back.helpinfo":"§a已记录您的死亡点！使用 /back 查看所有死亡点。",
-    "back.to.point.sure":"确认返回死亡点？",
-    "back.choose":"§6请选择要传送的死亡点：",
-    "back.list.Empty":"您没有死亡历史记录!",
-    "back.successful":"返回成功！",
-    "back.fail":"§c传送失败！",
-    "back.choose.null":"§c选择无效！",
-    "back.deathlog.error":"§c死亡点数据错误！",
-    "home.tp.system":"§6§l家园传送系统",
-    "home.add":"§l§a添加家",
-    "home.add.input":"请输入您的家名称",
-    "home.del":"§c§l删除家",
-    "home.del.choose":"请选择要删除的家",
-    "home.tp":"§b§l传送家",
-    "home.tp.choose":"请选择要传送的家",
-    "home.name.repetitive":"家名称已存在!",
-    "home.name.noinput":"请输入家名称!",
-    "shop.no.Eabled":"§c商店功能已关闭！",
-    "shop.is.nothing" :"§c暂无商品可购买！",
-    "shop.conf.error":"§c商品配置错误！",
-    "shop.choose.errorthings":"§c商品选择无效！",
-    "home.input.name":"请输入您的家名称",
-    "home.create.new":"添加家",
-    "bag.is.full":"§c背包已满，无法给予物品！",
-    "rtp.onlycanusein.overworld":"§c只能在主世界使用随机传送！",
-    "module.no.Enabled":"所选模块（功能）未开启！",
-    "fc.error":"无法对非玩家对象执行此命令",
-    "fc.error2":"你都是管理员了用这个功能干什么（）",
-    "fc.success.quit":"成功退出灵魂出窍",
-    "fc.success.getin":"成功进入灵魂出窍，花费§e${Fcam}金币",
-    "hub.tp.check":"§l§a回城确认",
-    "hub.tp.now":"§a✔ 立即传送",
-    "hub.tp.notnow":"§c✘ 不是现在",
-    "hub.tp.success":"§l§b[YEST] §r §a成功传送到主城！",
-    "hub.tp.fail":"§l§b[YEST] §r 回城失败！原因：",
-    "crash.player.ok":"成功把玩家崩溃了！",
-    "crash.player.client":"§c使玩家客户端崩溃",
-    "carsh.function.list":"§c崩溃功能如下",
-    "weihu.msg":"服务器正在维护中，请稍后再来",
-    "stop.msg":"服务器关闭\n请稍后再来",
-    "pls.input.notice":"请输入公告内容，（换行用 \\n）",
-    "gamerule.KeepInventory.true":"死亡不掉落已启用",
-    "cannot.create.newfile":"无法创建数据存储对象",
-    "rtp.search.chunks":"§a正在寻找安全的传送位置，请稍候...",
-    "rtp.search.chunks2":"§e未找到理想位置，使用备用传送方案...",
-    "rtp.loading.chunks3":"§7正在加载区块...",
-    "rtp.loading.chunks2":"§7正在加载区块..",
-    "rtp.loading.chunks1":"§7正在加载区块.",
-    "rtp.cannotfind.safexyz":"§c无法找到安全的传送位置，请稍后再试",
-    "rtp.tp.success":"§a传送成功！",
-    "rtp.tp.success2":"§6已传送到安全高度，请自行寻找落脚点",
-    "rtp.loadchunks.timeout":"§c目标区块加载超时",
-    "rtp.error":"§c传送过程发生错误",
-    "pvp.is.on":"§6PVP 已开启。",
-    "pvp.is.off":"§6PVP 已关闭。",
-    "pvp.player.isoff":"附近玩家 ${player.realName} PVP 关闭, 你无法攻击他。",
-    "your.pvp.isoff":"§l§b你关闭了 PVP。",
-    "then.pvp.isoff":"§l§b对方关闭了 PVP。",
-    "init.success":"所有模块加载成功！",
-    "init.fail":"部分模块加载失败，请检查日志",
-    "choose":"选择",
-    "success":"成功",
-    "one":"一个",
-    "player":"玩家",
-    "number":"数字",
-    "CoinName":"金币",
-    "to":"将",
-    "add":"加",
-    
+    "pls.input.number": "请输入增加数量!",
+    "key.not.number": "请输入数字！",
+    "rp.loading.error": "加载红包数据失败",
+    "rp.menu.1": "红包",
+    "rp.send.packet": "发送红包",
+    "rp.open.packet": "领取红包",
+    "rp.all.help": "红包使用帮助",
+    "rp.send.amount": "要发送的红包数量：",
+    "rp.send.count": "红包金额：",
+    "rp.count.bigger.yourmoney": "红包总额度不能大于你的",
+    "redpacket.type": "红包类型：",
+    "rp.random.packet": "拼手气红包",
+    "rp.average.packet": "普通红包",
+    "back.to.point": "返回死亡点",
+    "back.helpinfo": "§a已记录您的死亡点！使用 /back 查看所有死亡点。",
+    "back.to.point.sure": "确认返回死亡点？",
+    "back.choose": "§6请选择要传送的死亡点：",
+    "back.list.Empty": "您没有死亡历史记录!",
+    "back.successful": "返回成功！",
+    "back.fail": "§c传送失败！",
+    "back.choose.null": "§c选择无效！",
+    "back.deathlog.error": "§c死亡点数据错误！",
+    "home.tp.system": "§6§l家园传送系统",
+    "home.add": "§l§a添加家",
+    "home.add.input": "请输入您的家名称",
+    "home.del": "§c§l删除家",
+    "home.del.choose": "请选择要删除的家",
+    "home.tp": "§b§l传送家",
+    "home.tp.choose": "请选择要传送的家",
+    "home.name.repetitive": "家名称已存在!",
+    "home.name.noinput": "请输入家名称!",
+    "home.input.name": "请输入您的家名称",
+    "home.create.new": "添加家",
+    "bag.is.full": "§c背包已满，无法给予物品！",
+    "rtp.onlycanusein.overworld": "§c只能在主世界使用随机传送！",
+    "module.no.Enabled": "所选功能尚未开启！",
+    "fc.error": "无法对非玩家对象执行此命令",
+    "fc.error2": "你都是管理员了用这个功能干什么（）",
+    "fc.success.quit": "成功退出灵魂出窍",
+    "fc.success.getin": "成功进入灵魂出窍，花费§e${Fcam}金币",
+    "fc.error.log1": "FCAM: setGameMode 恢复失败: ",
+    "fc.error.log2": "FCAM: TP 回原位失败: ",
+    "fc.error.log3": "FCAM: simulateDisconnect 失败: ",
+    "fc.error.log4": "FCAM: 自动退出失败: ",
+    "fc.error.log5": "FCAM: 移除 BossBar 失败: ",
+    "fc.timeout": "§c灵魂出窍时间已到，已自动退出！",
+    "hub.tp.check": "§l§a回城确认",
+    "hub.tp.now": "§a✔ 立即传送",
+    "hub.tp.notnow": "§c✘ 不是现在",
+    "hub.tp.success": "§l§b[YEST] §r §a成功传送到主城！",
+    "hub.tp.fail": "§l§b[YEST] §r 回城失败！原因：",
+    "crash.player.ok": "成功把玩家崩溃了！",
+    "crash.player.client": "§c使玩家客户端崩溃",
+    "carsh.function.list": "§c崩溃功能如下",
+    "stop.msg": "服务器关闭\n请稍后再来",
+    "pls.input.notice": "请输入公告内容，（换行用 \\n）",
+    "gamerule.KeepInventory.true": "死亡不掉落已启用",
+    "cannot.create.newfile": "无法创建数据存储对象",
+    "rtp.search.chunks": "§a正在寻找安全的传送位置，请稍候...",
+    "rtp.search.chunks2": "§e未找到理想位置，使用备用传送方案...",
+    "rtp.loading.chunks3": "§7正在加载区块...",
+    "rtp.loading.chunks2": "§7正在加载区块..",
+    "rtp.loading.chunks1": "§7正在加载区块.",
+    "rtp.cannotfind.safexyz": "§c无法找到安全的传送位置，请稍后再试",
+    "rtp.tp.success": "§a传送成功！",
+    "rtp.tp.success2": "§6已传送到安全高度，请自行寻找落脚点",
+    "rtp.loadchunks.timeout": "§c目标区块加载超时",
+    "rtp.error": "§c传送过程发生错误",
+    "pvp.is.on": "§6PVP 已开启。",
+    "pvp.is.off": "§6PVP 已关闭。",
+    "pvp.player.isoff": "附近玩家 ${player.realName} PVP 关闭, 你无法攻击他。",
+    "your.pvp.isoff": "§l§b你关闭了 PVP。",
+    "then.pvp.isoff": "§l§b对方关闭了 PVP。",
+    "init.success": "所有模块加载成功！",
+    "init.fail": "部分模块加载失败，请检查日志",
+    "choose": "选择",
+    "success": "成功",
+    "one": "一个",
+    "player": "玩家",
+    "number": "数字",
+    "CoinName": "金币",
+    "to": "将",
+    "add": "加",
+
+    // ── 红包系统补全 ──────────────────────────────────────
+
+    // 红包类型短名（消息用 / 列表彩色 / 历史标签）
+    "rp.type.random.short":   "拼手气",
+    "rp.type.average.short":  "普通",
+    "rp.type.random.colored": "§6拼手气",
+    "rp.type.average.colored":"§b普通",
+    "rp.type.random.tag":     "§6[拼]",
+    "rp.type.average.tag":    "§b[普]",
+
+    // 过期退款
+    "rp.expired.refund": "§a你的红包#${id}已过期，退还§e${amount}§a${coin}",
+
+    // 发送红包
+    "rp.send.duplicate":        "§c请勿重复发送红包！",
+    "rp.send.param.error":      "§c参数错误: 金额和数量必须是数字",
+    "rp.send.usage":            "§c用法: /redpacket send <总金额> <红包个数> [玩家名] [祝福语] [类型]",
+    "rp.send.usage.type":       "§7类型: random(拼手气) 或 average(普通)",
+    "rp.send.amount.range":     "§c红包金额必须在${min}-${max}之间",
+    "rp.send.count.range":      "§c红包个数必须在1-${max}之间",
+    "rp.send.no.balance":       "§c余额不足，无法发送红包",
+    "rp.send.notify.target":    "§a你收到来自${sender}的${type}红包，输入§e/rp open§a领取",
+    "rp.send.success.specific": "§a成功向${player}发送${type}红包，金额:§e${amount}§a，数量:§e${count}",
+    "rp.send.broadcast":        "§a玩家§e${sender}§a发送了${type}全服红包，输入§e/rp open§a领取",
+    "rp.send.success.all":      "§a成功发送${type}全服红包，金额:§e${amount}§a，数量:§e${count}",
+    "rp.default.message":       "${sender}的红包",
+
+    // 领取红包
+    "rp.open.none":          "§c当前没有可领取的红包",
+    "rp.open.success":       "§a恭喜你领取到§e${sender}§a的${type}红包，获得§e${amount}§a${coin}!",
+    "rp.open.notify.sender": "§a玩家§e${player}§a领取了你的红包，获得§e${amount}§a${coin}",
+
+    // 红包列表
+    "rp.list.title":   "§l§6可领取红包",
+    "rp.list.content": "§7点击查看详情并领取",
+    "rp.list.button":  "§l${type} §e${sender}的红包\n§7金额: §f${amount} §7剩余: §a${remaining}/${count}\n§7过期: §f${expire}秒",
+    "rp.list.close":   "§c关闭",
+
+    // 红包历史
+    "rp.history.title":          "§l§6红包历史记录",
+    "rp.history.content":        "§7点击查看红包详情",
+    "rp.history.empty":          "§c你还没有红包记录",
+    "rp.history.status.active":  "§a进行中",
+    "rp.history.status.ended":   "§c已结束",
+    "rp.history.sent.amount":    "§7已领取: §f${amount}",
+    "rp.history.recv.amount":    "§7获得: §f${amount}",
+    "rp.role.sender":            "§b[发]",
+    "rp.role.receiver":          "§a[收]",
+
+    // 红包详情
+    "rp.detail.title":            "§l§6红包详情",
+    "rp.detail.sender":           "§f发送者: §e${sender}",
+    "rp.detail.target.type":      "§f目标类型: §e${type}",
+    "rp.target.all":              "全服红包",
+    "rp.target.specific":         "指定红包",
+    "rp.detail.packet.type":      "§f红包类型: §e${type}",
+    "rp.detail.target.player":    "§f指定玩家: §e${player}",
+    "rp.detail.amount":           "§f总金额: §e${amount}${coin}",
+    "rp.detail.count":            "§f红包个数: §e${count}",
+    "rp.detail.remaining.amount": "§f剩余金额: §e${amount}${coin}",
+    "rp.detail.remaining.count":  "§f剩余个数: §e${count}",
+    "rp.detail.message":          "§f祝福语: §e${msg}",
+    "rp.detail.expire":           "§f过期时间: §e${time}",
+    "rp.detail.recipients":       "§f领取记录:",
+    "rp.detail.recipient.item":   "§7- §e${name}",
+
+    // 帮助界面
+    "rp.help.content":      "选择命令查看详细说明",
+    "rp.help.view":         "查看红包",
+    "rp.help.history.btn":  "红包历史",
+    "rp.help.types.btn":    "红包类型说明",
+    "rp.help.detail.title": "§l§6红包帮助",
+    "rp.help.send.detail":
+        "§6发送红包命令: §a/rp send <金额> <数量> [玩家名] [祝福语] [类型]\n" +
+        "§7- §f金额: 红包总金额\n" +
+        "§7- §f数量: 红包个数\n" +
+        "§7- §f玩家名: 指定接收玩家(可选)\n" +
+        "§7- §f祝福语: 红包祝福语(可选)\n" +
+        "§7- §f类型: random(拼手气)或average(普通)(可选，默认random)\n" +
+        "§e示例: §a/rp send 1000 5 §7(发送5个总金额1000的拼手气红包)\n" +
+        "§e示例: §a/rp send 1000 5 average §7(发送5个总金额1000的普通红包)\n" +
+        "§e示例: §a/rp send 1000 5 Steve \"恭喜发财\" random §7(指定玩家的拼手气红包)",
+    "rp.help.open.detail":
+        "§6领取红包命令: §a/rp open\n" +
+        "§7自动领取最早可用的红包\n\n" +
+        "§6查看可领红包: §a/rp list\n" +
+        "§7查看所有可领取的红包列表",
+    "rp.help.list.detail":
+        "§6查看红包详情: §a/rp list\n" +
+        "§7查看所有可领取的红包\n\n" +
+        "§7点击红包可直接领取",
+    "rp.help.history.detail":
+        "§6查看红包历史: §a/rp history\n" +
+        "§7查看你发送和领取的红包记录",
+    "rp.help.type.detail":
+        "§6红包类型说明:\n" +
+        "§a1. 拼手气红包(random):\n" +
+        "§7- 每个红包金额随机分配\n" +
+        "§7- 金额在1到剩余均值的两倍之间随机\n" +
+        "§7- 最后一人获得剩余所有金额\n\n" +
+        "§b2. 普通红包(average):\n" +
+        "§7- 每个红包金额平均分配\n" +
+        "§7- 金额 = 剩余金额 / 剩余个数(取整)\n" +
+        "§7- 最后一人获得剩余所有金额",
 };
 
 ll.registerPlugin(NAME, PluginInfo,regversion, {
@@ -284,6 +399,9 @@ ll.registerPlugin(NAME, PluginInfo,regversion, {
     License: "GPL-3.0",
     QQ : "1584573887",
 });
+
+// 全局MOTD定时器管理
+let motdTimerId = null;
 
 let lang = new JsonConfigFile(langFilePath, JSON.stringify(defaultLangContent));
 
@@ -411,183 +529,281 @@ class AsyncFileManager {
         });
     }
 }
+// ── 全局随机颜色对（Logo、Tip、logInfo 共用）────────────────
+function randomVividColor() {
+    // 排除绿色(90°~150°)和深紫色(260°~300°)
+    // 可用色相段：[0,90) [150,260) [300,360) 共 260°
+    const rand = Math.random() * 260;
+    let h;
+    if      (rand < 90)  h = rand;           // 红/橙/黄
+    else if (rand < 200) h = rand + 60;      // 青/蓝  (150~260)
+    else                 h = rand + 100;     // 粉/洋红 (300~360)
+
+    const s = 0.90 + Math.random() * 0.10;  // 90%~100% 高饱和
+    const l = 0.65 + Math.random() * 0.15;  // 65%~80%  高亮度
+    const a = s * Math.min(l, 1 - l);
+    function f(n) {
+        const k = (n + h / 30) % 12;
+        return Math.round((l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))) * 255);
+    }
+    return [f(0), f(8), f(4)];
+}
+
+function generateColorPair() {
+    const c1 = randomVividColor();
+    let c2, attempts = 0;
+    do {
+        c2 = randomVividColor();
+        const diff = Math.abs(c1[0]-c2[0]) + Math.abs(c1[1]-c2[1]) + Math.abs(c1[2]-c2[2]);
+        if (diff > 150 || attempts++ > 20) break;
+    } while (true);
+    return [c1, c2];
+}
+
+// 全局唯一颜色对，本次启动所有渐变共用
+const [GLOBAL_C1, GLOBAL_C2] = generateColorPair();
+
+function globalLerpColor(t) {
+    return [
+        Math.round(GLOBAL_C1[0] + (GLOBAL_C2[0] - GLOBAL_C1[0]) * t),
+        Math.round(GLOBAL_C1[1] + (GLOBAL_C2[1] - GLOBAL_C1[1]) * t),
+        Math.round(GLOBAL_C1[2] + (GLOBAL_C2[2] - GLOBAL_C1[2]) * t)
+    ];
+}
+// ─────────────────────────────────────────────────────────
 /**
  * YEssential - 模块初始化管理器
  * 自动加载并初始化 modules 文件夹中的所有模块
  */
-
-
 (function() {
-  
-  // 注意：require() 会自动添加 plugins/ 前缀，所以路径不需要 ./plugins/
+
   var BASE_PATH = "plugins/YEssential/modules/";
- 
-  // 从 JSON 文件读取模块列表
+
+  // ── 启动时随机生成两个颜色，全局复用 ─────────────────────
+  function randomVividColor() {
+      // 保证颜色饱和度高，不生成暗淡/接近灰色的颜色
+      const h = Math.random() * 360;
+      const s = 0.75 + Math.random() * 0.25;  // 75%~100%
+      const l = 0.45 + Math.random() * 0.15;  // 45%~60%
+
+      // HSL → RGB
+      const a = s * Math.min(l, 1 - l);
+      function f(n) {
+          const k = (n + h / 30) % 12;
+          return Math.round((l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))) * 255);
+      }
+      return [f(0), f(8), f(4)];
+  }
+
+  // 确保两个颜色色相差足够大，避免渐变不明显
+  function generateColorPair() {
+      const c1 = randomVividColor();
+      let c2;
+      let attempts = 0;
+      do {
+          c2 = randomVividColor();
+          const diff = Math.abs(c1[0]-c2[0]) + Math.abs(c1[1]-c2[1]) + Math.abs(c1[2]-c2[2]);
+          if (diff > 150 || attempts > 20) break;
+          attempts++;
+      } while (true);
+      return [c1, c2];
+  }
+
+  const [COLOR_START, COLOR_END] = generateColorPair();
+
+  // 渐变插值（两色）
+  function gradientColor(t) {
+      return [
+          Math.round(COLOR_START[0] + (COLOR_END[0] - COLOR_START[0]) * t),
+          Math.round(COLOR_START[1] + (COLOR_END[1] - COLOR_START[1]) * t),
+          Math.round(COLOR_START[2] + (COLOR_END[2] - COLOR_START[2]) * t)
+      ];
+  }
+
+  // ── 渐变日志工具 ──────────────────────────────────────────
+  function gradientLog(text, r1, g1, b1, r2, g2, b2) {
+      const len = text.length;
+      let out = '';
+      for (let i = 0; i < len; i++) {
+          const t = len <= 1 ? 0 : i / (len - 1);
+          const r = Math.round(r1 + (r2 - r1) * t);
+          const g = Math.round(g1 + (g2 - g1) * t);
+          const b = Math.round(b1 + (b2 - b1) * t);
+          out += `\x1b[38;2;${r};${g};${b}m` + text[i];
+      }
+      logger.log(out + '\x1b[0m');
+  }
+
+  function randomGradientLog(text) {
+      const len = text.length;
+      let out = '';
+      for (let i = 0; i < len; i++) {
+          const t = len <= 1 ? 0 : i / (len - 1);
+          const [r, g, b] = globalLerpColor(t);
+          out += `\x1b[38;2;${r};${g};${b}m` + text[i];
+      }
+      logger.log(out + '\x1b[0m');
+  }
+
+  const logInfo  = text => randomGradientLog(text);
+  const logError = text => gradientLog(text, 255,  80,   0, 200,   0,   0);
+  const logWarn  = text => gradientLog(text, 255, 240,   0, 255, 140,   0);
+  // ─────────────────────────────────────────────────────────
+
   var modules = [];
- try {
+  try {
     var fullPath = BASE_PATH + "modulelist.json";
-    
-    // 1. 打印试图读取的完整路径，检查拼写和层级
-    //logger.info("正在尝试读取路径: " + fullPath);
-    
     var moduleListData = file.readFrom(fullPath);
-    
-    // 2. 打印读取到的内容类型
-    //logger.info("读取到的数据类型: " + typeof moduleListData);
-    
-    // 3. 如果是 undefined，手动抛出更清晰的错误
+
     if (moduleListData == null || moduleListData == undefined) {
         throw new Error("文件存在但读取内容为空！请检查路径是否正确: " + fullPath);
     }
 
     var moduleList = JSON.parse(moduleListData);
-    
-    // ... 后续原有代码 ...
     modules = moduleList.modules.map(function(module) {
       return {
         path: BASE_PATH + module.path,
         name: module.name
       };
     });
-    
+
   } catch (err) {
-    // ...
-    logger.error("读取模块列表失败: " + err);
-    logger.error("请确保 " + BASE_PATH + "modulelist.json 文件存在且格式正确");
+    logError("读取模块列表失败: " + err);
+    logError("请确保 " + BASE_PATH + "modulelist.json 文件存在且格式正确");
   }
-  
+
   /**
    * 初始化所有模块
    */
   function initModules() {
 
-    var loadedCount = 0;
-    var failedCount = 0;
+    var loadedCount  = 0;
+    var failedCount  = 0;
     var currentIndex = 0;
-    
+
     function loadNextModule() {
       if (currentIndex >= modules.length) {
         initPvpModule();
         initFcamModule();
-        
-        // 检查维护模式状态，决定MOTD显示
+
         let whConfig = conf.get("wh") || { EnableModule: true, status: 0 };
         stats = whConfig.status === 1;
-        
+
         if (whConfig.EnableModule && whConfig.status === 1) {
-            // 如果维护模式已开启，设置维护MOTD
-            mc.setMotd("服务器维护中，请勿进入！");
+            mc.setMotd(conf.get("wh").motd || "服务器维护中，请勿进入！");
         } else {
-            // 否则启动正常的MOTD轮播
             Motd();
         }
-        
+
         try {
             initializePlugin();
-            
+
             if (failedCount > 0) {
-                logger.warn(lang.get("init.fail"));
+                logWarn(lang.get("init.fail"));
             } else {
-                colorLog("green",lang.get("init.success"));
+                logInfo(lang.get("init.success"));
             }
-        } catch (error) {   
-            logger.error("服务器启动初始化失败: " + error.message);
-            logger.error("错误堆栈: " + error.stack);
+        } catch (error) {
+            logError("服务器启动初始化失败: " + error.message);
+            logError("错误堆栈: " + error.stack);
         }
-        
+
         return;
       }
-      
+
       var moduleInfo = modules[currentIndex];
       currentIndex++;
-      
+
       try {
-        logger.info("正在加载模块: " + moduleInfo.name + " (" + moduleInfo.path + ")");
-        
+        logInfo("正在加载模块: " + moduleInfo.name + " (" + moduleInfo.path + ")");
+
         var module = require(moduleInfo.path);
-        
+
         if (!module) {
-          logger.warn("模块 " + moduleInfo.name + " 加载失败: 返回值为空");
+          logWarn("模块 " + moduleInfo.name + " 加载失败: 返回值为空");
           failedCount++;
           setTimeout(loadNextModule, 500);
           return;
         }
-        
+
         if (typeof module.init === "function") {
           module.init();
           loadedCount++;
-        } 
+        }
         else if (typeof module.initializeConfig === "function") {
           module.initializeConfig();
           loadedCount++;
         }
         else if (module.ConfigManager && typeof module.init === "function") {
-          logger.info("执行模块初始化: " + moduleInfo.name + ".init()");
+          logInfo("执行模块初始化: " + moduleInfo.name + ".init()");
           module.init();
           loadedCount++;
         }
         else {
           loadedCount++;
         }
-        
+
       } catch (err) {
-        logger.error("✗ 模块 " + moduleInfo.name + " 加载失败: " + err);
-        logger.error("错误堆栈: " + (err.stack || "无堆栈信息"));
+        logError("✗ 模块 " + moduleInfo.name + " 加载失败: " + err);
+        logError("错误堆栈: " + (err.stack || "无堆栈信息"));
         failedCount++;
       }
-      
+
       setTimeout(loadNextModule, 10);
     }
-    
-    // 在开始加载模块前先打印Logo和基本信息
+
     printGradientLogo();
     loadNextModule();
   }
-  
+
   setTimeout(function() {
     initModules();
   }, 10);
 })();
-
-// 渐变效果（逐字符渐变）
 function printGradientLogo() {
     const logo = [
-        " ██╗   ██╗███████╗███████╗███████╗███████╗███╗   ██╗████████╗██╗ █████╗ ██╗  ",
-        " ╚██╗ ██╔╝██╔════╝██╔════╝██╔════╝██╔════╝████╗  ██║╚══██╔══╝██║██╔══██╗██║  ",
-        "  ╚████╔╝ █████╗  ███████╗███████╗█████╗  ██╔██╗ ██║   ██║   ██║███████║██║     ",
-        "   ╚██╔╝  ██╔══╝  ╚════██║╚════██║██╔══╝  ██║╚██╗██║   ██║   ██║██╔══██║██║     ",
-        "    ██║   ███████╗███████║███████║███████╗██║ ╚████║   ██║   ██║██║  ██║███████╗",
-        "    ╚═╝   ╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚═╝  ╚═╝╚══════╝"
+        "    __   __ ______   _____   _____  ______  _   _  _______  _____          _      ",
+        "    \\ \\ / /|  ____| / ____| / ____||  ____|| \\ | ||__   __||_   _|   /\\   | |     ",
+        "     \\ V / | |__   | (___  | (___  | |__   |  \\| |   | |     | |    /  \\  | |     ",
+        "      | |  |  __|   \\___ \\  \\___ \\ |  __|  | . ` |   | |     | |   / /\\ \\ | |     ",
+        "      | |  | |____  ____) | ____) || |____ | |\\  |   | |    _| |_ / ____ \\| |____ ",
+        "      |_|  |______||_____/ |_____/ |______||_| \\_|   |_|   |_____|/_/  \\_\\|______|",
+        " "
     ];
-    
-    // RGB颜色渐变（需要终端支持真彩色）
-    function getRGBColor(r, g, b) {
-        return `\x1b[38;2;${r};${g};${b}m`;
-    }
-    
+
     const reset = '\x1b[0m';
-    
-    logger.info(PluginInfo + lang.get("Version.Chinese") + version + ", 作者：Nico6719");
-    logger.info("=".repeat(80));
-    
+
+    // 单行渐变（版本信息 / Tip）—— 与 Logo 共用同一颜色对
+    function gradientLine(text) {
+        const len = text.length;
+        let out = '';
+        for (let i = 0; i < len; i++) {
+            const t = len <= 1 ? 0 : i / (len - 1);
+            const [r, g, b] = globalLerpColor(t);
+            out += `\x1b[38;2;${r};${g};${b}m` + text[i];
+        }
+        return out + reset;
+    }
+
+    logger.log('');
+
+    // Logo 主体：逐字符跨行整体渐变
+    const totalChars = logo.length * logo[0].length;
     logo.forEach((line, lineIndex) => {
         let coloredLine = '';
         for (let i = 0; i < line.length; i++) {
-            // 计算渐变颜色（从青色到紫色）
-            const progress = (lineIndex * line.length + i) / (logo.length * line.length);
-            const r = Math.floor(0 + progress * 138);      // 0 -> 138
-            const g = Math.floor(255 - progress * 112);    // 255 -> 143
-            const b = Math.floor(255);                      // 保持255
-            
-            coloredLine += getRGBColor(r, g, b) + line[i];
+            const t = (lineIndex * line.length + i) / totalChars;
+            const [r, g, b] = globalLerpColor(t);
+            coloredLine += `\x1b[38;2;${r};${g};${b}m` + line[i];
         }
         logger.log(coloredLine + reset);
     });
-    
-    logger.info("=".repeat(80));
-    colorLog("blue",lang.get("Tip1"));
-    colorLog("blue",lang.get("Tip2"));
-    colorLog("blue",lang.get("Tip3"));
+
+    logger.log('');
+    logger.log(gradientLine(PluginInfo + lang.get("Version.Chinese") + version + ", 作者：Nico6719"));
+    logger.log(gradientLine(lang.get("Tip1")));
+    logger.log(gradientLine(lang.get("Tip2")));
+    logger.log(gradientLine(lang.get("Tip3")));
 }
 function initializePlugin() {
     // 第一步：获取并创建计分板
@@ -673,7 +889,7 @@ function initializePlugin() {
                 logger.error(`更新检查失败: ${error.message}`);
             }
         })();
-    }, 1000);
+    }, 3000);
 }
 // 异步语言文件管理器
 class AsyncLanguageManager {
@@ -872,14 +1088,14 @@ Sercmd.setCallback((cmd, ori, out, res) => {
         return;
     }
     if (!pl || typeof pl.sendText !== "function") {
-        logger.error("玩家对象无效或已离线！");
+        logger.error(info+lang.get("player.isnull"));
         return;
     }
     let serverList = [];
     try {
         serverList = config.servers || [];
     } catch (e) {
-        logger.error("读取 CrossServerTransfer 配置失败:", e);
+        logger.error(lang.get("server.config.loaderror"), e);
         pl.tell(info + lang.get("server.load.error"));
         return;
     }
@@ -908,9 +1124,9 @@ Sercmd.setCallback((cmd, ori, out, res) => {
 
         try {
             pl.transServer(targetServer.server_ip, targetServer.server_port);
-            mc.broadcast(`§a[提示] ${pl.realName} 前往了 ${targetServer.server_name}`);
+            mc.broadcast(info+`§a${pl.realName} 前往了 ${targetServer.server_name}`);
         } catch (e) {
-            logger.error("传送失败:", e);
+            logger.error(lang.get("tpa.fail"), e);
             pl.tell(info + lang.get("server.tp.fail"));
         }
     });
@@ -984,7 +1200,7 @@ noticeSetCmd.setCallback((_cmd, ori, output) => {
                                 file.delete(backupPath);
                             }
                             file.rename(noticePath, backupPath);
-                            plr.tell(info + "§a原公告已备份为 notice.txt.bak");
+                            plr.tell(info +lang.get("notice.backupto"));
                         }
                     } catch (e) {
                         plr.tell(info + "§c备份失败: " + e);
@@ -993,7 +1209,7 @@ noticeSetCmd.setCallback((_cmd, ori, output) => {
                     // 保存新公告
                     file.writeTo(noticePath, newContent);
                     noticeconf.set("lastNoticeUpdate", Date.now());
-                    plr.tell(info + lang.get("save.notice.ok"));
+                    plr.tell(info + lang.get("notice.save.ok"));
                     break;
                     
                 case 1: // 添加新行
@@ -1006,7 +1222,7 @@ noticeSetCmd.setCallback((_cmd, ori, output) => {
                         contentLines.pop();
                         sendNoticeForm(plr, contentLines);
                     } else {
-                        plr.tell(info + "§c不能删除所有行，至少保留一行！");
+                        plr.tell(info + lang.get("notice.cannot.del"));
                         sendNoticeForm(plr, contentLines); // 保持表单打开
                     }
                     break;
@@ -1233,7 +1449,8 @@ function initPvpModule() {
     if (!conf.get("PVP").EnabledModule) {
         return;
     }
-
+    setTimeout(() => {
+    
     // 2. 注册 PVP 命令
     const pvp = mc.newCommand("pvp", "设置是否 PVP。", PermType.Any);
     pvp.optional("bool", ParamType.Bool);
@@ -1263,7 +1480,7 @@ function initPvpModule() {
         out.success(info + (newState ? lang.get("pvp.is.on") : lang.get("pvp.is.off")));
     });
     pvp.setup();
-
+    }, 2000);
     // 3. 监听玩家加入 (初始化状态)
     mc.listen("onJoin", function (player) {
         const xuid = player.realName;
@@ -1344,13 +1561,13 @@ function initPvpModule() {
 
             // 攻击者未开启 PVP
             if (!attackerPVP) {
-                attacker.tell(lang.get("your.pvp.isoff"), 4);
+                attacker.tell(info+lang.get("your.pvp.isoff"), 6);
                 return false;
             }
             
             // 受害者未开启 PVP
             if (!victimPVP) {
-                attacker.tell(lang.get("then.pvp.isoff"), 4);
+                attacker.tell(info+lang.get("then.pvp.isoff"), 6);
                 return false;
             }
         }
@@ -1435,7 +1652,7 @@ function Motd(){
     
     let motds = conf.get("Motd");
     if (!motds || motds.length === 0) {
-        logger.warn("MOTD配置为空，跳过轮播");
+        logger.warn(lang.get("Motd.config.isemp"));
         return;
     }
     
@@ -1449,9 +1666,11 @@ function Motd(){
 // 灵魂出窍（FCAM）
 function initFcamModule() {
     // 注册命令
+    setTimeout(() => {
+    
     let cmd = mc.newCommand("fcam", "灵魂出窍", PermType.Any);
     cmd.overload([]);
-
+    }, 2000);
     // 存储玩家的 BossBar 数据
     const fcamBossBars = new Map();
 
@@ -1479,17 +1698,17 @@ function initFcamModule() {
             cleanupFcamBossBar(plname);
 
             try { pl.setGameMode(0); } catch (e) {
-                logger.error("FCAM: setGameMode 恢复失败: " + e);
+                logger.error(lang.get("fc.error.log1") + e);
             }
 
             try { mc.runcmdEx(`tp "${plname}" "${plname}_sp"`); } catch (e) {
-                logger.error("FCAM: TP 回原位失败: " + e);
+                logger.error(lang.get("fc.error.log2") + e);
             }
 
             let spl = mc.getPlayer(plname + "_sp");
             if (spl && spl.isSimulatedPlayer && spl.isSimulatedPlayer()) {
                 try { spl.simulateDisconnect(); } catch (e) {
-                    logger.error("FCAM: simulateDisconnect 失败: " + e);
+                    logger.error(lang.get("fc.error.log3")+ e);
                 }
             } else {
                 logger.warn(`FCAM: 未找到模拟玩家 ${plname}_sp，跳过断开`);
@@ -1580,9 +1799,9 @@ function initFcamModule() {
                         spl.simulateDisconnect();
                     }
                     
-                    currentPlayer.tell(info + "§c灵魂出窍时间已到，已自动退出！");
+                    currentPlayer.tell(info + lang.get("fc.timeout"));
                 } catch (e) {
-                    logger.error("FCAM: 自动退出失败: " + e);
+                    logger.error(lang.get("fc.error.log4") + e);
                 }
                 return;
             }
@@ -1629,7 +1848,7 @@ function initFcamModule() {
                 try {
                     player.removeBossBar(data.bossId);
                 } catch (e) {
-                    logger.error("FCAM: 移除 BossBar 失败: " + e);
+                    logger.error(lang.get("fc.error.log5")+ e);
                 }
             }
             
@@ -1682,7 +1901,7 @@ let whcmd = mc.newCommand("wh", "维护模式", PermType.GameMasters)
 whcmd.overload([])
 
 whcmd.setCallback((cmd, ori, out, res) => {
-    if (!Maintenance.config.EnableModule) return out.error("维护模式模块未启用");
+    if (!Maintenance.config.EnableModule) return out.error(lang.get("module.no.Enabled"));
     const newState = Maintenance.setStatus(!Maintenance.isActive);
     out.success(info+`维护模式已${newState ? "开启" : "关闭"}`);
     if (newState) {
@@ -1691,10 +1910,11 @@ whcmd.setCallback((cmd, ori, out, res) => {
             clearInterval(motdTimerId);
             motdTimerId = null;
         }
-        mc.setMotd("服务器维护中，请勿进入！");
+        const whConfig = conf.get("wh");
+        mc.setMotd(whConfig.whmotdmsg);
         mc.getOnlinePlayers().forEach((player) => {
             if (!player.isSimulatedPlayer() && !player.isOP()) {
-                player.kick(lang.get("weihu.msg"));
+                player.kick(whConfig.whmotdmsg);
             }
         });
     } else {
@@ -1732,15 +1952,17 @@ moneycmd.mandatory("option", ParamType.String);
 moneycmd.optional("player", ParamType.String);
 moneycmd.optional("amount", ParamType.Int);
 moneycmd.overload(["option", "player", "amount"]);
-
-
 moneycmd.setCallback((cmd, ori, out, res) => {
+    if (typeof res.player !== "string" || res.player.trim() === "") {
+        return out.error(info + lang.get("moneys.command.error"));
+    }
+
     const targetPl = mc.getPlayer(res.player);
     if (!targetPl) return out.error(info + lang.get("money.tr.noonline"));
 
     const coinName = lang.get("CoinName");
     const history = MoneyHistory.get(targetPl.realName);
-    const timestamp = getUniqueTimestamp(); // 使用优化后的时间戳
+    const timestamp = getUniqueTimestamp();
 
     const logAndNotify = (actionKey, successKey, economyMethod, amount) => {
         if (amount === undefined || amount === null) {
@@ -1756,32 +1978,33 @@ moneycmd.setCallback((cmd, ori, out, res) => {
     };
 
     const handlers = {
-        set: () => logAndNotify("money.op.set", "moneys.set.success", "set", res.amount),
-        add: () => logAndNotify("money.op.add", "moneys.add.success", "add", res.amount),
-        del: () => logAndNotify("money.op.remove", "moneys.del.success", "reduce", res.amount),
-        get: () => {
+        set:     () => logAndNotify("money.op.set",    "moneys.set.success", "set",    res.amount),
+        add:     () => logAndNotify("money.op.add",    "moneys.add.success", "add",    res.amount),
+        del:     () => logAndNotify("money.op.remove", "moneys.del.success", "reduce", res.amount),
+        get:     () => {
             out.success(info + lang.get("moneys.get.result")
                 .replace("${player}", res.player)
                 .replace("${coin}", coinName)
                 .replace("${amount}", Economy.get(targetPl)));
         },
         history: () => {
-            out.success(info + lang.get("moneys.history.title").replace("${player}", res.player).replace("${coin}", coinName));
+            out.success(info + lang.get("moneys.history.title")
+                .replace("${player}", res.player)
+                .replace("${coin}", coinName));
             Object.entries(history).slice(-50).forEach(([time, val]) => out.success(`${time}: ${val}`));
         }
     };
 
     const handler = handlers[res.option];
     if (handler) handler();
-    else out.error("§c无效的操作！可用: set, add, del, get, history");
+    else out.error(info + lang.get("moneys.command.error"));
 });
-
 moneycmd.setup();
 let moneygui = mc.newCommand("moneygui",lang.get("CoinName"),PermType.Any)
 moneygui.overload([])
 moneygui.setCallback((cmd,ori,out,res)=>{
     let pl = ori.player
-    if(!pl) return out.error("仅限玩家执行")
+    if(!pl) return out.error(lang.get("warp.only.player"))
     if(pl.isOP()){
         OPMoneyGui(pl.realName)
     }else{
@@ -1940,7 +2163,7 @@ function OPMoneyGui(plname){
     fm.addButton(lang.get("money.op.look")+lang.get("CoinName"), "textures/ui/MCoin")
     fm.addButton("查看玩家的"+lang.get("CoinName")+"历史记录", "textures/ui/book_addtextpage_default")
     fm.addButton("全服"+lang.get("CoinName")+"排行榜", "textures/ui/icon_book_writable")
-    fm.addButton("使用玩家的金钱菜单", "textures/ui/icon_multiplayer")
+    fm.addButton(lang.get("money.gui.useplayer"), "textures/ui/icon_multiplayer")
     if (conf.get("RedPacket").EnabledModule== 1){
     fm.addButton(lang.get("rp.menu.1"),"textures/ui/gift_square")
     } else {}
@@ -2174,7 +2397,7 @@ function openPlayerSelectionGui(pl, title, callback) {
 function handleAdminOp(pl, target, opType, actionText, inputLabel) {
     const fm = mc.newCustomForm();
     fm.setTitle(`${actionText} ${target.realName} 的 ${lang.get("CoinName")}`);
-    fm.addInput(inputLabel, "请输入数字");
+    fm.addInput(inputLabel, lang.get("key.not.number"));
     
     pl.sendForm(fm, (admin, data) => {
         if (data == null) return;
@@ -2210,10 +2433,10 @@ function MoneyHistoryGui(plname) {
     openPlayerSelectionGui(pl, `查看玩家${lang.get("CoinName")}历史`, (target) => {
         const historyData = MoneyHistory.get(target.realName);
         
-        pl.sendText(`玩家 ${target.realName} 的 ${lang.get("CoinName")} ${lang.get("money.history")}`);
+        pl.sendText(info+`玩家 ${target.realName} 的 ${lang.get("CoinName")} ${lang.get("money.history")}`);
         
         if (!historyData || Object.keys(historyData).length === 0) {
-            return pl.sendText("暂无记录");
+            return pl.sendText(info+lang.get("money.history.empty"));
         }
         const logs = Object.values(historyData).reverse();
         
@@ -2367,7 +2590,7 @@ const warpgui = mc.newCommand("warp", "公共传送点", PermType.Any);
 warpgui.overload([]);
 warpgui.setCallback((cmd, ori, out, res) => {
     const pl = ori.player;
-    if (!pl) return out.error("仅限玩家执行");
+    if (!pl) return out.error(lang.get("warp.only.player"));
     
     pl.isOP() ? OPWarpGui(pl.realName) : WarpGui(pl.realName);
 });
@@ -2532,7 +2755,7 @@ let backcmd = mc.newCommand("back", "返回死亡点", PermType.Any)
 backcmd.overload([])
 backcmd.setCallback((cmd, ori, out, res) => {
     let pl = ori.player
-    if (!pl) return out.error("仅限玩家执行")
+    if (!pl) return out.error(lang.get("warp.only.player"))
     BackGUI(pl.realName)
 })
 backcmd.setup()
@@ -2637,7 +2860,7 @@ let deathlistcmd = mc.newCommand("deathlog", "查看死亡历史记录", PermTyp
 deathlistcmd.overload([])
 deathlistcmd.setCallback((cmd, ori, out, res) => {
     let pl = ori.player
-    if (!pl) return out.error("仅限玩家执行")
+    if (!pl) return out.error(lang.get("warp.only.player"))
     
     let playerDeathPoints = deathPoints[pl.realName];
     if (!playerDeathPoints || playerDeathPoints.length === 0) {
@@ -2671,7 +2894,7 @@ homegui.overload([])
 homegui.setCallback((cmd,ori,out,res)=>{
     let pl = ori.player
 
-    if(!pl) return out.error("仅限玩家执行")        
+    if(!pl) return out.error(lang.get("warp.only.player"))        
     
     let fm = mc.newSimpleForm()
     fm.setTitle(lang.get("home.tp.system"))
@@ -3305,7 +3528,7 @@ const asyncRtpCmd = mc.newCommand("rtp", "异步随机传送", PermType.Any);
 asyncRtpCmd.overload([]);
 asyncRtpCmd.setCallback(async (cmd, ori, out, res) => {
     const pl = ori.player;
-    if (!pl) return out.error("仅限玩家执行");
+    if (!pl) return out.error(lang.get("warp.only.player"));
     
     if (!conf.get("RTP").EnabledModule) {
         pl.tell(info + lang.get("module.no.Enabled"));
@@ -3352,28 +3575,21 @@ function LLValueCheck(plname, value) {
 // ======================
 // Rp 红包系统优化
 // ======================
-// 红包过期队列，按过期时间排序
 const redpacketExpiryQueue = [];
 
 const redpacketCmd = mc.newCommand("redpacket", "红包功能", PermType.Any);
-
 redpacketCmd.setAlias("rp");
 
-// 添加子命令枚举
 redpacketCmd.setEnum("subcommand", ["send", "open", "list", "history"]);
-// 添加红包类型枚举
 redpacketCmd.setEnum("packetType", ["random", "average"]);
 
-// 添加命令重载
 redpacketCmd.mandatory("subcommand", ParamType.Enum, "subcommand");
 redpacketCmd.optional("amount", ParamType.Int);
 redpacketCmd.optional("count", ParamType.Int);
 redpacketCmd.optional("player", ParamType.String);
 redpacketCmd.optional("message", ParamType.String);
-// 新增红包类型参数
 redpacketCmd.optional("packetType", ParamType.Enum, "packetType");
 
-// 更新重载，包含红包类型参数
 redpacketCmd.overload(["subcommand", "amount", "count", "player", "message", "packetType"]);
 redpacketCmd.overload(["subcommand", "amount", "count", "player", "message"]);
 redpacketCmd.overload(["subcommand"]);
@@ -3403,12 +3619,12 @@ redpacketCmd.setCallback((cmd, ori, out, res) => {
 });
 redpacketCmd.setup();
 
-// 修复：添加 handleExpiredPacket 函数定义
+// ── 过期处理 ──────────────────────────────────────────────
 function handleExpiredPacket(packet) {
     if (packet.remaining <= 0) return;
-    
+
     logger.info(`[红包] 处理过期红包 #${packet.id}, 剩余金额: ${packet.remainingAmount}`);
-    
+
     if (packet.remainingAmount > 0) {
         const sender = mc.getPlayer(packet.sender);
         if (sender) {
@@ -3417,258 +3633,254 @@ function handleExpiredPacket(packet) {
             } else {
                 sender.addMoney(packet.remainingAmount);
             }
-            sender.tell(info + `§a你的红包#${packet.id}已过期，退还§e${packet.remainingAmount}§a${lang.get("CoinName")}`);
+            sender.tell(info + lang.get("rp.expired.refund")
+                .replace("${id}",     packet.id)
+                .replace("${amount}", packet.remainingAmount)
+                .replace("${coin}",   lang.get("CoinName")));
         }
     }
-    
-    // 从数据中移除过期红包
+
     redpacketData.delete(`packets.${packet.id}`);
 }
 
-// 处理红包发送 - 添加红包类型支持
+// ── 发送红包 ──────────────────────────────────────────────
 function handleSendRedPacket(pl, amount, count, targetPlayer, message, packetType = "random") {
     // 智能参数类型识别
     if (typeof targetPlayer === "string") {
-        // 如果第五个参数是红包类型
         if (targetPlayer === "random" || targetPlayer === "average") {
             packetType = targetPlayer;
             targetPlayer = "";
             message = "";
         }
-        // 如果第六个参数是红包类型
         if (typeof message === "string" && (message === "random" || message === "average")) {
             packetType = message;
             message = "";
         }
     }
-    
-    // 设置默认值
-    if (!packetType) packetType = "random"; // 默认拼手气红包
-    
+    if (!packetType) packetType = "random";
+
     if (!conf.get("RedPacket").EnabledModule) {
-        pl.tell(info + lang.get("module.no.Enabled")); 
-        return;    
+        pl.tell(info + lang.get("module.no.Enabled"));
+        return;
     }
-    // 参数验证
+
     if (isSending) {
-        pl.tell("§c请勿重复发送红包！");
+        pl.tell(info + lang.get("rp.send.duplicate"));
         return;
     }
+
     if (typeof amount !== "number" || typeof count !== "number") {
-        pl.tell(info + "§c参数错误: 金额和数量必须是数字");
+        pl.tell(info + lang.get("rp.send.param.error"));
         return;
     }
-    
+
     if (!amount || !count || count < 1) {
-        pl.tell(info + "§c用法: /redpacket send <总金额> <红包个数> [玩家名] [祝福语] [类型]");
-        pl.tell(info + "§7类型: random(拼手气) 或 average(普通)");
+        pl.tell(info + lang.get("rp.send.usage"));
+        pl.tell(info + lang.get("rp.send.usage.type"));
         return;
     }
-    
-    const config = conf.get("RedPacket");
-    const maxAmount = config.maxAmount;
-    const maxCount = config.maxCount;
-    const minAmount = config.minAmount;
-    
-    // 验证金额和数量
+
+    const config     = conf.get("RedPacket");
+    const maxAmount  = config.maxAmount;
+    const maxCount   = config.maxCount;
+    const minAmount  = config.minAmount;
+
     if (amount < minAmount || amount > maxAmount) {
-        pl.tell(info + `§c红包金额必须在${minAmount}-${maxAmount}之间`);
+        pl.tell(info + lang.get("rp.send.amount.range")
+            .replace("${min}", minAmount)
+            .replace("${max}", maxAmount));
         return;
     }
-    
+
     if (count < 1 || count > maxCount) {
-        pl.tell(info + `§c红包个数必须在1-${maxCount}之间`);
+        pl.tell(info + lang.get("rp.send.count.range")
+            .replace("${max}", maxCount));
         return;
     }
-    
-    // 检查玩家是否有足够资金
-    let balance;
-    if (conf.get("LLMoney") == 0) {
-        balance = pl.getScore(conf.get("Scoreboard"));
-    } else {
-        balance = pl.getMoney();
-    }
-    
+
+    let balance = conf.get("LLMoney") == 0
+        ? pl.getScore(conf.get("Scoreboard"))
+        : pl.getMoney();
+
     if (balance < amount) {
-        pl.tell(info + "§c余额不足，无法发送红包");
+        pl.tell(info + lang.get("rp.send.no.balance"));
         return;
     }
-    
-    // 扣除资金
+
+    // 扣费
     if (conf.get("LLMoney") == 0) {
         pl.reduceScore(conf.get("Scoreboard"), amount);
     } else {
         pl.reduceMoney(amount);
     }
-    
-    // 创建红包 - 添加红包类型
+
+    // 创建红包
     const packetId = redpacketData.get("nextId");
     const packet = {
-        id: packetId,
-        sender: pl.realName,
-        amount: amount,
-        count: count,
-        remaining: count,
+        id:              packetId,
+        sender:          pl.realName,
+        amount:          amount,
+        count:           count,
+        remaining:       count,
         remainingAmount: amount,
-        recipients: [],
-        targetType: targetPlayer ? "specific" : "all", // 重命名为targetType避免混淆
-        targetPlayer: targetPlayer || "",
-        message: message || `${pl.realName}的红包`,
-        packetType: packetType, // 新增红包类型字段
-        createdAt: Date.now(),
-        expireAt: Date.now() + (config.expireTime * 1000)
+        recipients:      [],
+        targetType:      targetPlayer ? "specific" : "all",
+        targetPlayer:    targetPlayer || "",
+        message:         message || lang.get("rp.default.message").replace("${sender}", pl.realName),
+        packetType:      packetType,
+        createdAt:       Date.now(),
+        expireAt:        Date.now() + (config.expireTime * 1000)
     };
+
     isSending = true;
-    // 保存红包数据
     redpacketData.set(`packets.${packetId}`, packet);
     redpacketData.set("nextId", packetId + 1);
-    
-    // 优化：添加到过期队列
-    redpacketExpiryQueue.push({
-        id: packetId,
-        expireAt: packet.expireAt
-    });
-    // 保持队列按过期时间排序
+
+    redpacketExpiryQueue.push({ id: packetId, expireAt: packet.expireAt });
     redpacketExpiryQueue.sort((a, b) => a.expireAt - b.expireAt);
-    
-    // 广播红包消息
-    const typeName = packetType === "random" ? "拼手气" : "普通";
+
+    // 广播 / 通知
+    const typeName = lang.get(packetType === "random" ? "rp.type.random.short" : "rp.type.average.short");
+
     if (targetPlayer) {
         const target = mc.getPlayer(targetPlayer);
         if (target) {
-            target.tell(info + `§a你收到来自${pl.realName}的${typeName}红包，输入§e/rp open§a领取`);
+            target.tell(info + lang.get("rp.send.notify.target")
+                .replace("${sender}", pl.realName)
+                .replace("${type}",   typeName));
         }
-        pl.tell(info + `§a成功向${targetPlayer}发送${typeName}红包，金额:§e${amount}§a，数量:§e${count}`);
+        pl.tell(info + lang.get("rp.send.success.specific")
+            .replace("${player}", targetPlayer)
+            .replace("${type}",   typeName)
+            .replace("${amount}", amount)
+            .replace("${count}",  count));
     } else {
-        mc.broadcast(info + `§a玩家§e${pl.realName}§a发送了${typeName}全服红包，输入§e/rp open§a领取`);
-        pl.tell(info + `§a成功发送${typeName}全服红包，金额:§e${amount}§a，数量:§e${count}`);
+        mc.broadcast(info + lang.get("rp.send.broadcast")
+            .replace("${sender}", pl.realName)
+            .replace("${type}",   typeName));
+        pl.tell(info + lang.get("rp.send.success.all")
+            .replace("${type}",   typeName)
+            .replace("${amount}", amount)
+            .replace("${count}",  count));
     }
-     logger.info(`[红包] 玩家 ${pl.realName} 发送${typeName}红包 #${packetId}, 类型: ${packet.targetType}, 金额: ${amount}, 数量: ${count}`);
-     isSending = false;
+
+    logger.info(`[红包] 玩家 ${pl.realName} 发送${typeName}红包 #${packetId}, 类型: ${packet.targetType}, 金额: ${amount}, 数量: ${count}`);
+    isSending = false;
 }
 
-// 处理红包领取 - 添加红包类型支持
+// ── 领取红包 ──────────────────────────────────────────────
 function handleOpenRedPacket(pl) {
-    //logger.info(`[红包] 玩家 ${pl.realName} 尝试领取红包...`);
-    
     const packets = redpacketData.get("packets") || {};
-    const now = Date.now();
+    const now     = Date.now();
     let availablePackets = [];
-    
+
     for (const id in packets) {
         const packet = packets[id];
-        
-        // 检查过期
+
         if (packet.expireAt < now) {
-            handleExpiredPacket(packet); // 现在这个函数已经定义
+            handleExpiredPacket(packet);
             continue;
         }
-        
-        // 检查可领取条件
-        const canClaim = 
+
+        const canClaim =
             packet.remaining > 0 &&
             !packet.recipients.includes(pl.realName) &&
-            (packet.targetType === "all" || 
-             (packet.targetType === "specific" && 
+            (packet.targetType === "all" ||
+             (packet.targetType === "specific" &&
               packet.targetPlayer.toLowerCase() === pl.realName.toLowerCase()));
-        
-        if (canClaim) {
-            availablePackets.push(packet);
-        }
+
+        if (canClaim) availablePackets.push(packet);
     }
-    
+
     if (availablePackets.length === 0) {
-        pl.tell(info + "§c当前没有可领取的红包");
-        //logger.info(`[红包] 玩家 ${pl.realName} 没有可领取的红包`);
+        pl.tell(info + lang.get("rp.open.none"));
         return;
     }
-    
-    // 按时间排序，领取最早的红包
+
     availablePackets.sort((a, b) => a.createdAt - b.createdAt);
     const packet = availablePackets[0];
-    
-    //logger.info(`[红包] 玩家 ${pl.realName} 将领取红包 #${packet.id}`);
-    
-    // 计算红包金额 - 根据红包类型使用不同算法
+
+    // 计算金额
     let amount;
     if (packet.remaining === 1) {
-        // 最后一个红包，领取剩余全部金额
         amount = packet.remainingAmount;
+    } else if (packet.packetType === "random") {
+        const maxAmt = Math.min(
+            packet.remainingAmount - packet.remaining + 1,
+            Math.floor(packet.remainingAmount / packet.remaining * 2)
+        );
+        amount = Math.max(Math.floor(Math.random() * maxAmt) + 1, 1);
     } else {
-        if (packet.packetType === "random") {
-            // 拼手气红包算法
-            const maxAmount = Math.min(
-                packet.remainingAmount - packet.remaining + 1, 
-                Math.floor(packet.remainingAmount / packet.remaining * 2)
-            );
-            amount = Math.floor(Math.random() * maxAmount) + 1;
-            amount = Math.max(amount, 1);
-        } else {
-            // 普通红包算法（平均分配）
-            amount = Math.floor(packet.remainingAmount / packet.remaining);
-            amount = Math.max(amount, 1); // 确保至少1单位
-        }
+        amount = Math.max(Math.floor(packet.remainingAmount / packet.remaining), 1);
     }
-    
-    // 更新红包数据
+
     packet.remaining--;
     packet.remainingAmount -= amount;
     packet.recipients.push(pl.realName);
-    
-    // 保存红包数据
     redpacketData.set(`packets.${packet.id}`, packet);
-    
-    // 给玩家发放资金
+
     if (conf.get("LLMoney") == 0) {
         pl.addScore(conf.get("Scoreboard"), amount);
     } else {
         pl.addMoney(amount);
     }
-    
-    // 通知玩家
-    const typeName = packet.packetType === "random" ? "拼手气" : "普通";
-    pl.tell(info + `§a恭喜你领取到§e${packet.sender}§a的${typeName}红包，获得§e${amount}§a${lang.get("CoinName")}!`);
+
+    const typeName = lang.get(packet.packetType === "random" ? "rp.type.random.short" : "rp.type.average.short");
+    const coinName = lang.get("CoinName");
+
+    pl.tell(info + lang.get("rp.open.success")
+        .replace("${sender}", packet.sender)
+        .replace("${type}",   typeName)
+        .replace("${amount}", amount)
+        .replace("${coin}",   coinName));
+
     logger.info(`[红包] 玩家 ${pl.realName} 领取红包 #${packet.id}, 获得 ${amount} 金币`);
-    
-    // 通知发送者
+
     const sender = mc.getPlayer(packet.sender);
     if (sender) {
-        sender.tell(info + `§a玩家§e${pl.realName}§a领取了你的红包，获得§e${amount}§a${lang.get("CoinName")}`);
+        sender.tell(info + lang.get("rp.open.notify.sender")
+            .replace("${player}", pl.realName)
+            .replace("${amount}", amount)
+            .replace("${coin}",   coinName));
     }
 }
 
-// 在红包列表和详情中显示红包类型
+// ── 红包列表 ──────────────────────────────────────────────
 function handleListRedPacket(pl) {
     const packets = redpacketData.get("packets") || {};
-    const now = Date.now();
+    const now     = Date.now();
     let form = mc.newSimpleForm()
-        .setTitle("§l§6可领取红包")
-        .setContent("§7点击查看详情并领取");
-    
+        .setTitle(lang.get("rp.list.title"))
+        .setContent(lang.get("rp.list.content"));
+
     let hasPackets = false;
-    
+
     for (const id in packets) {
         const packet = packets[id];
-        if (packet.expireAt < now) continue;
-        if (packet.remaining <= 0) continue;
+        if (packet.expireAt < now)    continue;
+        if (packet.remaining <= 0)    continue;
         if (packet.recipients.includes(pl.realName)) continue;
-        
-        if (packet.targetType === "specific" && 
-            packet.targetPlayer.toLowerCase() !== pl.realName.toLowerCase()) {
-            continue;
-        }
-        
+        if (packet.targetType === "specific" &&
+            packet.targetPlayer.toLowerCase() !== pl.realName.toLowerCase()) continue;
+
         const expireIn = Math.ceil((packet.expireAt - now) / 1000);
-        const typeName = packet.packetType === "random" ? "§6拼手气" : "§b普通";
-        form.addButton(`§l${typeName} §e${packet.sender}的红包\n§7金额: §f${packet.amount} §7剩余: §a${packet.remaining}/${packet.count}\n§7过期: §f${expireIn}秒`);
+        const typeName = lang.get(packet.packetType === "random" ? "rp.type.random.colored" : "rp.type.average.colored");
+
+        form.addButton(lang.get("rp.list.button")
+            .replace("${type}",      typeName)
+            .replace("${sender}",    packet.sender)
+            .replace("${amount}",    packet.amount)
+            .replace("${remaining}", packet.remaining)
+            .replace("${count}",     packet.count)
+            .replace("${expire}",    expireIn));
         hasPackets = true;
     }
-    
+
     if (!hasPackets) {
-        form.setContent("§c当前没有可领取的红包");
-        form.addButton("§c关闭");
+        form.setContent(lang.get("rp.open.none"));
+        form.addButton(lang.get("rp.list.close"));
     }
-    
+
     if (form && pl) {
         pl.sendForm(form, (player, id) => {
             if (id !== null && hasPackets) {
@@ -3678,189 +3890,146 @@ function handleListRedPacket(pl) {
     }
 }
 
-// 在红包历史中显示红包类型
+// ── 红包历史 ──────────────────────────────────────────────
 function handleRedPacketHistory(pl) {
     const packets = redpacketData.get("packets") || {};
-    let history = [];
-    
+    let history   = [];
+
     for (const id in packets) {
         const packet = packets[id];
         if (packet.sender === pl.realName || packet.recipients.includes(pl.realName)) {
             history.push(packet);
         }
     }
-    
+
     if (history.length === 0) {
-        pl.tell(info + "§c你还没有红包记录");
+        pl.tell(info + lang.get("rp.history.empty"));
         return;
     }
-    
+
     history.sort((a, b) => b.createdAt - a.createdAt);
-    
+
     let form = mc.newSimpleForm()
-        .setTitle("§l§6红包历史记录")
-        .setContent("§7点击查看红包详情");
-    
+        .setTitle(lang.get("rp.history.title"))
+        .setContent(lang.get("rp.history.content"));
+
     history.slice(0, 10).forEach(packet => {
         const isSender = packet.sender === pl.realName;
-        const status = packet.remaining > 0 ? "§a进行中" : "§c已结束";
-        const amountReceived = isSender ? 
-            `§7已领取: §f${packet.amount - packet.remainingAmount}` :
-            `§7获得: §f${packet.recipients.includes(pl.realName) ? 
-                packet.amount - packet.remainingAmount : 0}`;
-        const typeName = packet.packetType === "random" ? "§6[拼]" : "§b[普]";
-        
+        const role     = lang.get(isSender ? "rp.role.sender" : "rp.role.receiver");
+        const typeTag  = lang.get(packet.packetType === "random" ? "rp.type.random.tag" : "rp.type.average.tag");
+        const status   = lang.get(packet.remaining > 0 ? "rp.history.status.active" : "rp.history.status.ended");
+        const received = isSender
+            ? lang.get("rp.history.sent.amount").replace("${amount}", packet.amount - packet.remainingAmount)
+            : lang.get("rp.history.recv.amount").replace("${amount}", packet.recipients.includes(pl.realName)
+                ? packet.amount - packet.remainingAmount : 0);
+
         form.addButton(
-            `§l${isSender ? "§b[发]" : "§a[收]"} ${typeName} §e${packet.sender}的红包\n` +
+            `§l${role} ${typeTag} §e${packet.sender}的红包\n` +
             `§7金额: §f${packet.amount} §7状态: ${status}\n` +
-            amountReceived
+            received
         );
     });
-    
+
     pl.sendForm(form, (player, id) => {
         if (id !== null) {
-            const packet = history[id];
-            showRedPacketDetail(pl, packet);
+            showRedPacketDetail(pl, history[id]);
         }
     });
 }
 
-// 在红包详情中显示红包类型
+// ── 红包详情 ──────────────────────────────────────────────
 function showRedPacketDetail(pl, packet) {
-    const form = mc.newCustomForm()
-        .setTitle("§l§6红包详情");
-    
-    form.addLabel(`§f发送者: §e${packet.sender}`);
-    form.addLabel(`§f目标类型: §e${packet.targetType === "all" ? "全服红包" : "指定红包"}`);
-    // 新增红包类型显示
-    form.addLabel(`§f红包类型: §e${packet.packetType === "random" ? "拼手气红包" : "普通红包"}`);
+    const form     = mc.newCustomForm().setTitle(lang.get("rp.detail.title"));
+    const coinName = lang.get("CoinName");
+
+    form.addLabel(lang.get("rp.detail.sender").replace("${sender}", packet.sender));
+
+    const targetTypeStr = lang.get(packet.targetType === "all" ? "rp.target.all" : "rp.target.specific");
+    form.addLabel(lang.get("rp.detail.target.type").replace("${type}", targetTypeStr));
+
+    const packetTypeStr = lang.get(packet.packetType === "random" ? "rp.random.packet" : "rp.average.packet");
+    form.addLabel(lang.get("rp.detail.packet.type").replace("${type}", packetTypeStr));
+
     if (packet.targetType === "specific") {
-        form.addLabel(`§f指定玩家: §e${packet.targetPlayer}`);
+        form.addLabel(lang.get("rp.detail.target.player").replace("${player}", packet.targetPlayer));
     }
-    form.addLabel(`§f总金额: §e${packet.amount}${lang.get("CoinName")}`);
-    form.addLabel(`§f红包个数: §e${packet.count}`);
-    form.addLabel(`§f剩余金额: §e${packet.remainingAmount}${lang.get("CoinName")}`);
-    form.addLabel(`§f剩余个数: §e${packet.remaining}`);
-    form.addLabel(`§f祝福语: §e${packet.message}`);
-    
-    const expireTime = new Date(packet.expireAt).toLocaleTimeString();
-    form.addLabel(`§f过期时间: §e${expireTime}`);
-    
-    form.addLabel("§f领取记录:");
+
+    form.addLabel(lang.get("rp.detail.amount")
+        .replace("${amount}", packet.amount)
+        .replace("${coin}",   coinName));
+    form.addLabel(lang.get("rp.detail.count").replace("${count}", packet.count));
+    form.addLabel(lang.get("rp.detail.remaining.amount")
+        .replace("${amount}", packet.remainingAmount)
+        .replace("${coin}",   coinName));
+    form.addLabel(lang.get("rp.detail.remaining.count").replace("${count}", packet.remaining));
+    form.addLabel(lang.get("rp.detail.message").replace("${msg}", packet.message));
+    form.addLabel(lang.get("rp.detail.expire").replace("${time}", new Date(packet.expireAt).toLocaleTimeString()));
+    form.addLabel(lang.get("rp.detail.recipients"));
+
     packet.recipients.forEach(recipient => {
-        form.addLabel(`§7- §e${recipient}`);
+        form.addLabel(lang.get("rp.detail.recipient.item").replace("${name}", recipient));
     });
-    
+
     pl.sendForm(form, (pl, id) => {
-        // 点击任何按钮都返回主菜单
-        if (id !== null) {
-        }
+        if (id !== null) {}
         pl.runcmd("moneygui");
     });
 }
 
-// 优化的红包过期检测逻辑 - 使用优先队列
+// ── 过期检测（每分钟） ────────────────────────────────────
 setInterval(() => {
-    const now = Date.now();
+    const now     = Date.now();
     const packets = redpacketData.get("packets") || {};
-    let updated = false;
+    let updated   = false;
 
-    // 只检查队列中已过期的红包
     while (redpacketExpiryQueue.length > 0 && redpacketExpiryQueue[0].expireAt < now) {
         const expired = redpacketExpiryQueue.shift();
-        const packet = packets[expired.id];
-        
+        const packet  = packets[expired.id];
         if (packet && packet.expireAt < now) {
             handleExpiredPacket(packet);
             updated = true;
         }
     }
-    
-    // 如果有更新，保存数据
-    if (updated) {
-        redpacketData.save();
-    }
-}, 60 * 1000); // 改为每分钟检查一次
 
-// 在插件初始化后添加红包帮助命令
+    if (updated) redpacketData.save();
+}, 60 * 1000);
+
+// ── 帮助命令 ──────────────────────────────────────────────
 mc.listen("onServerStarted", () => {
     setTimeout(() => {
-    if (!conf.get("RedPacket").EnabledModule) {
-        return;
-    } else {
-        mc.regPlayerCmd("redpackethelp", "红包帮助", (pl) => {
-            // 创建帮助表单
+        if (!conf.get("RedPacket").EnabledModule) return;
+
+        mc.regPlayerCmd("redpackethelp", lang.get("rp.all.help"), (pl) => {
             let helpForm = mc.newSimpleForm()
-                .setTitle("红包使用帮助")
-                .setContent("选择命令查看详细说明");
-            
-            helpForm.addButton("发送红包");
-            helpForm.addButton("领取红包");
-            helpForm.addButton("查看红包");
-            helpForm.addButton("红包历史");
-            helpForm.addButton("红包类型说明");
-            
-            // 发送表单
+                .setTitle(lang.get("rp.all.help"))
+                .setContent(lang.get("rp.help.content"));
+
+            helpForm.addButton(lang.get("rp.send.packet"));
+            helpForm.addButton(lang.get("rp.open.packet"));
+            helpForm.addButton(lang.get("rp.help.view"));
+            helpForm.addButton(lang.get("rp.help.history.btn"));
+            helpForm.addButton(lang.get("rp.help.types.btn"));
+
             pl.sendForm(helpForm, (player, id) => {
                 if (id === null) return;
-                
-                let helpText = "";
-                switch(id) {
-                    case 0:
-                        helpText = 
-                            "§6发送红包命令: §a/rp send <金额> <数量> [玩家名] [祝福语] [类型]\n" +
-                            "§7- §f金额: 红包总金额\n" +
-                            "§7- §f数量: 红包个数\n" +
-                            "§7- §f玩家名: 指定接收玩家(可选)\n" +
-                            "§7- §f祝福语: 红包祝福语(可选)\n" +
-                            "§7- §f类型: random(拼手气)或average(普通)(可选，默认random)\n" +
-                            "§e示例: §a/rp send 1000 5 §7(发送5个总金额1000的拼手气红包)\n" +
-                            "§e示例: §a/rp send 1000 5 average §7(发送5个总金额1000的普通红包)\n" +
-                            "§e示例: §a/rp send 1000 5 Steve \"恭喜发财\" random §7(指定玩家的拼手气红包)";
-                        break;
-                    case 1:
-                        helpText = 
-                            "§6领取红包命令: §a/rp open\n" +
-                            "§7自动领取最早可用的红包\n\n" +
-                            "§6查看可领红包: §a/rp list\n" +
-                            "§7查看所有可领取的红包列表";
-                        break;
-                    case 2:
-                        helpText = 
-                            "§6查看红包详情: §a/rp list\n" +
-                            "§7查看所有可领取的红包\n\n" +
-                            "§7点击红包可直接领取";
-                        break;
-                    case 3:
-                        helpText = 
-                            "§6查看红包历史: §a/rp history\n" +
-                            "§7查看你发送和领取的红包记录";
-                        break;
-                    case 4:
-                        helpText = 
-                            "§6红包类型说明:\n" +
-                            "§a1. 拼手气红包(random):\n" +
-                            "§7- 每个红包金额随机分配\n" +
-                            "§7- 金额在1到剩余均值的两倍之间随机\n" +
-                            "§7- 最后一人获得剩余所有金额\n\n" +
-                            "§b2. 普通红包(average):\n" +
-                            "§7- 每个红包金额平均分配\n" +
-                            "§7- 金额 = 剩余金额 / 剩余个数(取整)\n" +
-                            "§7- 最后一人获得剩余所有金额";
-                        break;
-                }
-                
-                // 创建详情表单
+
+                const detailKeys = [
+                    "rp.help.send.detail",
+                    "rp.help.open.detail",
+                    "rp.help.list.detail",
+                    "rp.help.history.detail",
+                    "rp.help.type.detail"
+                ];
+
                 let detailForm = mc.newCustomForm()
-                    .setTitle("§l§6红包帮助")
-                    .addLabel(helpText);
-                
+                    .setTitle(lang.get("rp.help.detail.title"))
+                    .addLabel(lang.get(detailKeys[id]));
+
                 pl.sendForm(detailForm, () => {});
             });
         });
-    }}, 1000);
-});         
-
+    }, 1000);
+});
 
 function showInsufficientMoneyGui(pl, cost, returnCmd) {
     let fm = mc.newSimpleForm();
