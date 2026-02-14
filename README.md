@@ -265,10 +265,8 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
     "BackTipAfterDeath": 0,   //重生后是否自动弹窗（1开启，0关闭）
     "KeepInventory": 1,   //开服是否自动执行开启死亡不掉落指令
     "suicide": 0,   //自杀所花费的金钱
-    "OptimizeXporb": 1,  //经验球拾取优化，防止堆积卡服
     "join_notice": 0,   //进服是否自动弹出公告（默认为关闭，1开启）
     "RankingModel": 1,  //金币排行榜GUI样式 1为新版，2为旧版
-    "lastServerShutdown": 1742694883508,   //勿动
     "forceNotice": 0 , //勿动
     "Version": 265   //版本标识符，勿动！
 }
