@@ -113,7 +113,9 @@ class ConfigManager {
             },
             "wh": {
                 "EnableModule": true,
-                "status": 0
+                "status": 0,
+                "whmotdmsg": "服务器维护中，请勿进入！",
+                "whgamemsg": "服务器正在维护中，请您稍后再来!"
             }
         };
 
@@ -198,7 +200,7 @@ class ConfigManager {
                     "modules": this.defaultModules
                 })
             );
-            logger.info("模块列表配置文件初始化成功");
+            //logger.info("模块列表配置文件初始化成功");
         } catch (error) {
             logger.error(`模块列表配置文件初始化失败: ${error.message}`);
         }
@@ -267,7 +269,7 @@ class ConfigManager {
                 this.moduleListConfig.set("modules", updatedModules);
                 logger.info(`模块同步完成: 新增 ${addedCount} 个, 删除 ${removedCount} 个`);
             } else {
-                logger.info("模块列表无变化");
+                //logger.info("模块列表无变化");
             }
 
         } catch (error) {

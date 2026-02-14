@@ -1162,5 +1162,5 @@ if (typeof module !== 'undefined' && module.exports) {
         MenuAdminHandler 
     };
 }
-
-MenuEventListeners.register();
+setTimeout(() => {
+MenuEventListeners.register();}, 2000);

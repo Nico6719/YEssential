@@ -255,7 +255,7 @@ class AsyncUpdateChecker {
                 await this.downloadUpdate(remoteVersion);
             } else if (comparison < 0) {
                 // 本地版本更新
-                colorLog("red", `您的本地版本比远程版本更新! (${currentVersion} > ${remoteVersion})`);
+                logger.warn(`您的本地版本比远程版本更新! (${currentVersion} > ${remoteVersion})`);
             } else {
                 // 已是最新版本
                 colorLog("green", `您已是最新版本 (${currentVersion})`);

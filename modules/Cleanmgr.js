@@ -380,42 +380,26 @@ var CleanMgr = (function () {
 
 /* ================= 注册命令 (LSE 补全增强版) ================= */
   function registerCommand() {
-    // 销毁旧命令（如果存在，防止热加载冲突）
-    if (mc.newCommand(config.clean_Cmd, "实体清理系统", PermType.Any)) {
-        // 命令已存在，这里通常会被 LSE 自动处理，但手动定义结构更稳妥
-    }
+    setTimeout(() => {
     
     var cmd = mc.newCommand(config.clean_Cmd, "实体清理系统", PermType.Any);
 
-    // 1. 设置枚举：这是补全的核心列表
-    // 确保枚举名 "CleanActions" 在当前脚本中唯一
     cmd.setEnum("CleanActions", ["now", "status", "cancel", "tps", "help", "toast"]);
-
-    // 2. 定义参数：将 action 绑定到上述枚举
-    // 第四个参数 1 表示该枚举在客户端显示为列表
     cmd.mandatory("action", ParamType.Enum, "CleanActions", 1);
-
-    // 3. 注册重载路径 (Overloads)
-    // 路径 A: 只输入 /clean (不带参数)
     cmd.overload([]);
-    // 路径 B: 输入 /clean <action> (带参数，此时会强制触发枚举补全)
     cmd.overload(["action"]);
 
-    // 4. 设置回调
     cmd.setCallback(function(_cmd, _ori, _out, _res) {
         var p = _ori.player;
         if (!p) return false;
-
-        // 如果用户直接按回车 (/clean)，_res.action 为空，执行 "now"
-        // 如果用户选择了补全 (/clean tps)，_res.action 会获得对应的字符串
         var act = _res.action;
         if (!act) act = "now";
-        
         return handleCleanCommand(p, act);
     });
 
     cmd.setup();
-  }
+    }, 2000);
+}
   /* ================= 定时任务 ================= */
   function startTimers() {
     timers.push(setInterval(function () {
