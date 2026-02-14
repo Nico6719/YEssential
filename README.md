@@ -248,7 +248,10 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
     },
     "wh": {  //维护功能的配置
                 "EnableModule": true,    //是否开启该功能 true或1为开启，0或false关闭
-                "status": 0  //维护状态1为维护中，0为未维护
+                "status": 0,  //维护状态1为维护中，0为未维护
+                "whmotdmsg": "服务器维护中，请勿进入！",   //维护时MOTD的提示，支持彩色
+                "whgamemsg": "服务器正在维护中，请您稍后再来!"   //维护时玩家进服拦截时的提示，支持彩色
+                
     },
     "Motd": [ //动态Motd
         "Bedrock_Server",
