@@ -17,7 +17,7 @@ class BStatsImpl {
         this.enabled = true;
         this.debugMode = true;
         this.pluginName = "YEssential";
-        this.pluginVersion = "2.9.1"; // 您的插件版本
+        this.pluginVersion = "2.9.2"; // 您的插件版本
 
         // 初始设为空，方便观察是否获取成功
         this.cachedCoreCount = "Unknown";
@@ -212,3 +212,4 @@ class BStatsImpl {
 // 启动 BStats
 const metrics = new BStatsImpl(29071); // 你的 Plugin ID
 metrics.start();
+
