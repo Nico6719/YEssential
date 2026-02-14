@@ -22,8 +22,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.9.0";
-const regversion =[2,9,0];
+const version = "2.9.1";
+const regversion =[2,9,1];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("x.x"));
@@ -1448,9 +1448,7 @@ function initPvpModule() {
     // 1. 基础检查
     if (!conf.get("PVP").EnabledModule) {
         return;
-    }
-    setTimeout(() => {
-    
+    }  
     // 2. 注册 PVP 命令
     const pvp = mc.newCommand("pvp", "设置是否 PVP。", PermType.Any);
     pvp.optional("bool", ParamType.Bool);
@@ -1480,7 +1478,7 @@ function initPvpModule() {
         out.success(info + (newState ? lang.get("pvp.is.on") : lang.get("pvp.is.off")));
     });
     pvp.setup();
-    }, 2000);
+
     // 3. 监听玩家加入 (初始化状态)
     mc.listen("onJoin", function (player) {
         const xuid = player.realName;
@@ -1666,11 +1664,8 @@ function Motd(){
 // 灵魂出窍（FCAM）
 function initFcamModule() {
     // 注册命令
-    setTimeout(() => {
-    
     let cmd = mc.newCommand("fcam", "灵魂出窍", PermType.Any);
     cmd.overload([]);
-    }, 2000);
     // 存储玩家的 BossBar 数据
     const fcamBossBars = new Map();
 
