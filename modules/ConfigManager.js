@@ -1,4 +1,14 @@
 // 配置版本管理类
+function randomGradientLog(text) {
+      const len = text.length;
+      let out = '';
+      for (let i = 0; i < len; i++) {
+          const t = len <= 1 ? 0 : i / (len - 1);
+          const [r, g, b] = globalLerpColor(t);
+          out += `\x1b[38;2;${r};${g};${b}m` + text[i];
+      }
+      logger.log(out + '\x1b[0m');
+}
 class ConfigManager {
     constructor() {
         this.currentVersion = 286;
@@ -8,6 +18,17 @@ class ConfigManager {
         // 默认配置
         this.configDefaults = {
             "Version": 286,
+            "HubEnabled": 0,
+            "CrashModuleEnabled": 0,
+            "RankingModel": 1,
+            "LLMoney": 0,
+            "Scoreboard": "money",
+            "PayTaxRate": 0,
+            "suicide": 0,
+            "Back": 0,
+            "Warp": 0,
+            "BackTipAfterDeath": false,
+            "KeepInventory": false,
             "Update": {
                 "EnableModule": true,
                 "CheckInterval": 120,
@@ -42,22 +63,10 @@ class ConfigManager {
                     { "server_name": "生存服", "server_ip": "127.0.0.1", "server_port": 19132 }
                 ]
             },
-            "HubEnabled": 0,
-            "NoticeEnabled": 0,
-            "CrashModuleEnabled": 0,
-            "RankingModel": 1,
-            "LLMoney": 0,
-            "Scoreboard": "money",
-            "PayTaxRate": 0,
-            "suicide": 0,
-            "Back": 0,
-            "Warp": 0,
-            "BackTipAfterDeath": false,
-            "KeepInventory": false,
-            "OptimizeXporb": 0,
-            "join_notice": 0,
-            "lastServerShutdown": 0,
-            "Motd": ["Bedrock_Server", "Geyser"],
+            "Motd": {
+              "EnabledModule": true,
+              "message" : ["Bedrock_Server", "Geyser"],
+            },
             "Fcam": {
                 "EnableModule": false,
                 "CostMoney": 0,
@@ -67,6 +76,11 @@ class ConfigManager {
                 "EnableModule": true, // 模块总开关
                 "serverUUID": "",      // 服务器唯一标识，留空会自动生成
                 "logSentData": false   // 是否在控制台显示发送的数据内容
+            },
+            "Notice":{
+                "EnableModule": false,
+                "Join_ShowNotice": false,
+                "IsUpdate":false,
             },
             "RedPacket": {
                 "EnabledModule": false,
@@ -174,10 +188,10 @@ class ConfigManager {
         let savedVersion = conf.get("Version") || 0;
         
         if (savedVersion < this.currentVersion) {
-            logger.info(`检测到配置版本更新: ${savedVersion} -> ${this.currentVersion}, 开始迁移配置...`);
+            randomGradientLog(`检测到配置版本更新: ${savedVersion} -> ${this.currentVersion}, 开始迁移配置...`);
             this.migrateConfig(savedVersion);
             conf.set("Version", this.currentVersion);
-            logger.info("配置迁移完成!");
+            randomGradientLog("配置迁移完成!");
         }
         
         // 确保所有配置项都存在
@@ -200,7 +214,7 @@ class ConfigManager {
                     "modules": this.defaultModules
                 })
             );
-            //logger.info("模块列表配置文件初始化成功");
+            //randomGradientLog("模块列表配置文件初始化成功");
         } catch (error) {
             logger.error(`模块列表配置文件初始化失败: ${error.message}`);
         }
@@ -250,7 +264,7 @@ class ConfigManager {
                         "name": moduleName
                     };
                     updatedModules.push(newModule);
-                    logger.info(`发现新模块: ${fileName} (${moduleName})`);
+                    randomGradientLog(`发现新模块: ${fileName} (${moduleName})`);
                     addedCount++;
                 }
             });
@@ -259,7 +273,7 @@ class ConfigManager {
             let removedCount = 0;
             currentModules.forEach(mod => {
                 if (!jsFiles.some(file => file.endsWith(mod.path))) {
-                    logger.info(`模块已被删除: ${mod.path}`);
+                    randomGradientLog(`模块已被删除: ${mod.path}`);
                     removedCount++;
                 }
             });
@@ -267,9 +281,9 @@ class ConfigManager {
             // 更新配置文件
             if (addedCount > 0 || removedCount > 0) {
                 this.moduleListConfig.set("modules", updatedModules);
-                logger.info(`模块同步完成: 新增 ${addedCount} 个, 删除 ${removedCount} 个`);
+                randomGradientLog(`模块同步完成: 新增 ${addedCount} 个, 删除 ${removedCount} 个`);
             } else {
-                //logger.info("模块列表无变化");
+                //randomGradientLog("模块列表无变化");
             }
 
         } catch (error) {
@@ -327,7 +341,7 @@ class ConfigManager {
 
         modules.push({ path, name });
         this.moduleListConfig.set("modules", modules);
-        logger.info(`添加模块: ${path} (${name})`);
+        randomGradientLog(`添加模块: ${path} (${name})`);
         return true;
     }
 
@@ -345,7 +359,7 @@ class ConfigManager {
         }
 
         this.moduleListConfig.set("modules", filtered);
-        logger.info(`移除模块: ${path}`);
+        randomGradientLog(`移除模块: ${path}`);
         return true;
     }
 
@@ -353,7 +367,7 @@ class ConfigManager {
      * 手动触发模块扫描
      */
     scanModules() {
-        logger.info("开始扫描模块目录...");
+        randomGradientLog("开始扫描模块目录...");
         this.syncModules();
     }
 
@@ -407,7 +421,7 @@ class ConfigManager {
     // ========== 版本特定迁移方法 ==========
 
    migrateTo286() {
-    logger.info("迁移到版本2.8.6...");
+    randomGradientLog("迁移到版本2.8.6...");
     
     // 迁移 TRServersEnabled 到 CrossServerTransfer
     let oldEnabled = conf.get("TRServersEnabled");
@@ -419,7 +433,7 @@ class ConfigManager {
     
     if (oldEnabled !== undefined) {
         config.EnabledModule = !!oldEnabled;
-        logger.info(`迁移TRServersEnabled值: ${oldEnabled} -> CrossServerTransfer.EnabledModule`);
+        randomGradientLog(`迁移TRServersEnabled值: ${oldEnabled} -> CrossServerTransfer.EnabledModule`);
     }
     
     // 自动迁移 server.json 内容
@@ -431,7 +445,7 @@ class ConfigManager {
                 const serverData = JSON.parse(serverJsonContent);
                 if (serverData.servers && Array.isArray(serverData.servers)) {
                     config.servers = serverData.servers;
-                    logger.info(`成功迁移 server.json 中的 ${serverData.servers.length} 个服务器配置`);
+                    randomGradientLog(`成功迁移 server.json 中的 ${serverData.servers.length} 个服务器配置`);
                 }
             }
         }
@@ -441,7 +455,7 @@ class ConfigManager {
     
     conf.set("CrossServerTransfer", config);
     conf.delete("TRServersEnabled");
-    logger.info("TRServersEnabled已迁移到CrossServerTransfer配置对象");
+    randomGradientLog("TRServersEnabled已迁移到CrossServerTransfer配置对象");
     }
 
     
@@ -450,7 +464,7 @@ class ConfigManager {
     setIfMissing(key, defaultValue) {
         if (conf.get(key) === undefined) {
             conf.set(key, defaultValue);
-            logger.info(`添加缺失配置: ${key} = ${JSON.stringify(defaultValue)}`);
+            randomGradientLog(`添加缺失配置: ${key} = ${JSON.stringify(defaultValue)}`);
         }
     }
 
@@ -459,7 +473,7 @@ class ConfigManager {
         
         if (!this.isValidObject(currentConfig)) {
             conf.set(key, defaultConfig);
-            logger.info(`创建对象配置: ${key}`);
+            randomGradientLog(`创建对象配置: ${key}`);
             return;
         }
 
@@ -468,7 +482,7 @@ class ConfigManager {
         
         let addedProps = this.getAddedProperties(defaultConfig, currentConfig);
         if (addedProps.length > 0) {
-            logger.info(`配置 ${key} 新增属性: ${addedProps.join(", ")}`);
+            randomGradientLog(`配置 ${key} 新增属性: ${addedProps.join(", ")}`);
         }
     }
 
@@ -521,7 +535,7 @@ class ConfigManager {
         this.deprecatedConfigs.forEach(key => {
             if (conf.get(key) !== undefined) {
                 conf.delete(key);
-                logger.info(`删除废弃配置: ${key}`);
+                randomGradientLog(`删除废弃配置: ${key}`);
                 removedCount++;
             }
         });
@@ -537,7 +551,7 @@ class ConfigManager {
             deprecatedProps.forEach(prop => {
                 if (parentConfig.hasOwnProperty(prop)) {
                     delete parentConfig[prop];
-                    logger.info(`删除废弃配置: ${parentKey}.${prop}`);
+                    randomGradientLog(`删除废弃配置: ${parentKey}.${prop}`);
                     modified = true;
                     removedCount++;
                 }
@@ -551,7 +565,7 @@ class ConfigManager {
         removedCount += this.cleanupOldBackups();
 
         if (removedCount > 0) {
-            logger.info(`清理完成,共删除 ${removedCount} 个废弃配置`);
+            randomGradientLog(`清理完成,共删除 ${removedCount} 个废弃配置`);
         }
     }
 

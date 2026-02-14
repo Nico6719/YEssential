@@ -1,6 +1,16 @@
 /**
  * LeviLamina_LSE_YEssential - bStats 遥测模块 
  */
+function randomGradientLog(text) {
+      const len = text.length;
+      let out = '';
+      for (let i = 0; i < len; i++) {
+          const t = len <= 1 ? 0 : i / (len - 1);
+          const [r, g, b] = globalLerpColor(t);
+          out += `\x1b[38;2;${r};${g};${b}m` + text[i];
+      }
+      logger.log(out + '\x1b[0m');
+}
 class BStatsImpl {
     constructor(pluginId) {
         this.pluginId = pluginId;
@@ -35,13 +45,13 @@ class BStatsImpl {
                 const match = content.match(/^online-mode\s*=\s*(true|false)/m);
                 if (match) {
                     const value = match[1];
-                    if (this.debugMode) logger.info(`[BStats] 从 server.properties 读取到 online-mode: ${value}`);
+                    if (this.debugMode) randomGradientLog(`从 server.properties 读取到 online-mode: ${value}`);
                     return value === 'true' ? 1 : 0;
                 }
             }
-            if (this.debugMode) logger.warn("[BStats] server.properties 中未找到 'online-mode'，将使用默认值 1。");
+            if (this.debugMode) logger.warn("server.properties 中未找到 'online-mode'，将使用默认值 1。");
         } catch (e) {
-            if (this.debugMode) logger.error(`[BStats] 读取 server.properties 失败: ${e.message}，将使用默认值 1。`);
+            if (this.debugMode) logger.error(`读取 server.properties 失败: ${e.message}，将使用默认值 1。`);
         }
         // 默认返回 1 (在线模式)
         return 1;
@@ -63,7 +73,7 @@ class BStatsImpl {
                 this.serverUUID = this.generateUUID();
             }
         } catch (e) {
-            logger.error("[BStats] 同步配置失败: " + e.message);
+            logger.error("同步配置失败: " + e.message);
         }
     }
 
@@ -165,26 +175,26 @@ class BStatsImpl {
 
     submit() {
         if (!this.enabled) {
-            if (this.debugMode) logger.info("[BStats] 遥测模块已禁用，跳过上报。");
+            if (this.debugMode) randomGradientLog("遥测模块已禁用，跳过上报。");
             return;
         }
         const payload = this.collectData();
         if (this.debugMode) {
-            logger.info("[BStats] 准备上报数据包内容:");
-            logger.info(JSON.stringify(payload, null, 2));
+            randomGradientLog("准备上报数据包内容:");
+            randomGradientLog(JSON.stringify(payload, null, 2));
         }
         try {
             network.httpPost(this.baseUrl, JSON.stringify(payload ), "application/json", (status, result) => {
                 if (this.debugMode) {
                     if (status === 200) {
-                        logger.info("[BStats] 遥测数据上报成功。");
+                        randomGradientLog("遥测数据上报成功。");
                     } else {
-                        logger.warn(`[BStats] 上报失败，状态码: ${status}, 返回结果: ${result}`);
+                        logger.warn(`上报失败，状态码: ${status}, 返回结果: ${result}`);
                     }
                 }
             });
         } catch (e) {
-            if (this.debugMode) logger.error("[BStats] 网络请求异常: " + e.message);
+            if (this.debugMode) logger.error("网络请求异常: " + e.message);
         }
     }
 
@@ -192,7 +202,10 @@ class BStatsImpl {
         // 延长到 30 秒，给异步命令足够的时间返回结果
         setTimeout(() => this.submit(), 30 * 1000);
         setInterval(() => this.submit(), 30 * 60 * 1000);
-        if (this.debugMode) logger.info(`[BStats] ${this.pluginName} 遥测模块已启动。首次数据将在 30 秒后发送。`);
+        setTimeout(() => this.submit(), 30 * 1000);
+        setTimeout(() => {
+        if (this.debugMode) randomGradientLog(`${this.pluginName}遥测模块已启动。首次数据将在 30 秒后发送。`);
+        },2000)
     }
 }
 
