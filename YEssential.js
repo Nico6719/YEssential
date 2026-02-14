@@ -22,8 +22,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.9.1";
-const regversion =[2,9,1];
+const version = "2.9.2";
+const regversion =[2,9,2];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("x.x"));
@@ -272,11 +272,11 @@ const defaultLangContent = {
     "rtp.tp.success2": "§6已传送到安全高度，请自行寻找落脚点",
     "rtp.loadchunks.timeout": "§c目标区块加载超时",
     "rtp.error": "§c传送过程发生错误",
-    "pvp.is.on": "§6PVP 已开启。",
-    "pvp.is.off": "§6PVP 已关闭。",
-    "pvp.player.isoff": "附近玩家 ${player.realName} PVP 关闭, 你无法攻击他。",
-    "your.pvp.isoff": "§l§b你关闭了 PVP。",
-    "then.pvp.isoff": "§l§b对方关闭了 PVP。",
+    "pvp.is.on": "§6PVP 已开启",
+    "pvp.is.off": "§6PVP 已关闭",
+    "pvp.player.isoff": "附近玩家 ${player.realName} PVP 关闭, 你无法攻击他",
+    "your.pvp.isoff": "§l§b你关闭了 PVP",
+    "then.pvp.isoff": "§l§b对方关闭了 PVP",
     "init.success": "所有模块加载成功！",
     "init.fail": "部分模块加载失败，请检查日志",
     "choose": "选择",
@@ -570,6 +570,16 @@ function globalLerpColor(t) {
         Math.round(GLOBAL_C1[2] + (GLOBAL_C2[2] - GLOBAL_C1[2]) * t)
     ];
 }
+function randomGradientLog(text) {
+      const len = text.length;
+      let out = '';
+      for (let i = 0; i < len; i++) {
+          const t = len <= 1 ? 0 : i / (len - 1);
+          const [r, g, b] = globalLerpColor(t);
+          out += `\x1b[38;2;${r};${g};${b}m` + text[i];
+      }
+      logger.log(out + '\x1b[0m');
+}
 // ─────────────────────────────────────────────────────────
 /**
  * YEssential - 模块初始化管理器
@@ -633,18 +643,6 @@ function globalLerpColor(t) {
       }
       logger.log(out + '\x1b[0m');
   }
-
-  function randomGradientLog(text) {
-      const len = text.length;
-      let out = '';
-      for (let i = 0; i < len; i++) {
-          const t = len <= 1 ? 0 : i / (len - 1);
-          const [r, g, b] = globalLerpColor(t);
-          out += `\x1b[38;2;${r};${g};${b}m` + text[i];
-      }
-      logger.log(out + '\x1b[0m');
-  }
-
   const logInfo  = text => randomGradientLog(text);
   const logError = text => gradientLog(text, 255,  80,   0, 200,   0,   0);
   const logWarn  = text => gradientLog(text, 255, 240,   0, 255, 140,   0);
@@ -836,24 +834,23 @@ function initializePlugin() {
     // 第四步：启用死亡不掉落
     if (conf.get("KeepInventory")) {
         mc.runcmdEx("gamerule KeepInventory true");
-        colorLog("green", lang.get("gamerule.KeepInventory.true"));
+        randomGradientLog(lang.get("gamerule.KeepInventory.true"));
     }
     
-    // 第五步：检查公告更新
-    const lastShutdown = conf.get("lastServerShutdown") || 0;
-    conf.set("lastServerShutdown", Date.now());
-    const lastUpdate = noticeconf.get("lastNoticeUpdate") || 0;
-    if (lastUpdate > lastShutdown) {
-        conf.set("forceNotice", true);
-        logger.info(lang.get("notice.is.changed"));
+
+    //
+    if (conf.get("Notice").IsUpdate == 1) {   
+    File.delete(datapath+ "/NoticeSettingsData/playersettingdata.json")
+    randomGradientLog(lang.get("notice.is.changed"));
+    let noticeObj = conf.get("Notice"); 
+    noticeObj.IsUpdate = false;
+    conf.set("Notice", noticeObj); 
     }
-    
     // 第六步：清理残留的灵魂出窍模拟玩家
     const allPlayers = mc.getOnlinePlayers();
     allPlayers.forEach(p => {
         // FCAM 创建的模拟玩家通常以 _sp 结尾
         if (p.isSimulatedPlayer() && p.name.endsWith("_sp")) {
-            logger.warn(`[Fcam] 清理残留的模拟玩家: ${p.name}`);
             p.simulateDisconnect();
         }
     });
@@ -917,7 +914,7 @@ class AsyncLanguageManager {
             // 如果有新键添加，则异步写入文件
             if (addedCount > 0) {
                 await AsyncFileManager.writeFile(langFilePath, mergedData);
-                colorLog("green", `语言文件已更新，新增 ${addedCount} 个条目`);
+                randomGradientLog(`语言文件已更新，新增 ${addedCount} 个条目`);
                 
                 // 重新初始化语言对象
                 lang = new JsonConfigFile(langFilePath, JSON.stringify(mergedData));
@@ -1141,8 +1138,7 @@ noticeSetCmd.overload([]);
 noticeSetCmd.setCallback((_cmd, ori, output) => {
     const pl = ori.player;
     if (!pl) return;
-    
-    if (!conf.get("NoticeEnabled")) {
+    if (!conf.get("Notice").EnableModule) {
         pl.tell(info + lang.get("module.no.Enabled"));
         return;
     }
@@ -1208,7 +1204,6 @@ noticeSetCmd.setCallback((_cmd, ori, output) => {
                     
                     // 保存新公告
                     file.writeTo(noticePath, newContent);
-                    noticeconf.set("lastNoticeUpdate", Date.now());
                     plr.tell(info + lang.get("notice.save.ok"));
                     break;
                     
@@ -1240,7 +1235,7 @@ let = cmd = mc.newCommand("notice","公告",PermType.Any)
 cmd.overload([])
 cmd.setCallback((cmd, ori, out, res) => {
     let pl = ori.player;
-    if (!conf.get("NoticeEnabled")) {
+    if (!conf.get("Notice").EnableModule) {
         pl.tell(info + lang.get("module.no.Enabled"));
         return;
     }
@@ -1379,11 +1374,11 @@ mc.listen("onJoin", (pl) => {
         noticeconf.set(pl.realName, 0);
     }
     // 异步公告显示
-    if (conf.get("join_notice") == 1) {
+    if (conf.get("Fcam").Join_ShowNotice == 1) {
             setTimeout(() => {
                 if (!mc.getPlayer(pl.realName)) return;
                 if (noticeconf.get(String(pl.realName)) == 1) return;
-                if (!conf.get("NoticeEnabled")) return;
+                if (!conf.get("Notice").EnableModule) return;
                 pl.runcmd("notice");
             }, 1000);
         }
@@ -1391,11 +1386,11 @@ mc.listen("onJoin", (pl) => {
   
 mc.listen("onJoin",(pl)=>{
    try {
+        setTimeout(() => {
         // 初始化玩家数据
         homedata.init(pl.realName, {});
         rtpdata.init(pl.realName, {});
         MoneyHistory.init(pl.realName, {});
-        setTimeout(() => {
         // 初始化金币
         if (conf.get("LLMoney") == 1) {
             let currentMoney = pl.getMoney();
@@ -1406,7 +1401,7 @@ mc.listen("onJoin",(pl)=>{
             let score = pl.getScore(conf.get("Scoreboard"));
             if (!score) pl.setScore(conf.get("Scoreboard"), 0);
         }
-    }, 2000);
+         },1000)
     } catch (error) {
         logger.error(`玩家 ${pl.realName} 加入事件处理失败: ${error.message}`);
     }
@@ -1420,13 +1415,6 @@ mc.listen("onConsoleCmd",(cmd)=>{
 
     mc.runcmdEx("stop")  //再次尝试
 })
-//经验球优化相关
-if (conf.get("OptimizeXporb") == 1 )
-    {
-setInterval(() => {
-  mc.runcmdEx("execute as @e[type=xp_orb] at @s run tp @p")
-}, 1000*10);
-}  else{ }  
 //自杀模块
 
 let suicidecmd = mc.newCommand("suicide","自杀",PermType.Any)
@@ -1643,12 +1631,14 @@ function initPvpModule() {
 }
 function Motd(){
     // 清理旧的定时器，防止内存泄漏
+    if (conf.get("Motd").EnabledModule == 0 ) return;
+
     if (motdTimerId !== null) {
         clearInterval(motdTimerId);
         motdTimerId = null;
     }
     
-    let motds = conf.get("Motd");
+    let motds = conf.get("Motd").message;
     if (!motds || motds.length === 0) {
         logger.warn(lang.get("Motd.config.isemp"));
         return;
@@ -1891,14 +1881,18 @@ const Maintenance = {
     }
 };
 
-
 let whcmd = mc.newCommand("wh", "维护模式", PermType.GameMasters)
 whcmd.overload([])
 
 whcmd.setCallback((cmd, ori, out, res) => {
+    let pl = ori.player;
     if (!Maintenance.config.EnableModule) return out.error(lang.get("module.no.Enabled"));
     const newState = Maintenance.setStatus(!Maintenance.isActive);
-    out.success(info+`维护模式已${newState ? "开启" : "关闭"}`);
+    if (!pl) {
+    randomGradientLog(`维护模式已${newState ? "开启" : "关闭"}`);
+    }else{
+    pl.sendText(`维护模式已${newState ? "开启" : "关闭"}`);
+    }
     if (newState) {
         // 开启维护模式时：停止MOTD轮播，设置维护信息
         if (motdTimerId !== null) {
@@ -2307,7 +2301,7 @@ const Economy = {
         } else {
             // 玩家离线，添加到缓存队列
             OfflineMoneyCache.add(playerName, type, amount);
-            logger.info(`[Economy] 玩家 ${playerName} 离线，操作已缓存: ${type} ${amount}`);
+            randomGradientLog(`[Economy] 玩家 ${playerName} 离线，操作已缓存: ${type} ${amount}`);
             return true; // 返回成功，因为已缓存
         }
     }
@@ -3618,7 +3612,7 @@ redpacketCmd.setup();
 function handleExpiredPacket(packet) {
     if (packet.remaining <= 0) return;
 
-    logger.info(`[红包] 处理过期红包 #${packet.id}, 剩余金额: ${packet.remainingAmount}`);
+    randomGradientLog(`[红包] 处理过期红包 #${packet.id}, 剩余金额: ${packet.remainingAmount}`);
 
     if (packet.remainingAmount > 0) {
         const sender = mc.getPlayer(packet.sender);
@@ -3759,7 +3753,7 @@ function handleSendRedPacket(pl, amount, count, targetPlayer, message, packetTyp
             .replace("${count}",  count));
     }
 
-    logger.info(`[红包] 玩家 ${pl.realName} 发送${typeName}红包 #${packetId}, 类型: ${packet.targetType}, 金额: ${amount}, 数量: ${count}`);
+    randomGradientLog(`[红包] 玩家 ${pl.realName} 发送${typeName}红包 #${packetId}, 类型: ${packet.targetType}, 金额: ${amount}, 数量: ${count}`);
     isSending = false;
 }
 
@@ -3829,7 +3823,7 @@ function handleOpenRedPacket(pl) {
         .replace("${amount}", amount)
         .replace("${coin}",   coinName));
 
-    logger.info(`[红包] 玩家 ${pl.realName} 领取红包 #${packet.id}, 获得 ${amount} 金币`);
+    randomGradientLog(`[红包] 玩家 ${pl.realName} 领取红包 #${packet.id}, 获得 ${amount} 金币`);
 
     const sender = mc.getPlayer(packet.sender);
     if (sender) {
@@ -3990,8 +3984,9 @@ setInterval(() => {
 }, 60 * 1000);
 
 // ── 帮助命令 ──────────────────────────────────────────────
+setTimeout(() => {
 mc.listen("onServerStarted", () => {
-    setTimeout(() => {
+        
         if (!conf.get("RedPacket").EnabledModule) return;
 
         mc.regPlayerCmd("redpackethelp", lang.get("rp.all.help"), (pl) => {
@@ -4023,9 +4018,9 @@ mc.listen("onServerStarted", () => {
                 pl.sendForm(detailForm, () => {});
             });
         });
-    }, 1000);
+   
 });
-
+},2000)
 function showInsufficientMoneyGui(pl, cost, returnCmd) {
     let fm = mc.newSimpleForm();
     fm.setTitle(lang.get("gui.insufficient.money.title"));
