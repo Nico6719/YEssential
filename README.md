@@ -273,7 +273,7 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
 }
 ```
 > 懒怎么办？？ 试试[网页配置编辑器](https://jzrxh.work/projects/yessential/config.html)吧！
-
+ 
 - ./Config/cleanmgr/config.json
 清理器配置文件
 ```json
