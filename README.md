@@ -168,7 +168,7 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
         "timeout": 30000,  //检查更新超时时间
         "checkMissingFilesOnStart": true  //是否在开服时检查有无缺失文件
     },
-     "PVP": {
+    "PVP": {
         "EnabledModule": true,  //PVP模块，默认为开启
         "DangerousBlocks": [  //自定义拦截玩家放置的爆炸实体
             "minecraft:tnt",
@@ -177,9 +177,6 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
             "minecraft:undyed_shulker_box"
         ]
     },
-    "DebugMode": 0,  //Debug模式，默认为关闭
-    "CrashModuleEnabled": 0,  //崩端功能开关，默认为关闭
-    "NoticeEnabled":0,  //Notice 功能开关，默认为关闭
     "RedPacket": {
         "EnabledModule": false,   //红包模块开关，默认为关闭
         "expireTime": 300,
@@ -228,35 +225,41 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
           "isSet": false  //是否已经设置
     },
     "tpa": {  //传送系统配置
-        "EnabledModule": false,  //TPA功能开关，默认为关闭
-        "isDelayEnabled": true, //是否开启延迟传送
-        "maxDelay": 20,   //传送最大延迟
-        "cost" : 1,    //tpa传送花费
-        "requestTimeout": 60,   //传送请求过期时间
-        "promptType": "form"  //传送请求类型
+          "EnabledModule": false,  //TPA功能开关，默认为关闭
+          "isDelayEnabled": true, //是否开启延迟传送
+          "maxDelay": 20,   //传送最大延迟
+          "cost" : 1,    //tpa传送花费
+          "requestTimeout": 60,   //传送请求过期时间
+          "promptType": "form"  //传送请求类型
     },
     "Home": {
-        "add": 0,  //添加家花费
-        "del": 0,  //删除家花费
-        "tp": 0,  //传送家花费
-        "MaxHome": 10   //最大家数量
+          "add": 0,  //添加家花费
+          "del": 0,  //删除家花费
+          "tp": 0,  //传送家花费
+          "MaxHome": 10   //最大家数量
     },
     "Fcam": {  //灵魂出窍的配置
-                "EnableModule": false,  //是否开启该功能 true或1为开启，0或false关闭
-                "CostMoney": 0,  //使用该功能花费的金钱
-                "TimeOut": 0  //灵魂出窍使用时间限制
+          "EnableModule": false,  //是否开启该功能 true或1为开启，0或false关闭
+          "CostMoney": 0,  //使用该功能花费的金钱
+          "TimeOut": 0  //灵魂出窍使用时间限制
     },
     "wh": {  //维护功能的配置
-                "EnableModule": true,    //是否开启该功能 true或1为开启，0或false关闭
-                "status": 0,  //维护状态1为维护中，0为未维护
-                "whmotdmsg": "服务器维护中，请勿进入！",   //维护时MOTD的提示，支持彩色
-                "whgamemsg": "服务器正在维护中，请您稍后再来!"   //维护时玩家进服拦截时的提示，支持彩色
+           "EnableModule": true,    //是否开启该功能 true或1为开启，0或false关闭
+           "status": 0,  //维护状态1为维护中，0为未维护
+           "whmotdmsg": "服务器维护中，请勿进入！",   //维护时MOTD的提示，支持彩色
+           "whgamemsg": "服务器正在维护中，请您稍后再来!"   //维护时玩家进服拦截时的提示，支持彩色
                 
     },
-    "Motd": [ //动态Motd
-        "Bedrock_Server",
-        "Geyser"
-    ],
+    "Motd": {
+             "EnabledModule": true,  //是否启用修改MOTD功能，默认开启
+             "message" : ["Bedrock_Server", "Geyser"],   //动态Motd的配置
+    },
+    "Notice":{
+                "EnableModule": false,    //是否开启Notice公告功能
+                "Join_ShowNotice": false,   ///是否在加入服务器时弹出
+                "IsUpdate":false,   //公告是否有在游戏内更新过，当true时下次所有玩家都会弹出公告
+    },
+    "CrashModuleEnabled": 0,  //崩端功能开关，默认为关闭
     "LLMoney": 0,  //切换经济系统（0为记分板，1为LLmoney模式）
     "Scoreboard": "money",  //计分板名称
     "PayTaxRate": 0,   //转账税率（%）
@@ -265,9 +268,7 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
     "BackTipAfterDeath": 0,   //重生后是否自动弹窗（1开启，0关闭）
     "KeepInventory": 1,   //开服是否自动执行开启死亡不掉落指令
     "suicide": 0,   //自杀所花费的金钱
-    "join_notice": 0,   //进服是否自动弹出公告（默认为关闭，1开启）
     "RankingModel": 1,  //金币排行榜GUI样式 1为新版，2为旧版
-    "forceNotice": 0 , //勿动
     "Version": 265   //版本标识符，勿动！
 }
 ```
