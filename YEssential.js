@@ -22,8 +22,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件 `;
-const version = "2.9.3";
-const regversion =[2,9,3];
+const version = "2.9.4";
+const regversion =[2,9,4];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("x.x"));
@@ -2635,12 +2635,13 @@ function WarpGui(plname) {
         confirmFm.addLabel(lang.get("warp.teleport.name") + warpName);
         confirmFm.addLabel(lang.get("warp.teleport.coord") + `${warpInfo.x},${warpInfo.y},${warpInfo.z} ${transdimid[warpInfo.dimid]}`);
         confirmFm.addLabel(lang.get("warp.teleport.cost") + cost);
-        confirmFm.addLabel("您的" + lang.get("CoinName") + "：" + String(Economy.get(pl)));
+        confirmFm.addLabel("您的" + lang.get("CoinName") + "为：" + String(Economy.get(pl)));
         
         pl.sendForm(confirmFm, (pl, data) => {
             if (data == null) return pl.tell(info + lang.get("gui.exit"));
             
             if (!EconomyManager.checkAndReduce(pl.realName, cost)) return showInsufficientMoneyGui(pl, cost, "warp");
+            setTimeout(() => {
             pl.teleport(
                 parseFloat(warpInfo.x),
                 parseFloat(warpInfo.y),
@@ -2648,6 +2649,8 @@ function WarpGui(plname) {
                 parseInt(warpInfo.dimid)
             );
             pl.sendText(info +lang.get("warp.teleported").replace("${name}", warpName));
+            },200)
+            mc.runcmdEx(`camera ${pl.realName} fade time 0.15 0.5 0.35 color 0 0 0`);
         });
     });
 }
@@ -2941,8 +2944,11 @@ function TpHome(plname){
         pl.sendForm(fm,(pl,data)=>{
             if(data == null) return pl.runcmd("home")
             if (!EconomyManager.checkAndReduce(pl.realName, cost)) return showInsufficientMoneyGui(pl, cost, "home");
+            setTimeout(() => {
             pl.teleport(parseFloat(pldata[lst[id]].x),parseFloat(pldata[lst[id]].y),parseFloat(pldata[lst[id]].z),parseInt(pldata[lst[id]].dimid))
             pl.sendText(info+"传送家 "+lst[id]+" 成功！")
+            },200)
+            mc.runcmdEx(`camera ${pl.realName} fade time 0.15 0.5 0.35 color 0 0 0`);
         })
     })
 }
@@ -3395,7 +3401,6 @@ function acceptTpaRequest(targetName) {
                     );
                     to.teleport(footPos);
                 }
-                
                 from.tell(info +lang.get("tpa.tp.okey"));
                 to.tell(info +lang.get("tpa.tp.okey"));
             }
@@ -3418,7 +3423,10 @@ function acceptTpaRequest(targetName) {
                 targetPlayer.pos.z,
                 targetPlayer.pos.dimid
             );
+            setTimeout(() => {
             from.teleport(footPos);
+            },500)
+            mc.runcmdEx(`camera ${from.realName} fade time 0.15 0.5 0.35 color 0 0 0`);
         } else {
             let targetPlayer = mc.getPlayer(from.name);
             if (!targetPlayer) {
@@ -3431,10 +3439,11 @@ function acceptTpaRequest(targetName) {
                 targetPlayer.pos.z,
                 targetPlayer.pos.dimid
             );
+            setTimeout(() => {
             to.teleport(footPos);
-            mc.runcmdEx();
+            },500)
+            mc.runcmdEx(`camera ${to.realName} fade time 0.15 0.5 0.35 color 0 0 0`);
         }
-        
         from.tell(info +lang.get("tpa.tp.okey"));
         to.tell(info +lang.get("tpa.tp.okey"));
     }
