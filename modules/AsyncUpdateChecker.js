@@ -3,6 +3,16 @@
  * 负责检查插件更新并自动下载安装
  */
 // 异步网络请求管理器
+function randomGradientLog(text) {
+      const len = text.length;
+      let out = '';
+      for (let i = 0; i < len; i++) {
+          const t = len <= 1 ? 0 : i / (len - 1);
+          const [r, g, b] = globalLerpColor(t);
+          out += `\x1b[38;2;${r};${g};${b}m` + text[i];
+      }
+      logger.log(out + '\x1b[0m');
+}
 class AsyncNetworkManager {
     static async httpGet(url, timeout = 10000) {
         return new Promise((resolve, reject) => {
@@ -161,7 +171,7 @@ class AsyncUpdateChecker {
      */
     static async repairMissingFiles(missingFiles) {
         try {
-            logger.info("开始下载缺失文件...");
+            randomGradientLog("开始下载缺失文件...");
             
             // 下载缺失的文件
             const downloadResults = await this.downloadSpecificFiles(missingFiles);
@@ -180,7 +190,7 @@ class AsyncUpdateChecker {
             await this.writeAllFiles(downloadResults);
             
             colorLog("green", `成功修复 ${downloadResults.length} 个缺失文件`);
-            logger.info("文件修复完成,插件将在稍后重载");
+            randomGradientLog("文件修复完成,插件将在稍后重载");
             
             // 延迟重载插件
             await this.reloadPlugin();
@@ -200,7 +210,7 @@ class AsyncUpdateChecker {
         
         const downloadPromises = fileList.map(async (file) => {
             try {
-                logger.info(`下载文件: ${file.url}`);
+                randomGradientLog(`下载文件: ${file.url}`);
                 
                 const data = await AsyncNetworkManager.httpGet(
                     config.baseUrl + file.url,
@@ -233,7 +243,7 @@ class AsyncUpdateChecker {
      */
     static async checkForUpdates(currentVersion) {
         try {
-            logger.warn(lang.get("Upd.check"));
+            randomGradientLog(lang.get("Upd.check"));
             
             // 获取远程版本信息
             const versionInfo = await this.fetchRemoteVersion();
@@ -258,7 +268,7 @@ class AsyncUpdateChecker {
                 logger.warn(`您的本地版本比远程版本更新! (${currentVersion} > ${remoteVersion})`);
             } else {
                 // 已是最新版本
-                colorLog("green", `您已是最新版本 (${currentVersion})`);
+                randomGradientLog(`您已是最新版本 (${currentVersion})`);
                 
                 // 即使是最新版本,也检查文件完整性
                 const missingFiles = await this.checkMissingFiles();

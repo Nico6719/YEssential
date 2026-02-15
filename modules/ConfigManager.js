@@ -14,21 +14,9 @@ class ConfigManager {
         this.currentVersion = 286;
         this.pluginPath = pluginpath || "./plugins/YEssential";
         this.moduleListPath = `${this.pluginPath}/modules/modulelist.json`;
-        
         // 默认配置
         this.configDefaults = {
             "Version": 286,
-            "HubEnabled": 0,
-            "CrashModuleEnabled": 0,
-            "RankingModel": 1,
-            "LLMoney": 0,
-            "Scoreboard": "money",
-            "PayTaxRate": 0,
-            "suicide": 0,
-            "Back": 0,
-            "Warp": 0,
-            "BackTipAfterDeath": false,
-            "KeepInventory": false,
             "Update": {
                 "EnableModule": true,
                 "CheckInterval": 120,
@@ -130,7 +118,18 @@ class ConfigManager {
                 "status": 0,
                 "whmotdmsg": "服务器维护中，请勿进入！",
                 "whgamemsg": "服务器正在维护中，请您稍后再来!"
-            }
+            },
+            "SimpleLogOutPut": false,
+            "CrashModuleEnabled": 0,
+            "RankingModel": 1,
+            "LLMoney": 0,
+            "Scoreboard": "money",
+            "PayTaxRate": 0,
+            "suicide": 0,
+            "Back": 0,
+            "Warp": 0,
+            "BackTipAfterDeath": false,
+            "KeepInventory": false
         };
 
         // 默认模块列表
