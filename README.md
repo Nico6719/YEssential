@@ -259,6 +259,7 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
                 "Join_ShowNotice": false,   ///是否在加入服务器时弹出
                 "IsUpdate":false,   //公告是否有在游戏内更新过，当true时下次所有玩家都会弹出公告
     },
+    "SimpleLogOutPut": false,   //简洁的日志输出，默认为关闭
     "CrashModuleEnabled": 0,  //崩端功能开关，默认为关闭
     "LLMoney": 0,  //切换经济系统（0为记分板，1为LLmoney模式）
     "Scoreboard": "money",  //计分板名称
