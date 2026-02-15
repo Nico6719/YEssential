@@ -21,9 +21,9 @@ const YEST_LangDir = "./plugins/YEssential/lang/";
 const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
-const PluginInfo =`YEssential多功能基础插件 `;
-const version = "2.9.2";
-const regversion =[2,9,2];
+const PluginInfo =`基岩版多功能基础插件 `;
+const version = "2.9.3";
+const regversion =[2,9,3];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("x.x"));
@@ -90,14 +90,14 @@ const defaultLangContent = {
     "money.player.list": "排行榜",
     "moneys.help": "您的语法有误！\n/moneys <name> add \n /monneys <name> del \n /moneys <name> set",
     "money.transfer": "转账",
-    "moeny.view": "查看",
+    "money.view": "查看",
     "money.query": "查询",
     "money.history": "历史记录(最近50条)：",
     "money.history.empty": "暂无记录",
     "money.success": "成功",
     "money.decrease.number": "请输入要减少的",
     "money.add.number": "请输入要增加的",
-    "moeny.set.number": "请输入要设置的",
+    "money.set.number": "请输入要设置的",
     "money.no.enough": "您的余额不足！",
     "money.tr.error1": "无效的接收方！",
     "money.tr.error2": "不能给自己转账!",
@@ -107,7 +107,7 @@ const defaultLangContent = {
     "money.tr.amount": "输入转账数量(all为全部)",
     "money.del.number": "请输入减少数量!",
     "money.cannotpay.totax": "转账金额不足以支付手续费！",
-    "moeny.setting.number": "请输入设置数量",
+    "money.setting.number": "请输入设置数量",
     "money.must.bigger0": "转账数量必须大于0！",
     "money.cannot.smaller0": "§c实际到账金额不能为负数！",
     "money.op.add": "增加玩家的",
@@ -699,7 +699,11 @@ function randomGradientLog(text) {
             if (failedCount > 0) {
                 logWarn(lang.get("init.fail"));
             } else {
+                setTimeout(() => {
+                if (conf.get("SimpleLogOutPut")== false) {
                 logInfo(lang.get("init.success"));
+                logInfo("-".repeat(50));
+                }},100)
             }
         } catch (error) {
             logError("服务器启动初始化失败: " + error.message);
@@ -713,8 +717,10 @@ function randomGradientLog(text) {
       currentIndex++;
 
       try {
+        setTimeout(() => {
+        if (conf.get("SimpleLogOutPut")== false) {
         logInfo("正在加载模块: " + moduleInfo.name + " (" + moduleInfo.path + ")");
-
+        }},100)
         var module = require(moduleInfo.path);
 
         if (!module) {
@@ -799,9 +805,13 @@ function printGradientLogo() {
 
     logger.log('');
     logger.log(gradientLine(PluginInfo + lang.get("Version.Chinese") + version + ", 作者：Nico6719"));
+    setTimeout(() => {
+    if (conf.get("SimpleLogOutPut")== false) {
     logger.log(gradientLine(lang.get("Tip1")));
     logger.log(gradientLine(lang.get("Tip2")));
     logger.log(gradientLine(lang.get("Tip3")));
+    logger.log(gradientLine("-".repeat(50)));
+    }},10)
 }
 function initializePlugin() {
     // 第一步：获取并创建计分板
@@ -827,8 +837,8 @@ function initializePlugin() {
     // 第三步：提示维护功能是否开启
     if (Maintenance.isActive) {
         setTimeout(() => {
-            logger.warn(lang.get("wh.warn"));
-        }, 3000);
+            randomGradientLog(lang.get("wh.warn"));
+        }, 1000);
     }
     
     // 第四步：启用死亡不掉落
@@ -837,8 +847,7 @@ function initializePlugin() {
         randomGradientLog(lang.get("gamerule.KeepInventory.true"));
     }
     
-
-    //
+    //第五步：判断是否有更新公告
     if (conf.get("Notice").IsUpdate == 1) {   
     File.delete(datapath+ "/NoticeSettingsData/playersettingdata.json")
     randomGradientLog(lang.get("notice.is.changed"));
@@ -846,6 +855,7 @@ function initializePlugin() {
     noticeObj.IsUpdate = false;
     conf.set("Notice", noticeObj); 
     }
+
     // 第六步：清理残留的灵魂出窍模拟玩家
     const allPlayers = mc.getOnlinePlayers();
     allPlayers.forEach(p => {
@@ -927,102 +937,105 @@ class AsyncLanguageManager {
 function ranking(plname) {
     let pl = mc.getPlayer(plname);
     if (!pl) return;
-    if (conf.get("RankingModel")==1) {
-    let datas = JSON.parse(moneyranking.read());
+
+    // 1. 读取硬盘上的基础数据
+    let rawFile = moneyranking.read();
+    let datas = rawFile ? JSON.parse(rawFile) : {};
+
+    // 2. [关键修复] 合并内存缓存中的其他玩家数据
+    for (let name in moneyCache) {
+        datas[name] = moneyCache[name];
+    }
+
+    // 3. [核心修复] 强制获取“你自己”的当前实时余额
+    // 不管文件或缓存里是多少，现在立刻查一次真实的钱
+    let myRealMoney;
+    if (conf.get("LLMoney") == 1) {
+        myRealMoney = pl.getMoney(); // LLMoney模式
+    } else {
+        myRealMoney = pl.getScore(conf.get("Scoreboard") || "money"); // 计分板模式
+    }
+
+    // 如果获取到了余额，强制覆盖进列表，保证你自己看到的数据是100%正确的
+    if (myRealMoney !== undefined && myRealMoney !== null) {
+        datas[pl.realName] = myRealMoney;
+        
+        // 顺便更新一下缓存，防止下次又变回去
+        moneyCache[pl.realName] = myRealMoney;
+        moneyDirty = true;
+    }
+
+    // 4. 数据转为数组并排序
     let lst = Object.keys(datas).map(name => ({
-      name: name,
-      money: datas[name]
+        name: name,
+        money: datas[name]
     }));
-    
+
     if (lst.length === 0) {
         pl.tell(info + lang.get("no.ranking.data"));
         return;
     }
 
+    // 从大到小排序
     lst.sort((a, b) => b.money - a.money);
-    const ranking = lst.slice(0, 50);
-    const total = ranking.reduce((sum, curr) => sum + curr.money, 0);
+    
+    // 截取前50名
+    const rankingData = lst.slice(0, 50);
 
-    // 构建表单
-    let form = mc.newSimpleForm()
-        .setTitle(`§l§6■ 财富排行榜 ■ §r§8[前${ranking.length}名]`)
-        .setContent(
-            `§7服务器总财富: §6${formatMoney(total)}\n` +
-            `§7统计时间: §f${new Date().toLocaleTimeString()}\n` +
-            `§6点击任何按钮返回经济系统主菜单\n` +
-            `§8═════════════════════`
-        );
+    // === 模式 1: 详细 UI ===
+    if (conf.get("RankingModel") == 1) {
+        const total = rankingData.reduce((sum, curr) => sum + curr.money, 0);
 
-    // 添加排名条目（调整第二名颜色为亮蓝色）
-    ranking.forEach((v, index) => {
-        const rank = index + 1;
-        const percentage = total > 0 ? (v.money / total * 100).toFixed(1) : 0;
-        
-        form.addButton(
-            `${getRankPrefix(rank)} §l${rank}. §r${v.name}\n` +
-            `§l§c├ 持有: ${formatMoney(v.money)}` +
-            ` §r§l占比全服: §a${percentage} %`
-        );
-    });
+        let form = mc.newSimpleForm()
+            .setTitle(`§l§6■ 财富排行榜 ■ §r§8[前${rankingData.length}名]`)
+            .setContent(
+                `§7服务器总财富: §6${formatMoney(total)}\n` +
+                `§7统计时间: §f${new Date().toLocaleTimeString()}\n` +
+                `§6点击按钮返回菜单 | §a你的余额: ${formatMoney(myRealMoney)}\n` +
+                `§8═════════════════════`
+            );
 
-    // 发送表单并处理交互
-    pl.sendForm(form, (pl, id) => {
-        // 点击任何按钮都提示并返回主菜单
-        if (id !== null) {
-            pl.tell(info +lang.get("money.callback.menu"));
+        rankingData.forEach((v, index) => {
+            const rank = index + 1;
+            const percentage = total > 0 ? (v.money / total * 100).toFixed(1) : "0.0";
+            
+            // 如果这一行是你自己，加粗显示
+            let entryName = v.name === pl.realName ? `§e§l[我] ${v.name}§r` : v.name;
+
+            form.addButton(
+                `${getRankPrefix(rank)} §l${rank}. §r${entryName}\n` +
+                `§l§c├ 持有: ${formatMoney(v.money)}` +
+                ` §r§l占比: §a${percentage}%`
+            );
+        });
+
+        pl.sendForm(form, (pl, id) => {
+            if (id !== null) pl.tell(info + lang.get("money.callback.menu"));
+            pl.runcmd("moneygui");
+        });
+
+        // 格式化数字函数
+        function formatMoney(amount) {
+            if (amount === undefined || amount === null) return "0";
+            if (amount >= 1e6) return (amount / 1e6).toFixed(1) + "M";
+            if (amount >= 1e3) return (amount / 1e3).toFixed(1) + "K";
+            return amount.toLocaleString();
         }
-        pl.runcmd("moneygui");
-    });
 
-    // 辅助函数
-    function formatMoney(amount) {
-        if (amount >= 1e6) return (amount / 1e6).toFixed(1) + "M";
-        if (amount >= 1e3) return (amount / 1e3).toFixed(1) + "K";
-        return amount.toLocaleString();
-    }
-
-    function getRankPrefix(rank) {
-        return [
-            "§6★",  // 第一名 - 金色
-            "§b☆",  // 第二名 - 亮蓝色（调整后）
-            "§c◆",  // 第三名 - 红色
-            "§a▣"   // 其他名次 - 绿色
-        ][Math.min(3, rank - 1)] || "§7";
-    }
+        // 排名图标函数
+        function getRankPrefix(rank) {
+            return ["§b☆", "§c◆", "§a▣"][Math.min(2, rank - 1)] || "§7";
+        }
     } 
-    else
-    {
-
+    // === 模式 0: 简单文本列表 ===
+    else {
         let form = mc.newSimpleForm();
         let str = '';
-        let lst = [];
-        
-        // 读取并解析整个 JSON 文件
-        const rawData = moneyranking.read();
-        const data = rawData ? JSON.parse(rawData) : {};
-        const keys = Object.keys(data);
-        
-        if (keys.length === 0) {
-            pl.tell(info + lang.get("no.ranking.data"));
-            return;
-        }
-
-        keys.forEach((v) => {
-            let money = data[v]; // 直接从解析后的对象获取值
-            lst.push([v, money]);
+        rankingData.forEach((v) => {
+            str += `${v.name}: ${v.money}\n`;
         });
-
-        // 排序并取前50名
-        lst.sort((a, b) => b[1] - a[1]);
-        let ranking = lst.slice(0, 50);
-
-        ranking.forEach((v) => {
-            str += `${v[0]}: ${v[1]}\n`;
-        });
-
         form.setTitle(lang.get("ranking.list"));
         form.setContent(str);
-
         pl.sendForm(form, (pl, id) => {
             if (id == null) pl.runcmd("moneygui");
         });
@@ -1035,27 +1048,23 @@ let transdimid = {
 }
 /////////////////////////////////////////////////////////////////////////////////////////////
 // 金币排行榜更新优化 - 使用内存缓存减少文件I/O
-let moneyCache = {};
+let moneyCache = new Map();
 let moneyDirty = false;
-
-// 每10秒更新内存缓存
+function updateSinglePlayerCache(pl) {
+    if (!pl) return;
+    const isLLMoney = conf.get("LLMoney") !== 0;
+    const moneyValue = isLLMoney ? pl.getMoney() : pl.getScore(conf.get("Scoreboard") || "money");
+    if (moneyValue !== null && moneyValue !== undefined) {
+        if (moneyCache.get(pl.realName) !== moneyValue) {
+            moneyCache.set(pl.realName, moneyValue);
+            moneyDirty = true;
+        }
+    }
+}
+mc.listen("onJoin", (pl) => updateSinglePlayerCache(pl));
 setInterval(() => {
-    mc.getOnlinePlayers().forEach((pl) => {
-        let moneyValue;
-        if (conf.get("LLMoney") == 0) {
-            moneyValue = pl.getScore(conf.get("Scoreboard"));
-        } else {
-            moneyValue = pl.getMoney();
-        }
-        
-        if (moneyValue !== null && moneyValue !== undefined) {
-            if (moneyCache[pl.realName] !== moneyValue) {
-                moneyCache[pl.realName] = moneyValue;
-                moneyDirty = true;
-            }
-        }
-    });
-}, 10000);
+    mc.getOnlinePlayers().forEach(pl => updateSinglePlayerCache(pl));
+}, 30000);
 
 // 每60秒批量写入文件（仅在有变化时）
 setInterval(() => {
@@ -1205,6 +1214,11 @@ noticeSetCmd.setCallback((_cmd, ori, output) => {
                     // 保存新公告
                     file.writeTo(noticePath, newContent);
                     plr.tell(info + lang.get("notice.save.ok"));
+                    File.delete(datapath+ "/NoticeSettingsData/playersettingdata.json")
+                    randomGradientLog(lang.get("notice.is.changed"));
+                    let noticeObj = conf.get("Notice"); 
+                    noticeObj.IsUpdate = false;
+                    conf.set("Notice", noticeObj);
                     break;
                     
                 case 1: // 添加新行
@@ -1368,22 +1382,6 @@ function displayMoneyInfo(pl, target, isSelf = true) {
         return `${prefix}${lang.get("CoinName")}为: ${money}`;
     }
 }
-mc.listen("onJoin", (pl) => {
-    if (conf.get("forceNotice")) {
-        conf.set("forceNotice", false);
-        noticeconf.set(pl.realName, 0);
-    }
-    // 异步公告显示
-    if (conf.get("Fcam").Join_ShowNotice == 1) {
-            setTimeout(() => {
-                if (!mc.getPlayer(pl.realName)) return;
-                if (noticeconf.get(String(pl.realName)) == 1) return;
-                if (!conf.get("Notice").EnableModule) return;
-                pl.runcmd("notice");
-            }, 1000);
-        }
-});
-  
 mc.listen("onJoin",(pl)=>{
    try {
         setTimeout(() => {
@@ -1402,6 +1400,15 @@ mc.listen("onJoin",(pl)=>{
             if (!score) pl.setScore(conf.get("Scoreboard"), 0);
         }
          },1000)
+        // 进入服务器公告显示
+        if (conf.get("Notice").Join_ShowNotice == true) {
+        setTimeout(() => {
+                if (!mc.getPlayer(pl.realName)) return;
+                if (noticeconf.get(String(pl.realName)) == 1) return;
+                if (!conf.get("Notice").EnableModule) return;
+                pl.runcmd("notice");
+            }, 1000);
+        }
     } catch (error) {
         logger.error(`玩家 ${pl.realName} 加入事件处理失败: ${error.message}`);
     }
@@ -1412,7 +1419,6 @@ mc.listen("onConsoleCmd",(cmd)=>{
     mc.getOnlinePlayers().forEach((pl)=>{
         pl.disconnect(msg)
     })
-
     mc.runcmdEx("stop")  //再次尝试
 })
 //自杀模块
@@ -1422,9 +1428,9 @@ suicidecmd.overload([])
 suicidecmd.setCallback((cmd,ori,out,res)=>{
     let pl = ori.player
     if(!conf.get("LLMoney")){
-            if(!ValueCheck(pl.realName,conf.get("suicide"))) return pl.tell(info + lang.get("money.no.enough"));
+            if(!smartMoneyCheck(pl.realName,conf.get("suicide"))) return pl.tell(info + lang.get("money.no.enough"));
     }else{
-            if(!LLValueCheck(pl.realName,conf.get("suicide"))) return pl.tell(info + lang.get("money.no.enough"));
+            if(!smartMoneyCheck(pl.realName,conf.get("suicide"))) return pl.tell(info + lang.get("money.no.enough"));
     }
     pl.tell(info + lang.get("suicide.kill.ok"));
     pl.kill()
@@ -1709,10 +1715,10 @@ function initFcamModule() {
 
         // 费用判断
         if (!conf.get("LLMoney")) {
-            if (!ValueCheck(pl.realName, FcamCost))
+            if (!smartMoneyCheck(pl.realName, FcamCost))
                 return pl.tell(info + lang.get("money.no.enough"));
         } else {
-            if (!LLValueCheck(pl.realName, FcamCost))
+            if (!smartMoneyCheck(pl.realName, FcamCost))
                 return pl.tell(info + lang.get("money.no.enough"));
         }
 
@@ -2012,7 +2018,7 @@ function MoneyGui(plname){
     fm.setTitle(lang.get("CoinName"))
     fm.addButton(lang.get("money.query")+lang.get("CoinName"), "textures/ui/MCoin")
     fm.addButton(lang.get("money.transfer")+lang.get("CoinName"), "textures/ui/trade_icon")
-    fm.addButton(lang.get("moeny.view")+lang.get("CoinName")+lang.get("money.history"), "textures/ui/book_addtextpage_default")
+    fm.addButton(lang.get("money.view")+lang.get("CoinName")+lang.get("money.history"), "textures/ui/book_addtextpage_default")
     fm.addButton(lang.get("CoinName")+lang.get("money.player.list"), "textures/ui/icon_book_writable")
     if (conf.get("RedPacket").EnabledModule== 1){
     fm.addButton(lang.get("rp.menu.1"),"textures/ui/gift_square")
@@ -2393,7 +2399,7 @@ function handleAdminOp(pl, target, opType, actionText, inputLabel) {
         
         const inputVal = data[0];
         if (!inputVal || inputVal.trim() === "") {
-            return admin.tell(info + lang.get("moeny.setting.number")); // 使用原本的提示key
+            return admin.tell(info + lang.get("money.setting.number")); // 使用原本的提示key
         }
         
         const amount = Number(inputVal);
@@ -2541,7 +2547,7 @@ function MoneySetGui(plname) {
         handleAdminOp(
             pl, target, 'set', 
             "设置", 
-            lang.get("moeny.set.number") + lang.get("CoinName")
+            lang.get("money.set.number") + lang.get("CoinName")
         );
     });
 }
@@ -2816,9 +2822,9 @@ function BackGUI(plname) {
         
         // 检查金钱
         if (!conf.get("LLMoney")) {
-            if (!ValueCheck(pl.realName, conf.get("Back"))) return pl.tell(info + lang.get("money.no.enough"));
+            if (!smartMoneyCheck(pl.realName, conf.get("Back"))) return pl.tell(info + lang.get("money.no.enough"));
         } else {
-            if (!LLValueCheck(pl.realName, conf.get("Back"))) return pl.tell(info + lang.get("money.no.enough"));
+            if (!smartMoneyCheck(pl.realName, conf.get("Back"))) return pl.tell(info + lang.get("money.no.enough"));
         }
         
         // 传送到选择的死亡点
@@ -3426,6 +3432,7 @@ function acceptTpaRequest(targetName) {
                 targetPlayer.pos.dimid
             );
             to.teleport(footPos);
+            mc.runcmdEx();
         }
         
         from.tell(info +lang.get("tpa.tp.okey"));
@@ -3532,34 +3539,20 @@ asyncRtpCmd.setCallback(async (cmd, ori, out, res) => {
     }
 });
 asyncRtpCmd.setup();
-function ValueCheck(plname,value){
-    let score = mc.getPlayer(plname).getScore(conf.get("Scoreboard"))
-    if(!score){
-        mc.getPlayer(plname).setScore(conf.get("Scoreboard"),0)
-    }
-    if(score < value){
-        return false
-    }else{
-        mc.getPlayer(plname).reduceScore(conf.get("Scoreboard"),value)
-        return true
-    }
-}
-function LLValueCheck(plname, value) {
-    let pl = mc.getPlayer(plname);
+//经济检查模块
+function smartMoneyCheck(plname, value) {
+    const pl = mc.getPlayer(plname);
     if (!pl) return false;
-    
-    let LLMoney = pl.getMoney();  // 正确获取LLMoney
-    if (LLMoney === null || LLMoney === undefined) {
-        pl.setMoney(0);  // 初始化LLMoney
-        return false;
+    const isLLMoney = conf.get("LLMoney") !== 0;
+    const scoreboard = conf.get("Scoreboard") || "money";
+    let balance = isLLMoney ? pl.getMoney() : pl.getScore(scoreboard);
+    if (balance === null || balance === undefined) {
+        if (isLLMoney) pl.setMoney(0);
+        else pl.setScore(scoreboard, 0);
+        balance = 0;
     }
-
-    if (LLMoney < value) {
-        return false;
-    } else {
-        pl.reduceMoney(value);  // 正确扣除LLMoney
-        return true;
-    }
+    if (balance < value) return false;
+    return isLLMoney ? pl.reduceMoney(value) : pl.reduceScore(scoreboard, value);
 }
 // ======================
 // Rp 红包系统优化
