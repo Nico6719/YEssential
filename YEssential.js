@@ -22,8 +22,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件 `;
-const version = "2.9.4";
-const regversion =[2,9,4];
+const version = "2.9.5";
+const regversion =[2,9,5];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("x.x"));
@@ -1357,16 +1357,6 @@ function teleportPlayer(pl,player) {
         logger.error(e.stack);
     }
 }
-
-function getScoreMoney(pl) {
-    let ScoreMoney = pl.getScore(conf.get("Scoreboard"))
-    return  ScoreMoney.toString();
-}
-function getLLMoney(pl){
-    let LLMoney = pl.getMoney();
-    return LLMoney.toString();
-
-}
 // 金币信息显示函数
 function displayMoneyInfo(pl, target, isSelf = true) {
     if (!pl || !target) return "信息获取失败";
@@ -1383,6 +1373,7 @@ function displayMoneyInfo(pl, target, isSelf = true) {
     }
 }
 mc.listen("onJoin",(pl)=>{
+   //if (conf.get("wh").status == 1) return;
    try {
         setTimeout(() => {
         // 初始化玩家数据
@@ -1409,6 +1400,17 @@ mc.listen("onJoin",(pl)=>{
                 pl.runcmd("notice");
             }, 1000);
         }
+        if (pl.isOP()) {
+            return;
+        }
+        const xuid = pl.realName;
+        if (pvpConfig.get(xuid) === undefined) {
+            pvpConfig.set(xuid, false);
+        }
+        pl.setGameMode(0)
+        setTimeout(() => {
+            mc.runcmdEx(`tp ${plname} ${plname + "_sp"}`)
+        }, 1000);
     } catch (error) {
         logger.error(`玩家 ${pl.realName} 加入事件处理失败: ${error.message}`);
     }
@@ -1472,14 +1474,6 @@ function initPvpModule() {
         out.success(info + (newState ? lang.get("pvp.is.on") : lang.get("pvp.is.off")));
     });
     pvp.setup();
-
-    // 3. 监听玩家加入 (初始化状态)
-    mc.listen("onJoin", function (player) {
-        const xuid = player.realName;
-        if (pvpConfig.get(xuid) === undefined) {
-            pvpConfig.set(xuid, false);
-        }
-    });
 
     // 4. 监听实体爆炸 (统一处理，优化版)
     mc.listen("onEntityExplode", (source, pos, radius, maxResistance, isDestroy, isFire) => {
@@ -1859,18 +1853,6 @@ function initFcamModule() {
             spl.simulateDisconnect();
         }
     });
-
-    // 监听玩家加入事件
-    mc.listen("onJoin", (pl) => {
-        let plname = pl.realName;
-        if (pl.isOP()) {
-            return;
-        }
-        pl.setGameMode(0)
-        setTimeout(() => {
-            mc.runcmdEx(`tp ${plname} ${plname + "_sp"}`)
-        }, 1000);
-    });
 }
 
 //维护模块
@@ -1921,13 +1903,12 @@ whcmd.setup()
 
 mc.listen("onPreJoin", (pl) => {
     // 检查模块是否启用
-    let currentConfig = conf.get("wh") || { EnableModule: true, status: 0 };
+    let currentConfig = conf.get("wh") || { EnableModule: true, status: 0 , whmotdmsg: "服务器维护中，请勿进入！", whgamemsg: "服务器正在维护中，请您稍后再来!"};
     if (!currentConfig.EnableModule) return;
-    
     if (pl.isSimulatedPlayer()) return;
     if (pl.isOP()) return;
     if (Maintenance.isActive) {
-        pl.kick(lang.get("weihu.msg"));
+        pl.kick(currentConfig.whgamemsg);            
     }
 })
 
@@ -2011,7 +1992,6 @@ moneygui.setup()
 
 function MoneyGui(plname){
     let pl = mc.getPlayer(plname)
-    let target = mc.getPlayer(plname)
     if(!pl) return
 
     let fm = mc.newSimpleForm()
