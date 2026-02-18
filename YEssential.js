@@ -3294,7 +3294,7 @@ mc.regPlayerCmd("crash", "§c使玩家客户端崩溃", (player,args) => {
     crashplayer.addDropdown("请选择玩家:", playersname);
     player.sendForm(crashplayer,function(pl,crashplayerdata) {
         if(crashplayerdata == null) {
-            pl.tell(info+lang.get("crash.player.ok"));
+            pl.tell(info+lang.get("gui.exit"));
         }else{
             let player = crashplayerdata[1];
             let playername = playersname[player];
