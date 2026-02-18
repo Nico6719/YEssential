@@ -1,14 +1,5 @@
 // 配置版本管理类
-function randomGradientLog(text) {
-      const len = text.length;
-      let out = '';
-      for (let i = 0; i < len; i++) {
-          const t = len <= 1 ? 0 : i / (len - 1);
-          const [r, g, b] = globalLerpColor(t);
-          out += `\x1b[38;2;${r};${g};${b}m` + text[i];
-      }
-      logger.log(out + '\x1b[0m');
-}
+// randomGradientLog 由主文件通过 globalThis 注入，此处无需重复定义
 class ConfigManager {
     constructor() {
         this.currentVersion = 286;
@@ -23,13 +14,16 @@ class ConfigManager {
                 "versionUrl": "https://dl.mcmcc.cc/file/Version.json",
                 "baseUrl": "https://dl.mcmcc.cc/file/",
                 "files": [
-                    { "url": "YEssential.js", "path": "YEssential.js" },
-                    { "url": "modules/Cleanmgr.js", "path": "./modules/Cleanmgr.js" },
-                    { "url": "modules/ConfigManager.js", "path": "./modules/ConfigManager.js" },
-                    { "url": "modules/AsyncUpdateChecker.js", "path": "./modules/AsyncUpdateChecker.js" },
-                    { "url": "modules/RadomTeleportSystem.js", "path": "./modules/RadomTeleportSystem.js" },
-                    { "url": "modules/Bstats.js", "path": "./modules/Bstats.js" },
-                    { "url": "modules/Cd.js", "path": "./modules/Cd.js" }
+                    { "url": "YEssential.js",                    "path": "YEssential.js" },
+                    { "url": "modules/Cleanmgr.js",              "path": "./modules/Cleanmgr.js" },
+                    { "url": "modules/ConfigManager.js",         "path": "./modules/ConfigManager.js" },
+                    { "url": "modules/AsyncUpdateChecker.js",    "path": "./modules/AsyncUpdateChecker.js" },
+                    { "url": "modules/RadomTeleportSystem.js",   "path": "./modules/RadomTeleportSystem.js" },
+                    { "url": "modules/Bstats.js",                "path": "./modules/Bstats.js" },
+                    { "url": "modules/Cd.js",                    "path": "./modules/Cd.js" },
+                    { "url": "modules/PVP.js",                   "path": "./modules/PVP.js" },
+                    { "url": "modules/Fcam.js",                  "path": "./modules/Fcam.js" },
+                    { "url": "modules/Notice.js",                "path": "./modules/Notice.js" }
                 ],
                 "reloadDelay": 1000,
                 "timeout": 30000,

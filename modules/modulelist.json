@@ -23,6 +23,18 @@
         {
             "path": "RadomTeleportSystem.js",
             "name": "RadomTeleportSystem"
+        },
+        {
+            "path": "PVP.js",
+            "name": "PVP"
+        },
+        {
+            "path": "Fcam.js",
+            "name": "Fcam"
+        },
+        {
+            "path": "Notice.js",
+            "name": "Notice"
         }
     ]
 }
