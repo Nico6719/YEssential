@@ -22,8 +22,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件 `;
-const version = "2.9.6";
-const regversion =[2,9,6];
+const version = "2.9.7";
+const regversion =[2,9,7];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("x.x"));
@@ -450,9 +450,7 @@ let tpacfg = new JsonConfigFile(datapath +"/TpaSettingsData/tpaAutoRejectConfig.
 
 let isSending = false
 
-new IniConfigFile(datapath +"/NoticeSettingsData/notice.txt");
 
-;
 // 创建红包数据对象
 // --- 红包系统底层优化 ---
 const redpacketData = {
@@ -581,6 +579,24 @@ function randomGradientLog(text) {
       logger.log(out + '\x1b[0m');
 }
 // ─────────────────────────────────────────────────────────
+// ── 模块全局依赖注入 ────────────────────────────────────────
+// LiteLoader 的 require() 沙箱无法继承主脚本词法作用域的 let/const 变量，
+// 通过 globalThis 显式暴露供所有模块访问（包括 PVP、Fcam、Notice 等）
+var stats = false; // 维护状态，避免 IIFE 内 "stats is not defined"
+Object.assign(globalThis, {
+    // 配置 & 数据文件
+    conf, lang, info, datapath, pluginpath,
+    pvpConfig, noticeconf, homedata, warpdata, rtpdata,
+    MoneyHistory, moneyranking, tpacfg, servertp,
+    offlineMoney, offlineMoneyPath, MdataPath,
+    // 常量
+    YEST_LangDir, NAME, version, regversion, PluginInfo,
+    langFilePath, defaultLangContent,
+    // 渐变日志工具（function 声明虽然会提升，但 GLOBAL_C1/C2 是 const，
+    // 显式挂载确保 require() 沙箱内也能访问）
+    globalLerpColor, randomGradientLog
+});
+
 /**
  * YEssential - 模块初始化管理器
  * 自动加载并初始化 modules 文件夹中的所有模块
@@ -588,47 +604,6 @@ function randomGradientLog(text) {
 (function() {
 
   var BASE_PATH = "plugins/YEssential/modules/";
-
-  // ── 启动时随机生成两个颜色，全局复用 ─────────────────────
-  function randomVividColor() {
-      // 保证颜色饱和度高，不生成暗淡/接近灰色的颜色
-      const h = Math.random() * 360;
-      const s = 0.75 + Math.random() * 0.25;  // 75%~100%
-      const l = 0.45 + Math.random() * 0.15;  // 45%~60%
-
-      // HSL → RGB
-      const a = s * Math.min(l, 1 - l);
-      function f(n) {
-          const k = (n + h / 30) % 12;
-          return Math.round((l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))) * 255);
-      }
-      return [f(0), f(8), f(4)];
-  }
-
-  // 确保两个颜色色相差足够大，避免渐变不明显
-  function generateColorPair() {
-      const c1 = randomVividColor();
-      let c2;
-      let attempts = 0;
-      do {
-          c2 = randomVividColor();
-          const diff = Math.abs(c1[0]-c2[0]) + Math.abs(c1[1]-c2[1]) + Math.abs(c1[2]-c2[2]);
-          if (diff > 150 || attempts > 20) break;
-          attempts++;
-      } while (true);
-      return [c1, c2];
-  }
-
-  const [COLOR_START, COLOR_END] = generateColorPair();
-
-  // 渐变插值（两色）
-  function gradientColor(t) {
-      return [
-          Math.round(COLOR_START[0] + (COLOR_END[0] - COLOR_START[0]) * t),
-          Math.round(COLOR_START[1] + (COLOR_END[1] - COLOR_START[1]) * t),
-          Math.round(COLOR_START[2] + (COLOR_END[2] - COLOR_START[2]) * t)
-      ];
-  }
 
   // ── 渐变日志工具 ──────────────────────────────────────────
   function gradientLog(text, r1, g1, b1, r2, g2, b2) {
@@ -681,9 +656,6 @@ function randomGradientLog(text) {
 
     function loadNextModule() {
       if (currentIndex >= modules.length) {
-        initPvpModule();
-        initFcamModule();
-
         let whConfig = conf.get("wh") || { EnableModule: true, status: 0 };
         stats = whConfig.status === 1;
 
@@ -717,10 +689,9 @@ function randomGradientLog(text) {
       currentIndex++;
 
       try {
-        setTimeout(() => {
         if (conf.get("SimpleLogOutPut")== false) {
         logInfo("正在加载模块: " + moduleInfo.name + " (" + moduleInfo.path + ")");
-        }},100)
+        }
         var module = require(moduleInfo.path);
 
         if (!module) {
@@ -755,14 +726,14 @@ function randomGradientLog(text) {
 
       setTimeout(loadNextModule, 10);
     }
-
-    printGradientLogo();
-    loadNextModule();
+    setTimeout(() => {
+        printGradientLogo();   
+        loadNextModule();
+    }, 2000);
   }
-
   setTimeout(function() {
     initModules();
-  }, 10);
+  }, 1);
 })();
 function printGradientLogo() {
     const logo = [
@@ -847,14 +818,7 @@ function initializePlugin() {
         randomGradientLog(lang.get("gamerule.KeepInventory.true"));
     }
     
-    //第五步：判断是否有更新公告
-    if (conf.get("Notice").IsUpdate == 1) {   
-    File.delete(datapath+ "/NoticeSettingsData/playersettingdata.json")
-    randomGradientLog(lang.get("notice.is.changed"));
-    let noticeObj = conf.get("Notice"); 
-    noticeObj.IsUpdate = false;
-    conf.set("Notice", noticeObj); 
-    }
+    // 第五步（公告更新检测）已移至 Notice.js 模块
 
     // 第六步：清理残留的灵魂出窍模拟玩家
     const allPlayers = mc.getOnlinePlayers();
@@ -928,6 +892,7 @@ class AsyncLanguageManager {
                 
                 // 重新初始化语言对象
                 lang = new JsonConfigFile(langFilePath, JSON.stringify(mergedData));
+                globalThis.lang = lang; // 同步更新全局引用，供模块访问
             }
         } catch (error) {
             logger.error("合并语言文件时出错: " + error.message);
@@ -1138,151 +1103,6 @@ Sercmd.setCallback((cmd, ori, out, res) => {
     });
 });
 Sercmd.setup();
-// ======================
-// 管理员修改公告（GUI 表单） - 21：15 25-8-5 Add：备份功能，多行输入
-// ======================
-const noticeSetCmd = mc.newCommand("noticeset", "编辑公告内容", PermType.GameMasters);
-noticeSetCmd.overload([]);
-
-noticeSetCmd.setCallback((_cmd, ori, output) => {
-    const pl = ori.player;
-    if (!pl) return;
-    if (!conf.get("Notice").EnableModule) {
-        pl.tell(info + lang.get("module.no.Enabled"));
-        return;
-    }
-    if (!pl.isOP()) {
-        output.error(info + lang.get("player.not.op"));
-        return;
-    }
-
-    // 文件路径常量
-    const noticeDir = "./plugins/YEssential/data/NoticeSettingsData/";
-    const noticePath = noticeDir + "notice.txt";
-    const backupPath = noticeDir + "notice.txt.bak";
-
-    // 读取现有公告内容
-    let currentNotice = "";
-    if (file.exists(noticePath)) {
-        currentNotice = file.readFrom(noticePath) || "";
-    }
-
-    // 递归函数处理多行表单
-    const sendNoticeForm = (player, lines) => {
-        const form = mc.newCustomForm()
-            .setTitle(info + lang.get("notice.editor"));
-        
-        // 添加每行输入框
-        lines.forEach((line, index) => {
-            form.addInput(`§a行 ${index + 1}`, line || "");
-        });
-        
-        // 添加控制按钮
-        form.addStepSlider("操作", ["完成编辑", "添加新行", "删除最后一行"], 0);
-        
-        player.sendForm(form, (plr, data) => {
-            if (data === null || data === undefined) {
-                plr.tell(info + lang.get("notice.exit.edit"));
-                return;
-            }
-            
-            const action = data.pop(); // 获取操作类型
-            const contentLines = data.map(val => val || ""); // 获取所有行内容
-            
-            switch (action) {
-                case 0: // 完成编辑
-                    const newContent = contentLines.join('\n');
-                    
-                    if (newContent === currentNotice) {
-                        plr.tell(info + lang.get("notice.no.change"));
-                        return;
-                    }
-                    
-                    // 备份原文件
-                    try {
-                        if (file.exists(noticePath)) {
-                            if (file.exists(backupPath)) {
-                                file.delete(backupPath);
-                            }
-                            file.rename(noticePath, backupPath);
-                            plr.tell(info +lang.get("notice.backupto"));
-                        }
-                    } catch (e) {
-                        plr.tell(info + "§c备份失败: " + e);
-                    }
-                    
-                    // 保存新公告
-                    file.writeTo(noticePath, newContent);
-                    plr.tell(info + lang.get("notice.save.ok"));
-                    File.delete(datapath+ "/NoticeSettingsData/playersettingdata.json")
-                    randomGradientLog(lang.get("notice.is.changed"));
-                    let noticeObj = conf.get("Notice"); 
-                    noticeObj.IsUpdate = false;
-                    conf.set("Notice", noticeObj);
-                    break;
-                    
-                case 1: // 添加新行
-                    contentLines.push(""); // 添加空行
-                    sendNoticeForm(plr, contentLines);
-                    break;
-                    
-                case 2: // 删除最后一行
-                    if (contentLines.length > 1) {
-                        contentLines.pop();
-                        sendNoticeForm(plr, contentLines);
-                    } else {
-                        plr.tell(info + lang.get("notice.cannot.del"));
-                        sendNoticeForm(plr, contentLines); // 保持表单打开
-                    }
-                    break;
-            }
-        });
-    };
-
-    // 初始调用表单
-    sendNoticeForm(pl, currentNotice.split('\n'));
-});
-
-noticeSetCmd.setup();
-
-let = cmd = mc.newCommand("notice","公告",PermType.Any)
-cmd.overload([])
-cmd.setCallback((cmd, ori, out, res) => {
-    let pl = ori.player;
-    if (!conf.get("Notice").EnableModule) {
-        pl.tell(info + lang.get("module.no.Enabled"));
-        return;
-    }
-    if (!pl) return;
-    noticeconf.init(String(pl.realName),0)
-    if(!file.exists("./plugins/YEssential/data/NoticeSettingsData/notice.txt")){
-        new JsonConfigFile("./plugins/YEssential/data/NoticeSettingsData/notice.txt")
-        file.writeTo("./plugins/YEssential/data/NoticeSettingsData/notice.txt"," 这是一个公告")
-    }
-    // 读取公告内容（支持换行）
-    let content = file.readFrom("./plugins/YEssential/data/NoticeSettingsData/notice.txt") || "暂无公告";
-    content = content.split("\n"); // 按换行分割
-
-    let fm = mc.newCustomForm()
-    .setTitle(info+lang.get("notice.for.server"));
-    
-    content.forEach(line => {
-        if (line.trim() !== "") {
-            fm.addLabel(line);
-        }
-    });
-
-    fm.addSwitch(lang.get("notice.dont.showagain"), noticeconf.get(String(pl.realName)) != 0)
-    pl.sendForm(fm, (pl, data) => {
-        if (data == null) return;
-        if(data[data.length - 1] == 1){
-            noticeconf.set(String(pl.realName),1)
-        }else{
-            noticeconf.set(String(pl.realName),0)
-        }
-    });
-});
-cmd.setup()
 //Hub
 mc.regPlayerCmd('hub', '打开回城菜单', (pl) => {
     if (conf.get("Hub").EnabledModule == 0) {
@@ -1389,15 +1209,6 @@ mc.listen("onJoin",(pl)=>{
             let score = pl.getScore(conf.get("Scoreboard"));
             if (!score) pl.setScore(conf.get("Scoreboard"), 0);
         }
-        // 进入服务器公告显示
-        if (conf.get("Notice").Join_ShowNotice == true) {
-        setTimeout(() => {
-                if (!mc.getPlayer(pl.realName)) return;
-                if (noticeconf.get(String(pl.realName)) == 1) return;
-                if (!conf.get("Notice").EnableModule) return;
-                pl.runcmd("notice");
-            }, 1000);
-        }
         if (pl.isOP()) {
             return;
         }
@@ -1439,195 +1250,6 @@ suicidecmd.setCallback((cmd,ori,out,res)=>{
 })
 suicidecmd.setup()
 
-function initPvpModule() {
-    // 1. 基础检查
-    if (!conf.get("PVP").EnabledModule) {
-        return;
-    }  
-    // 2. 注册 PVP 命令
-    const pvp = mc.newCommand("pvp", "设置是否 PVP。", PermType.Any);
-    pvp.optional("bool", ParamType.Bool);
-    pvp.overload(["bool"]);
-
-    pvp.setCallback(function (_cmd, ori, out, res) {
-        if (!ori.player) return;
-        const player = ori.player;
-        const xuid = player.realName;
-
-        // 再次检查全局开关
-        if (!conf.get("PVP").EnabledModule) {
-            player.tell(info + lang.get("module.no.Enabled"));
-            return;
-        }
-
-        const currentState = pvpConfig.get(xuid, false);
-        let newState = false;
-
-        if (res.bool === undefined) {
-            newState = !currentState;
-        } else {
-            newState = res.bool;
-        }
-
-        pvpConfig.set(xuid, newState);
-        out.success(info + (newState ? lang.get("pvp.is.on") : lang.get("pvp.is.off")));
-    });
-    pvp.setup();
-
-    // 4. 监听实体爆炸 (统一处理，优化版)
-    mc.listen("onEntityExplode", (source, pos, radius, maxResistance, isDestroy, isFire) => {
-        // 位置检查
-        if (!pos) return true;
-
-        // 全局开关检查
-        const pvpSettings = conf.get("PVP");
-        if (!pvpSettings || !pvpSettings.EnabledModule) return true;
-
-        // 获取所有在线玩家
-        const allPlayers = mc.getOnlinePlayers();
-        
-        // 设定保护范围：至少 5 格
-        const protectionRange = Math.max(radius, 5);
-        
-        // 筛选出在保护范围内的所有玩家
-        const playersNearby = allPlayers.filter(player => {
-            const p = player.pos;
-            
-            // 维度检查
-            if (p.dimid !== pos.dimid) return false;
-            
-            // 使用 3D 距离公式计算
-            const dist = Math.sqrt(
-                Math.pow(p.x - pos.x, 2) + 
-                Math.pow(p.y - pos.y, 2) + 
-                Math.pow(p.z - pos.z, 2)
-            );
-            
-            return dist <= protectionRange;
-        });
-
-        // 如果附近有 2 个或更多玩家，才执行 PVP 保护检查
-        if (playersNearby.length >= 2) {
-            // 检查是否有玩家关闭了 PVP
-            for (const player of playersNearby) {
-                const isPvpOff = !pvpConfig.get(player.realName, false);
-                
-                if (isPvpOff) {
-                    // 只要有一个人关闭 PVP，拦截整个爆炸
-                    try {
-                        player.sendToast(info, "检测到多人聚集且您处于 PVP 保护，已拦截爆炸");
-                    } catch (e) {
-                        logger.error("发送提示失败: " + e);
-                    }
-                    return false; // 拦截爆炸
-                }
-            }
-        }
-
-        // 只有 1 个人或所有人都开启 PVP，放行爆炸
-        return true;
-    });
-
-    // 5. 监听伤害事件 (统一处理)
-    mc.listen("onMobHurt", function (mob, source, damage, cause) {
-        // 只处理玩家受伤
-        if (!mob.isPlayer()) return true;
-
-        const victim = mob.toPlayer();
-
-        // 全局 PVP 开关检查
-        if (!conf.get("PVP").EnabledModule) return true;
-
-        // ===== 情况 1：玩家互殴 =====
-        if (source && source.isPlayer()) {
-            const attacker = source.toPlayer();
-            const attackerPVP = pvpConfig.get(attacker.realName, false);
-            const victimPVP = pvpConfig.get(victim.realName, false);
-
-            // 攻击者未开启 PVP
-            if (!attackerPVP) {
-                attacker.tell(info+lang.get("your.pvp.isoff"), 6);
-                return false;
-            }
-            
-            // 受害者未开启 PVP
-            if (!victimPVP) {
-                attacker.tell(info+lang.get("then.pvp.isoff"), 6);
-                return false;
-            }
-        }
-         // ===== 情况 1附加：火焰附魔武器的附加伤害 =====
-        // 火焰附魔造成的伤害source为null，需要单独处理
-        const isFireDamage = (cause === 6 || cause === 7);
-        
-        if (isFireDamage) {
-            const victimPVP = pvpConfig.get(victim.realName, false);
-            
-            // 受害者关闭了PVP
-            if (!victimPVP) {
-                const p = victim.pos;
-                
-                // 检查附近是否有其他玩家（3格范围内，火焰附魔攻击距离）
-                const nearbyPlayers = mc.getOnlinePlayers().filter(other => {
-                    // 排除自己
-                    if (other.realName === victim.realName) return false;
-                    
-                    const op = other.pos;
-                    if (op.dimid !== p.dimid) return false;
-                    
-                    const dist = Math.sqrt(
-                        Math.pow(op.x - p.x, 2) + 
-                        Math.pow(op.y - p.y, 2) + 
-                        Math.pow(op.z - p.z, 2)
-                    );
-                    
-                    // 火焰附魔通常是近战攻击，检测范围3格足够
-                    return dist <= 3;
-                });
-                
-                // 如果附近有其他玩家，很可能是火焰附魔攻击
-                if (nearbyPlayers.length > 0) {
-                    // 拦截火焰伤害
-                    return false;
-                }
-            }
-        }
-        // ===== 情况 2：爆炸伤害补充拦截 =====
-        // 只有当伤害来源是【玩家造成的爆炸】时才拦截，不拦截敌对生物
-        // cause 2: 实体爆炸, cause 3: 方块爆炸, cause 11: 其他爆炸
-        const isExplosionDamage = (cause === 2 || cause === 3 || cause === 11);
-        
-        if (isExplosionDamage) {
-            const victimPVP = pvpConfig.get(victim.realName, false);
-            
-            // 如果受害者关闭了 PVP
-            if (!victimPVP) {
-                const p = victim.pos;
-                
-                // 检查附近是否有其他玩家（5格范围内，包含自己）
-                const nearbyPlayers = mc.getOnlinePlayers().filter(other => {
-                    const op = other.pos;
-                    if (op.dimid !== p.dimid) return false;
-                    
-                    const dist = Math.sqrt(
-                        Math.pow(op.x - p.x, 2) + 
-                        Math.pow(op.y - p.y, 2) + 
-                        Math.pow(op.z - p.z, 2)
-                    );
-                    
-                    return dist <= 5;
-                });
-                
-                // 只有附近有 2 人或以上时才拦截爆炸伤害
-                if (nearbyPlayers.length >= 2) {
-                    return false; // 拦截伤害
-                }
-            }
-        }
-
-        return true;
-    });
-}
 function Motd(){
     // 清理旧的定时器，防止内存泄漏
     if (conf.get("Motd").EnabledModule == 0 ) return;
@@ -1651,209 +1273,6 @@ function Motd(){
 }
 
 // 灵魂出窍（FCAM）
-function initFcamModule() {
-    // 注册命令
-    let cmd = mc.newCommand("fcam", "灵魂出窍", PermType.Any);
-    cmd.overload([]);
-    // 存储玩家的 BossBar 数据
-    const fcamBossBars = new Map();
-
-    cmd.setCallback((_cmd, ori, out, _res) => {
-        let pl = ori.player;
-        if (!pl) {
-            out.error(info + lang.get("fc.error"));
-            return;
-        }
-
-        let plname = pl.realName;
-        let plpos = ori.pos;
-        let timeout = conf.get("Fcam").TimeOut;
-        let FcamCost = conf.get("Fcam").CostMoney;
-
-        if (conf.get("Fcam").EnableModule == 0) {
-            pl.tell(info + lang.get("module.no.Enabled"));
-            return;
-        }
-        //===============================
-        // 退出灵魂出窍模式
-        //===============================
-        if (pl.gameMode == 6) {
-            // 清理 BossBar 和计时器
-            cleanupFcamBossBar(plname);
-
-            try { pl.setGameMode(0); } catch (e) {
-                logger.error(lang.get("fc.error.log1") + e);
-            }
-
-            try { mc.runcmdEx(`tp "${plname}" "${plname}_sp"`); } catch (e) {
-                logger.error(lang.get("fc.error.log2") + e);
-            }
-
-            let spl = mc.getPlayer(plname + "_sp");
-            if (spl && spl.isSimulatedPlayer && spl.isSimulatedPlayer()) {
-                try { spl.simulateDisconnect(); } catch (e) {
-                    logger.error(lang.get("fc.error.log3")+ e);
-                }
-            } else {
-                logger.warn(`FCAM: 未找到模拟玩家 ${plname}_sp，跳过断开`);
-            }
-
-            out.success(info + lang.get("fc.success.quit"));
-            return;
-        }
-
-        //===============================
-        // 进入灵魂出窍模式
-        //===============================
-
-        // 费用判断
-        if (!conf.get("LLMoney")) {
-            if (!smartMoneyCheck(pl.realName, FcamCost))
-                return pl.tell(info + lang.get("money.no.enough"));
-        } else {
-            if (!smartMoneyCheck(pl.realName, FcamCost))
-                return pl.tell(info + lang.get("money.no.enough"));
-        }
-
-        // 创建模拟玩家
-        mc.spawnSimulatedPlayer(plname + "_sp", plpos);
-        mc.runcmdEx(`gamemode spectator "${plname}_sp"`);
-        pl.setGameMode(6);
-
-        out.success(info + lang.get("fc.success.getin").replace("${Fcam}", FcamCost));
-
-        //===============================
-        // 灵魂出窍倒计时 BossBar  
-        //===============================
-        if (timeout > 0) {
-            startFcamBossBar(pl, plname, timeout);
-        }
-    });
-
-    cmd.setup();
-
-    // 启动 BossBar 倒计时
-    function startFcamBossBar(pl, plname, timeout) {
-        let remain = timeout;
-        const bossId = Number(`10${plname.length}${Date.now()}`); // 保证唯一
-
-        // 初次显示 BossBar
-        pl.setBossBar(
-            bossId,
-            `§e灵魂出窍剩余 §c${remain} §e秒`,
-            100,
-            3 // green
-        );
-
-        // 存储 BossBar 数据
-        fcamBossBars.set(plname, {
-            bossId: bossId,
-            timer: null,
-            remain: remain,
-            totalTime: timeout
-        });
-
-        // 设置计时器，每秒更新一次
-        const timer = setInterval(() => {
-            const data = fcamBossBars.get(plname);
-            if (!data) {
-                clearInterval(timer);
-                return;
-            }
-
-            data.remain--;
-            
-            // 检查玩家是否还在线且处于观察者模式
-            const currentPlayer = mc.getPlayer(plname);
-            if (!currentPlayer || currentPlayer.gameMode !== 6) {
-                cleanupFcamBossBar(plname);
-                return;
-            }
-
-            if (data.remain <= 0) {
-                // 时间到，自动退出灵魂出窍模式
-                cleanupFcamBossBar(plname);
-                
-                try { 
-                    currentPlayer.setGameMode(0); 
-                    mc.runcmdEx(`tp "${plname}" "${plname}_sp"`);
-                    
-                    let spl = mc.getPlayer(plname + "_sp");
-                    if (spl && spl.isSimulatedPlayer && spl.isSimulatedPlayer()) {
-                        spl.simulateDisconnect();
-                    }
-                    
-                    currentPlayer.tell(info + lang.get("fc.timeout"));
-                } catch (e) {
-                    logger.error(lang.get("fc.error.log4") + e);
-                }
-                return;
-            }
-
-            // 更新 BossBar
-            const progress = (data.remain / data.totalTime) * 100;
-            let color = 3; // green
-            if (data.remain <= 10) {
-                color = 4; // YELLOW 当剩余10秒时变为黄色
-            }
-            if (data.remain <= 5) {
-                color = 2; // PINK 当剩余5秒时变为粉色闪烁
-            }
-
-            try {
-                currentPlayer.setBossBar(
-                    data.bossId,
-                    `§e灵魂出窍剩余 §c${data.remain} §e秒`,
-                    progress,
-                    color
-                );
-            } catch (e) {
-                logger.error("FCAM: 更新 BossBar 失败: " + e);
-                cleanupFcamBossBar(plname);
-            }
-        }, 1000);
-
-        // 更新计时器引用
-        fcamBossBars.get(plname).timer = timer;
-    }
-
-    // 清理 BossBar 和计时器
-    function cleanupFcamBossBar(plname) {
-        const data = fcamBossBars.get(plname);
-        if (data) {
-            // 清除计时器
-            if (data.timer) {
-                clearInterval(data.timer);
-            }
-            
-            // 移除 BossBar
-            const player = mc.getPlayer(plname);
-            if (player && data.bossId) {
-                try {
-                    player.removeBossBar(data.bossId);
-                } catch (e) {
-                    logger.error(lang.get("fc.error.log5")+ e);
-                }
-            }
-            
-            // 从 Map 中移除
-            fcamBossBars.delete(plname);
-        }
-    }
-
-    // 监听玩家退出事件，清理对应的 BossBar
-    mc.listen("onLeft", (player) => {
-        const plname = player.realName;
-        cleanupFcamBossBar(plname);
-        
-        // 断开模拟玩家
-        let spl = mc.getPlayer(plname + "_sp");
-        if (spl) {
-            spl.simulateDisconnect();
-        }
-    });
-}
-
 //维护模块
 // 初始化维护状态变量，从配置读取
 
