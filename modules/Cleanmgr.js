@@ -72,7 +72,7 @@ var CleanMgr = (function () {
       "^minecraft:totem_of_undying$", "^minecraft:ender_pearl$", "^minecraft:villager_v2$",
       "^minecraft:ender_crystal$", "^minecraft:ender_dragon$", "^minecraft:parrot$",
       "^minecraft:chest_minecart$", "^minecraft:minecart$", "^minecraft:hopper_minecart$",
-      "^minecraft:armor_stand$", "^minecraft:boat$", "^minecraft:sheep$",
+      "^minecraft:armor_stand$", "^minecraft:boat$", "^minecraft:sheep$","^minecraft:leash_knot$",
       "^minecraft:cow$", "^minecraft:pig$", "^minecraft:painting$"
     ],
     notice: { notice1: 30, notice2: 10 },
