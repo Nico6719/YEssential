@@ -1923,11 +1923,11 @@ mc.listen("onPreJoin", (pl) => {
     // 检查模块是否启用
     let currentConfig = conf.get("wh") || { EnableModule: true, status: 0 };
     if (!currentConfig.EnableModule) return;
-    
     if (pl.isSimulatedPlayer()) return;
     if (pl.isOP()) return;
     if (Maintenance.isActive) {
-        pl.kick(lang.get("weihu.msg"));
+        const whConfig = conf.get("wh");
+        pl.kick(whConfig.whgamemsg);
     }
 })
 
