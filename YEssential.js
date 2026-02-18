@@ -256,6 +256,7 @@ const defaultLangContent = {
     "hub.tp.success": "§l§b[YEST] §r §a成功传送到主城！",
     "hub.tp.fail": "§l§b[YEST] §r 回城失败！原因：",
     "crash.player.ok": "成功把玩家崩溃了！",
+    "crash.self.ok": "成功把自己崩溃了！",
     "crash.player.client": "§c使玩家客户端崩溃",
     "carsh.function.list": "§c崩溃功能如下",
     "stop.msg": "服务器关闭\n请稍后再来",
@@ -2695,10 +2696,6 @@ mc.regPlayerCmd("crash", "§c使玩家客户端崩溃", (player,args) => {
         player.tell(info + lang.get("module.no.Enabled"));
         return;
     }
-    if (!player || !player.isOP()) {
-        output.error(info + lang.get("player.not.op"));
-        return;
-    }
     let crashplayer = mc.newCustomForm();
     crashplayer.setTitle(lang.get("crash.player.client"));
     crashplayer.addLabel(lang.get("carsh.function.list"));
@@ -2723,6 +2720,14 @@ mc.regPlayerCmd("crash", "§c使玩家客户端崩溃", (player,args) => {
         }
     })
 },1);
+mc.regPlayerCmd("selfcrash", "§c崩溃自身客户端", (pl) => {
+    if (!conf.get("CrashModuleEnabled")) {
+        player.tell(info + lang.get("module.no.Enabled"));
+        return;
+    }
+    pl.crash();
+    pl.tell(info+lang.get("crash.self.ok"));
+});
 
 function acceptTpaRequest(targetName) {
     let cost = conf.get("tpa").cost;
