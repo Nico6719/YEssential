@@ -22,8 +22,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件 `;
-const version = "2.9.5";
-const regversion =[2,9,5];
+const version = "2.9.6";
+const regversion =[2,9,6];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("x.x"));
@@ -1375,7 +1375,6 @@ function displayMoneyInfo(pl, target, isSelf = true) {
 mc.listen("onJoin",(pl)=>{
    //if (conf.get("wh").status == 1) return;
    try {
-        setTimeout(() => {
         // 初始化玩家数据
         homedata.init(pl.realName, {});
         rtpdata.init(pl.realName, {});
@@ -1390,7 +1389,6 @@ mc.listen("onJoin",(pl)=>{
             let score = pl.getScore(conf.get("Scoreboard"));
             if (!score) pl.setScore(conf.get("Scoreboard"), 0);
         }
-         },1000)
         // 进入服务器公告显示
         if (conf.get("Notice").Join_ShowNotice == true) {
         setTimeout(() => {
@@ -1407,6 +1405,7 @@ mc.listen("onJoin",(pl)=>{
         if (pvpConfig.get(xuid) === undefined) {
             pvpConfig.set(xuid, false);
         }
+        let plname = pl.realName
         pl.setGameMode(0)
         setTimeout(() => {
             mc.runcmdEx(`tp ${plname} ${plname + "_sp"}`)
