@@ -2,9 +2,11 @@
 
 /**
  * YEssential - CleanMgr Module (LSE-safe Ultimate)
- * 修改版 v3：
+ * 修改版 v4：
  * 1. 修复命令补全：使用 LSE 标准的双重 Overload 写法，完美支持客户端枚举提示。
  * 2. 玩家数据保存路径分离至 /data/CleanmgrSettingData.json
+ * 3. 修复 merge() 对数组的错误处理（数组整体替换，不按下标递归合并）。
+ * 4. 修复 loadConfig() 每次启动都强制回写配置文件的问题。
  */
 
 var CleanMgr = (function () {
@@ -37,7 +39,8 @@ var CleanMgr = (function () {
       cleanup_start: "§a开始清理实体...",
       cleanup_in_progress: "§c清理任务进行中！",
       cleanup_notice: "§e请注意 ！ {0} 秒后清理实体，请捡起贵重物品！",
-      cleanup_notice2: "§c请注意 ！ {0} 秒后清理实体，请捡起贵重物品！",
+      cleanup_notice2: "§6请注意 ！ {0} 秒后清理实体，请捡起贵重物品！",
+      cleanup_notice3: "§c请注意 ！ {0} 秒后清理实体，请捡起贵重物品！",
       cleanup_complete: "§a已清理 {0} 个实体",
       cleanup_stats: "§a清理统计 - 总计: {0}, 保留: {1}, 清理: {2}",
       low_tps_clean: "§cTPS 过低({0})，已自动清理",
@@ -75,7 +78,7 @@ var CleanMgr = (function () {
       "^minecraft:armor_stand$", "^minecraft:boat$", "^minecraft:sheep$","^minecraft:leash_knot$",
       "^minecraft:cow$", "^minecraft:pig$", "^minecraft:painting$"
     ],
-    notice: { notice1: 30, notice2: 10 },
+    notice: { notice1: 30, notice2: 10, notice3: 5 },
     LowTpsClean: { 
       enable: true, 
       minimum: 15,
@@ -108,11 +111,28 @@ var CleanMgr = (function () {
   /* ================= 工具 ================= */
   function ensureDir(p) { if (!File.exists(p)) File.mkdir(p); }
   function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
+
+  /**
+   * 将 b 的字段合并到 a 的克隆中，b 优先。
+   * 修复：数组类型整体替换，不按下标递归合并，避免服主配置被默认值污染。
+   */
   function merge(a, b) {
     var o = clone(a);
     for (var k in b) {
-      if (typeof o[k] === "object" && typeof b[k] === "object") o[k] = merge(o[k], b[k]);
-      else o[k] = b[k];
+      if (!Object.prototype.hasOwnProperty.call(b, k)) continue;
+      if (Array.isArray(b[k])) {
+        // 数组整体用 b 的值替换，保留服主自定义内容
+        o[k] = clone(b[k]);
+      } else if (
+        b[k] !== null && typeof b[k] === "object" &&
+        o[k] !== null && typeof o[k] === "object" &&
+        !Array.isArray(o[k])
+      ) {
+        // 两边都是普通对象时才递归合并
+        o[k] = merge(o[k], b[k]);
+      } else {
+        o[k] = b[k];
+      }
     }
     return o;
   }
@@ -139,21 +159,36 @@ var CleanMgr = (function () {
   /* ================= 加载 ================= */
   function loadLang() {
     ensureDir(LANG_DIR);
-    if (!File.exists(LANG_PATH)) File.writeTo(LANG_PATH, JSON.stringify(DEFAULT_LANG, null, 2));
+    if (!File.exists(LANG_PATH)) {
+      File.writeTo(LANG_PATH, JSON.stringify(DEFAULT_LANG, null, 2));
+    }
     try { 
       var loaded = JSON.parse(File.readFrom(LANG_PATH));
+      // lang 文件：用默认值补全缺失字段，但优先保留自定义内容
       return merge(DEFAULT_LANG, loaded);
     } catch (e) { return clone(DEFAULT_LANG); }
   }
 
+  /**
+   * 加载配置。
+   * 修复：
+   * 1. 仅在配置文件不存在时写入默认配置，之后不再回写，避免覆盖服主修改。
+   * 2. merge 仅在内存中补全缺失字段，磁盘文件保持服主原样。
+   */
   function loadConfig() {
     ensureDir(CONFIG_DIR);
-    if (!File.exists(CONFIG_PATH)) new JsonConfigFile(CONFIG_PATH).init("cleanmgr", DEFAULT_CONFIG);
+    if (!File.exists(CONFIG_PATH)) {
+      // 首次运行：生成默认配置文件
+      var initial = { cleanmgr: clone(DEFAULT_CONFIG) };
+      File.writeTo(CONFIG_PATH, JSON.stringify(initial, null, 2));
+      return clone(DEFAULT_CONFIG);
+    }
     var raw = {};
-    try { raw = JSON.parse(File.readFrom(CONFIG_PATH)); } catch (e) {}
-    raw.cleanmgr = merge(DEFAULT_CONFIG, raw.cleanmgr || {});
-    File.writeTo(CONFIG_PATH, JSON.stringify(raw, null, 2));
-    return raw.cleanmgr;
+    try { raw = JSON.parse(File.readFrom(CONFIG_PATH)); } catch (e) {
+      logger.warn("[CleanMgr] 配置文件解析失败，使用默认配置");
+    }
+    // 仅在内存中用默认值补全缺失字段，不回写磁盘
+    return merge(DEFAULT_CONFIG, raw.cleanmgr || {});
   }
 
   function loadPlayerSettings() {
@@ -313,6 +348,7 @@ var CleanMgr = (function () {
 
     var n1 = config.notice.notice1;
     var n2 = config.notice.notice2;
+    var n3 = config.notice.notice3;
 
     mc.broadcast(lang.prefix + t("messages.cleanup_notice", n1));
     sendToastToAll(t("toast_title"), t("messages.cleanup_notice", n1));
@@ -323,7 +359,12 @@ var CleanMgr = (function () {
         sendToastToAll(t("toast_title"), t("messages.cleanup_notice2", n2));
       }, (n1 - n2) * 1000));
     }
-
+    if (n3 > 0 && n3 < n2) {
+      state.scheduledTimeouts.push(setTimeout(function () {
+        mc.broadcast(lang.prefix + t("messages.cleanup_notice2", n3));
+        sendToastToAll(t("toast_title"), t("messages.cleanup_notice2", n3));
+      }, (n2 - n3) * 1000));
+    }
     state.scheduledTimeouts.push(setTimeout(executeClean, n1 * 1000));
   }
 
@@ -380,7 +421,7 @@ var CleanMgr = (function () {
 
 /* ================= 注册命令 (LSE 补全增强版) ================= */
   function registerCommand() {
-    setTimeout(() => {
+    setTimeout(function() {
     
     var cmd = mc.newCommand(config.clean_Cmd, "实体清理系统", PermType.Any);
 
@@ -399,7 +440,8 @@ var CleanMgr = (function () {
 
     cmd.setup();
     }, 2000);
-}
+  }
+
   /* ================= 定时任务 ================= */
   function startTimers() {
     timers.push(setInterval(function () {

@@ -1,5 +1,5 @@
 // LiteLoader-AIDS automatic generated
-// v2.7.5 - 修复删除菜单退出问题，补全删除按钮和编辑菜单功能
+// v2.7.6 - 修复配置文件被重置问题；支持多触发物品；添加触发模式配置；优化事件绑定；移除冗余代码
 
 // ==================== 常量定义 ====================
 const info = "§l§6[-YEST-] §r";
@@ -57,26 +57,53 @@ class MenuConfigManager {
     getVersion() { return this.get().version; }
     getMoney() { return this.get().money; }
     getScore() { return this.get().score; }
-    getItem() { return this.get().item; }
+    getItems() { return this.get().items || []; }
     getMain() { return this.get().main; }
     getIntercept() { return this.get().intercept; }
     getShield() { return this.get().shield || []; }
+    getItemsTriggerMode() { return this.get().itemsTriggerMode; }
 
     initialize() {
         this.set({
             money: 0,  //经济模式 0为计分板 1为LLMoney
             score: "money", //计分板名称
-            item: "minecraft:clock", //菜单触发物品
+            items: [
+                "minecraft:clock"
+            ], //菜单触发物品列表
+            itemsTriggerMode: 0, //菜单物品触发模式 0为使用、对方块使用均触发 1为仅在使用时触发 2为仅在对方块使用时触发
             main: "main", //主菜单文件名
             shield: [] //屏蔽方块列表
         });
     }
 
     validate() {
+        // 按字段合并默认值，避免升级时因新增字段导致整个配置被重置
         const currentConfig = this.get();
-        if (!currentConfig.version) {
-            this.initialize();
+        const defaults = {
+            money: 0,
+            score: "money",
+            items: ["minecraft:clock"],
+            itemsTriggerMode: 0,
+            main: "main",
+            shield: []
+        };
+        const patch = {};
+
+        if (![0, 1].includes(currentConfig.money))           patch.money = defaults.money;
+        if (![0, 1, 2].includes(currentConfig.itemsTriggerMode)) patch.itemsTriggerMode = defaults.itemsTriggerMode;
+        if (typeof currentConfig.score !== "string")          patch.score = defaults.score;
+        if (typeof currentConfig.main  !== "string")          patch.main  = defaults.main;
+
+        if (!(currentConfig.items instanceof Array) ||
+            !currentConfig.items.every(i => typeof i === "string")) {
+            patch.items = defaults.items;
         }
+        if (!(currentConfig.shield instanceof Array) ||
+            !currentConfig.shield.every(i => typeof i === "string")) {
+            patch.shield = defaults.shield;
+        }
+
+        if (Object.keys(patch).length > 0) this.set(patch);
     }
 }
 
@@ -98,15 +125,6 @@ class MenuUtils {
             files = files.filter(function(f) { return f !== mainFile; });
         }
         return files;
-    }
-
-    static filterValidItems(itemList) {
-        return itemList.filter(function(item) {
-            return item.type && 
-                   item.type !== menuConfig.getItem() && 
-                   item.type !== "" && 
-                   item !== undefined;
-        });
     }
 
     static getItemDisplayName(item) {
@@ -359,7 +377,10 @@ class MenuDataManager {
     }
 
     static initializeAdminMenu() {
-        this.setMenu("admin", this.getDefaultAdminMenu());
+        // 仅在文件不存在时创建，避免每次启动覆盖管理员自定义内容
+        if (!File.exists(MENU_CONFIG.menusPath + "admin.json")) {
+            this.setMenu("admin", this.getDefaultAdminMenu());
+        }
     }
 }
 
@@ -1058,14 +1079,11 @@ class MenuAdminHandler {
 
     static showOtherSettings(player, error) {
         var files = MenuUtils.getMenuFiles();
-        var currentMain = menuConfig.getMain();
-        var currentItem = menuConfig.getItem();
         
         var form = mc.newCustomForm();
         form.setTitle("其他设置");
         form.addLabel("更多设置请直接修改配置文件");
         form.addDropdown("主菜单文件", ["不修改", ...files], 0);
-        form.addInput("触发物品ID", "当前: " + currentItem, "");
         
         if (error) form.addLabel(error);
 
@@ -1073,19 +1091,8 @@ class MenuAdminHandler {
         player.sendForm(form, function(pl, data) {
             if (!data) { self.showMainSettings(player); return; }
             
-            var changed = false;
-            
             if (data[1] > 0) {
                 menuConfig.set({ main: files[data[1]-1].replace(".json","") });
-                changed = true;
-            }
-            
-            if (data[2] && data[2] !== "") {
-                menuConfig.set({ item: data[2] });
-                changed = true;
-            }
-            
-            if (changed) {
                 self.showOtherSettings(player, "§2修改成功");
             } else {
                 self.showOtherSettings(player, "§e未做任何修改");
@@ -1098,8 +1105,18 @@ class MenuAdminHandler {
 class MenuEventListeners {
     static register() {
         this.initializeResources();
-        this.onUseItem();
-        this.onUseItemOn();
+        const itemsTriggerMode = menuConfig.getItemsTriggerMode();
+        if (itemsTriggerMode === 1) {
+            // 仅在使用（对空气）时触发
+            this.onUseItem();
+        } else if (itemsTriggerMode === 2) {
+            // 仅在对方块使用时触发
+            this.onUseItemOn();
+        } else {
+            // 模式0：两者均触发，共享冷却防止同一操作重复打开
+            this.onUseItem();
+            this.onUseItemOn();
+        }
         this.onJoin();
     }
 
@@ -1111,27 +1128,29 @@ class MenuEventListeners {
         if (!File.exists(`${MENU_CONFIG.menusPath}main.json`)) {
             MenuDataManager.setMenu("main", MenuDataManager.getDefaultMainMenu());
         }
-
-        if (menuConfig.getIntercept()) {
-            interceptCommands = false;
-        }
     }
 
     static onUseItem() {
         mc.listen("onUseItem", (player, item) => {
-            if (item.type === menuConfig.getItem()) {
+            const items = menuConfig.getItems();
+            // 支持冷却功能
+            if (items.includes(item.type) && !clickCooldown[player.xuid]) {
+                clickCooldown[player.xuid] = true;
                 MenuPlayerHandler.showMenu(player, menuConfig.getMain());
+                setTimeout(() => clickCooldown[player.xuid] = false, 1000);
             }
         });
     }
 
     static onUseItemOn() {
         mc.listen("onUseItemOn", (player, item, block) => {
-            if (item.type !== menuConfig.getItem()) return;
+            // 支持设置多个物品
+            const items = menuConfig.getItems();
+            if (!items.includes(item.type)) return;
             var device = player.getDevice();
-            if (!MENU_CONFIG.mobileOS.includes(device.os)) return;
+            // 确保电脑端可以使用此功能
+            if (!MENU_CONFIG.mobileOS.includes(device.os) && !["Windows10","Win32"].includes(device.os)) return;
             if (block.hasContainer()) return;
-
             if (!clickCooldown[player.xuid]) {
                 clickCooldown[player.xuid] = true;
                 MenuPlayerHandler.showMenu(player, menuConfig.getMain());
