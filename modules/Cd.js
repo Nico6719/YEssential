@@ -57,26 +57,42 @@ class MenuConfigManager {
     getVersion() { return this.get().version; }
     getMoney() { return this.get().money; }
     getScore() { return this.get().score; }
-    getItem() { return this.get().item; }
+    getItems() { return this.get().items || []; }
     getMain() { return this.get().main; }
     getIntercept() { return this.get().intercept; }
     getShield() { return this.get().shield || []; }
+    getItemsTriggerMode() { return this.get().itemsTriggerMode; }
 
     initialize() {
         this.set({
             money: 0,  //经济模式 0为计分板 1为LLMoney
             score: "money", //计分板名称
-            item: "minecraft:clock", //菜单触发物品
+            items: [
+                "minecraft:clock"
+            ], //菜单触发物品列表
+            itemsTriggerMode: 0, //菜单物品触发模式 0为使用、对方块使用均触发 1为仅在使用时触发 2为仅在对方块使用时触发
             main: "main", //主菜单文件名
             shield: [] //屏蔽方块列表
         });
     }
 
     validate() {
+        // 修复 validate 函数，确保配置正确时不会重置配置
         const currentConfig = this.get();
-        if (!currentConfig.version) {
-            this.initialize();
-        }
+        if (
+            (![0,1].includes(currentConfig.money)) ||
+            (![0,1,2].includes(currentConfig.itemsTriggerMode)) ||
+            (typeof currentConfig.score !== "string") ||
+            (!(currentConfig.items instanceof Array)) ||
+            (typeof currentConfig.main !== "string") ||
+            (!(currentConfig.shield instanceof Array))
+        ) this.initialize();
+        const items = currentConfig.items;
+        const shield = currentConfig.shield;
+        if (
+            (!items.every(item => typeof item === "string")) ||
+            (!shield.every(item => typeof item === "string"))
+        ) this.initialize();
     }
 }
 
@@ -103,7 +119,7 @@ class MenuUtils {
     static filterValidItems(itemList) {
         return itemList.filter(function(item) {
             return item.type && 
-                   item.type !== menuConfig.getItem() && 
+                   (!menuConfig.getItems().includes(item.type)) && 
                    item.type !== "" && 
                    item !== undefined;
         });
@@ -1058,14 +1074,11 @@ class MenuAdminHandler {
 
     static showOtherSettings(player, error) {
         var files = MenuUtils.getMenuFiles();
-        var currentMain = menuConfig.getMain();
-        var currentItem = menuConfig.getItem();
         
         var form = mc.newCustomForm();
         form.setTitle("其他设置");
         form.addLabel("更多设置请直接修改配置文件");
         form.addDropdown("主菜单文件", ["不修改", ...files], 0);
-        form.addInput("触发物品ID", "当前: " + currentItem, "");
         
         if (error) form.addLabel(error);
 
@@ -1098,8 +1111,13 @@ class MenuAdminHandler {
 class MenuEventListeners {
     static register() {
         this.initializeResources();
-        this.onUseItem();
-        this.onUseItemOn();
+        const itemsTriggerMode = menuConfig.getItemsTriggerMode();
+        if (itemsTriggerMode == 2) {
+            this.onUseItemOn();
+        } else {
+            // 当 onUseItem 和 onUseItemOn 同时监听时，会打开两次菜单，故省略逻辑，只绑定 onUseItem
+            this.onUseItem();
+        }
         this.onJoin();
     }
 
@@ -1119,19 +1137,25 @@ class MenuEventListeners {
 
     static onUseItem() {
         mc.listen("onUseItem", (player, item) => {
-            if (item.type === menuConfig.getItem()) {
+            const items = menuConfig.getItems();
+            // 支持冷却功能
+            if (items.includes(item.type) && !clickCooldown[player.xuid]) {
+                clickCooldown[player.xuid] = true;
                 MenuPlayerHandler.showMenu(player, menuConfig.getMain());
+                setTimeout(() => clickCooldown[player.xuid] = false, 1000);
             }
         });
     }
 
     static onUseItemOn() {
         mc.listen("onUseItemOn", (player, item, block) => {
-            if (item.type !== menuConfig.getItem()) return;
+            // 支持设置多个物品
+            const items = menuConfig.getItems();
+            if (!items.includes(item.type)) return;
             var device = player.getDevice();
-            if (!MENU_CONFIG.mobileOS.includes(device.os)) return;
+            // 确保电脑端可以使用此功能
+            if (!MENU_CONFIG.mobileOS.includes(device.os) && !["Windows10","Win32"].includes(device.os)) return;
             if (block.hasContainer()) return;
-
             if (!clickCooldown[player.xuid]) {
                 clickCooldown[player.xuid] = true;
                 MenuPlayerHandler.showMenu(player, menuConfig.getMain());
