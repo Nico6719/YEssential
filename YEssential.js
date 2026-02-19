@@ -22,8 +22,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件 `;
-const version = "2.9.9";
-const regversion =[2,9,9];
+const version = "2.10.0";
+const regversion =[2,10,0];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 语言文件路径（defaultLangContent 及 AsyncLanguageManager 已迁移至 modules/I18n.js）
@@ -236,7 +236,16 @@ Object.assign(globalThis, {
     // 显式挂载确保 require() 沙箱内也能访问）
     globalLerpColor, randomGradientLog,
     // 文件工具（I18n.js 的 mergeLangFiles 需要）
-    AsyncFileManager
+    AsyncFileManager,
+    // ── 工具函数（均为 function 声明，JS 引擎会提升，可安全放此处）──
+    // Fcam.js 费用检查（根因：此函数未暴露导致 "smartMoneyCheck is not defined"）
+    smartMoneyCheck,
+    // 其他 GUI/工具函数（function 声明，提升后可用）
+    showInsufficientMoneyGui, openPlayerSelectionGui,
+    displayMoneyInfo, ranking,
+    // 注意：Economy / EconomyManager / OfflineMoneyCache / Logger 均为 const，
+    // 不能在定义前引用（TDZ）。若模块需要，在其定义后通过
+    // globalThis.Economy = Economy; 单独追加。
 });
 
 /**
@@ -1360,6 +1369,13 @@ const Logger = {
         MoneyHistory.set(targetName, history);
     }
 };
+
+// ── 将 const 对象追加到 globalThis（必须在定义之后，不能提前引用）──
+// 这样 Fcam / PVP 等模块在初始化时若需要这些接口，也能访问到
+globalThis.Economy          = Economy;
+globalThis.EconomyManager   = EconomyManager;
+globalThis.OfflineMoneyCache = OfflineMoneyCache;
+globalThis.Logger           = Logger;
 
 // --- 2. UI 辅助工具 (消除重复的选人代码) ---
 
