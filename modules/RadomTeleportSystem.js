@@ -3,6 +3,9 @@
  * 修复了原代码的逻辑问题和重复定义以及动画问题
  */
 class RadomTeleportSystem {
+    // 冷却时间 Map，key: playerName, value: 剩余秒数
+    static cooltime = new Map();
+
     /**
      * 生成随机坐标（在最小和最大半径之间）
      */
@@ -40,9 +43,13 @@ class RadomTeleportSystem {
      */
     static async preloadChunks(x, z, dimension, player) {
         try {
-            const preloadY = 170;
+            // 传送到地图顶端确保不会卡进地形，同时给予缓降效果防止摔落
+            const preloadY = dimension === 1 ? 125 : (dimension === 2 ? 130 : 320);
+            mc.runcmdEx(`effect "${player.realName}" slow_falling 30 1 true`);
+            mc.runcmdEx(`effect "${player.realName}" resistance 30 255 true`);
             player.teleport(x, preloadY, z, dimension);
-            await new Promise(resolve => setTimeout(resolve, 2500));
+            // 等待区块加载（复杂地形多等一点）
+            await new Promise(resolve => setTimeout(resolve, 3000));
             return true;
         } catch (error) {
             logger.error(`[RTP] 预加载区块失败: ${error.message}`);
@@ -54,50 +61,58 @@ class RadomTeleportSystem {
      * 获取地表高度
      */
     static getSurfaceHeight(x, z, dimension) {
-        const startY = dimension === 1 ? 120 : 200;
-        const endY = dimension === 1 ? 30 : 60;
-        
-        const liquidBlocks = [
-            "minecraft:water",
-            "minecraft:lava",
-            "minecraft:flowing_water",
-            "minecraft:flowing_lava"
-        ];
-        
+        // 主世界支持 1.18+ 新地形（-64~320），下界扫 5~120，末地扫 0~128
+        const startY = dimension === 1 ? 120 : (dimension === 2 ? 128 : 320);
+        const endY   = dimension === 1 ? 5   : (dimension === 2 ? 0   : -62);
+
+        const airBlocks = new Set([
+            "minecraft:air", "minecraft:cave_air", "minecraft:void_air"
+        ]);
+        const liquidBlocks = new Set([
+            "minecraft:water", "minecraft:lava",
+            "minecraft:flowing_water", "minecraft:flowing_lava"
+        ]);
+
+        let hitLiquid = false;
+
         for (let y = startY; y >= endY; y--) {
             try {
                 const block = mc.getBlock(x, y, z, dimension);
                 if (!block) continue;
-                
+
                 const blockType = block.type;
-                
-                if (blockType === "minecraft:air" || 
-                    blockType === "minecraft:cave_air" ||
-                    blockType === "minecraft:void_air") {
+
+                if (airBlocks.has(blockType)) continue;
+
+                // 记录遇到液体，之后的固体因为上方是液体，所以不安全
+                if (liquidBlocks.has(blockType)) {
+                    hitLiquid = true;
                     continue;
                 }
-                
-                if (liquidBlocks.includes(blockType)) {
+
+                // 找到固体块，如果上方曾经是液体则这里是水下，不安全
+                if (hitLiquid) {
+                    // 重置，继续向下找可能存在的洞穴出口
+                    hitLiquid = false;
                     continue;
                 }
-                
+
                 const up1 = mc.getBlock(x, y + 1, z, dimension);
                 const up2 = mc.getBlock(x, y + 2, z, dimension);
-                
+
                 if (up1 && up2) {
                     const up1Type = up1.type;
                     const up2Type = up2.type;
-                    
-                    if ((up1Type === "minecraft:air" || up1Type === "minecraft:cave_air") && 
-                        (up2Type === "minecraft:air" || up2Type === "minecraft:cave_air")) {
-                        return y + 1;
+
+                    if (airBlocks.has(up1Type) && airBlocks.has(up2Type)) {
+                        return y + 1; // 站立点
                     }
                 }
             } catch (error) {
                 continue;
             }
         }
-        
+
         return null;
     }
 
@@ -157,28 +172,33 @@ class RadomTeleportSystem {
             return { x: centerX, y, z: centerZ, dimid: dimension };
         }
         
-        // 螺旋搜索
-        const maxAttempts = 30;
-        const maxRadius = 50;
-        
+        // 螺旋搜索（增大范围和次数以应对海洋/山地等复杂地形）
+        const maxAttempts = 120;
+        const maxRadius = 300;
+
         for (let attempt = 1; attempt < maxAttempts; attempt++) {
-            const angle = attempt * 0.6;
-            const distance = Math.min(attempt * 2, maxRadius);
-            
+            const angle = attempt * 0.618 * Math.PI * 2; // 黄金角，均匀覆盖
+            const distance = Math.min(attempt * 3, maxRadius);
+
             const offsetX = Math.floor(distance * Math.cos(angle));
             const offsetZ = Math.floor(distance * Math.sin(angle));
-            
+
             const x = centerX + offsetX;
             const z = centerZ + offsetZ;
 
             try {
                 y = this.getSurfaceHeight(x, z, dimension);
-                
+
                 if (y !== null && this.isLocationSafe(x, y, z, dimension)) {
                     return { x, y, z, dimid: dimension };
                 }
             } catch (error) {
                 continue;
+            }
+
+            // 每 20 次给事件循环一点呼吸，避免阻塞
+            if (attempt % 20 === 0) {
+                await new Promise(resolve => setTimeout(resolve, 0));
             }
         }
         
@@ -295,8 +315,8 @@ class RadomTeleportSystem {
         const playerName = player.realName;
         try {
             // 1. 冷却检查
-            if (cooltime && cooltime.has(player.realName)) {
-                const remainingTime = cooltime.get(player.realName);
+            if (RadomTeleportSystem.cooltime && RadomTeleportSystem.cooltime.has(player.realName)) {
+                const remainingTime = RadomTeleportSystem.cooltime.get(player.realName);
                 if (remainingTime > 0) {
                     player.sendText(info + `§c传送冷却中，剩余时间：${remainingTime}秒`);
                     return false;
@@ -319,8 +339,8 @@ class RadomTeleportSystem {
             player.setTitle(info + lang.get("rtp.search.chunks"), 4);
 
             // 4. 设置冷却
-            if (cooldown > 0 && cooltime) {
-                cooltime.set(player.realName, cooldown);
+            if (cooldown > 0 && RadomTeleportSystem.cooltime) {
+                RadomTeleportSystem.cooltime.set(player.realName, cooldown);
             }
 
             // 5. 扣除费用
@@ -335,7 +355,7 @@ class RadomTeleportSystem {
 
             // 6. 尝试找到合适的坐标并执行传送
             let safeLocation = null;
-            const maxCoordinateAttempts = 3;
+            const maxCoordinateAttempts = 8; // 增加外层重试次数
 
             for (let attempt = 1; attempt <= maxCoordinateAttempts; attempt++) {
                 const { x, z } = this.generateRandomCoordinate();
@@ -448,8 +468,8 @@ class RadomTeleportSystem {
             }
         }
         
-        if (cooldown > 0 && cooltime) {
-            cooltime.delete(player.realName);
+        if (cooldown > 0 && RadomTeleportSystem.cooltime) {
+            RadomTeleportSystem.cooltime.delete(player.realName);
         }
     }
 }
@@ -463,3 +483,14 @@ if (typeof module !== 'undefined' && module.exports) {
 if (typeof globalThis !== 'undefined') {
     globalThis.RadomTeleportSystem = RadomTeleportSystem;
 }
+
+// 冷却倒计时，随模块加载一起启动，不依赖主文件执行顺序
+setInterval(() => {
+    RadomTeleportSystem.cooltime.forEach((v, k) => {
+        if (v > 0) {
+            RadomTeleportSystem.cooltime.set(k, v - 1);
+        } else {
+            RadomTeleportSystem.cooltime.delete(k);
+        }
+    });
+}, 1000);
