@@ -22,377 +22,14 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件 `;
-const version = "2.9.8";
-const regversion =[2,9,8];
+const version = "2.9.9";
+const regversion =[2,9,9];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
-// 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("x.x"));
-// 创建语言文件（如果不存在）      
+// 语言文件路径（defaultLangContent 及 AsyncLanguageManager 已迁移至 modules/I18n.js）
+// 调用示例： pl.tell(info + lang.get("x.x"))
 const langFilePath = YEST_LangDir + "zh_cn.json";
-const defaultLangContent = {
-    "gui.insufficient.money.title": "§c余额不足",
-    "gui.insufficient.money.content": "§f操作失败！\n您的余额不足以支付 §e${cost} ${coin}§f。\n请检查您的账户余额。",
-    "gui.button.confirm": "确定",
-    "gui.button.back": "返回主菜单",
-
-    // moneys指令相关
-    "moneys.set.success": "成功将玩家 ${player} 的${coin}设置为 ${amount}",
-    "moneys.add.success": "成功将玩家 ${player} 的${coin}增加 ${amount}",
-    "moneys.del.success": "成功将玩家 ${player} 的${coin}减少 ${amount}",
-    "moneys.get.result": "玩家 ${player} 的${coin}为 ${amount}",
-    "moneys.history.title": "玩家 ${player} 的${coin}历史记录",
-    "moneys.command.error": "§c无效的操作！可用: set, add, del, get, history",
-
-    // Cd相关
-    "cd.config.error": "§l§c打开菜单失败,配置文件的内容没有完善",
-    "cd.button.isnull": "§l§c菜单中没有任何按钮",
-    "cd.yourmoney.iszero": "§l§c你没有足够的金币使用这个按钮",
-    "cd.thisbutton.error": "§l§c这个按钮的类型错误,请联系管理员处理",
-    "cd.vip.deny": "§l§c会员功能未启用",
-    "cd.op.deny": "§l§c你没有权限使用这个按钮,抱歉",
-
-    // warp相关
-    "warp.command.desc": "公共传送点",
-    "warp.only.player": "仅限玩家执行",
-    "warp.teleport.name": "传送点名称：",
-    "warp.teleport.coord": "坐标：",
-    "warp.teleport.cost": "传送花费：",
-    "warp.teleported": "已前往传送点 ${name}",
-    "warp.del.success": "删除公共传送点 ${name} 成功！",
-    "warp.add.success": "添加公共传送点 ${name} 成功！",
-    "warp.menu.public": "公共传送点",
-    "warp.menu.public.op": "(OP)公共传送点",
-    "warp.go.to": "前往传送点",
-    "warp.add": "添加传送点",
-    "warp.add.point": "添加公共传送点",
-    "warp.del": "删除传送点",
-    "warp.del.point": "删除公共传送点",
-    "warp.input.name": "请输入传送点名称",
-    "warp.name": "传送点名称",
-    "warp.list": "传送点列表",
-    "warp.add.point.xyz": "添加当前坐标为公共传送点",
-    "warp.noinput.name": "传送点名称不能为空！",
-    "warp.name.repetitive": "传送点名称已存在！",
-
-    // 转账相关
-    "money.transfer.title": "转账",
-    "money.transfer.balance": "您的余额为: ${balance} ${coin}",
-    "money.transfer.tax": "当前转账税率: ${rate}%",
-    "money.transfer.input.amount": "输入数量或 'all'",
-    "money.transfer.success.sender": "转账成功！您支出了 ${amount}，对方收到 ${received}。",
-    "money.transfer.success.receiver": "您收到来自 ${sender} 的 ${amount} ${coin}。",
-    "money.transfer.log.send": "转账给 ${target}, 数量:${amount}, 到账:${received}, 手续费:${tax}",
-    "money.transfer.log.receive": "收到 ${sender} 转账, 数量:${amount}, 到账:${received}, 手续费:${tax}",
-    "money.transfer.tax.notenough": "转账金额不足以支付手续费！",
-    "money.gui.useplayer": "使用玩家的金钱菜单",
-    "money.create.score": "计分板项目不存在，以为您自动创建",
-    "money.callback.menu": "§a正在返回经济系统主界面...",
-    "money.player.list": "排行榜",
-    "moneys.help": "您的语法有误！\n/moneys <name> add \n /monneys <name> del \n /moneys <name> set",
-    "money.transfer": "转账",
-    "money.view": "查看",
-    "money.query": "查询",
-    "money.history": "历史记录(最近50条)：",
-    "money.history.empty": "暂无记录",
-    "money.success": "成功",
-    "money.decrease.number": "请输入要减少的",
-    "money.add.number": "请输入要增加的",
-    "money.set.number": "请输入要设置的",
-    "money.no.enough": "您的余额不足！",
-    "money.tr.error1": "无效的接收方！",
-    "money.tr.error2": "不能给自己转账!",
-    "money.tr.noonline": "目标玩家离线",
-    "money.tr.noinput": "请输入转账数量!",
-    "money.tr.beizhu": "转账的备注（可以留空）",
-    "money.tr.amount": "输入转账数量(all为全部)",
-    "money.del.number": "请输入减少数量!",
-    "money.cannotpay.totax": "转账金额不足以支付手续费！",
-    "money.setting.number": "请输入设置数量",
-    "money.must.bigger0": "转账数量必须大于0！",
-    "money.cannot.smaller0": "§c实际到账金额不能为负数！",
-    "money.op.add": "增加玩家的",
-    "money.op.remove": "减少玩家的",
-    "money.op.set": "设置玩家的",
-    "money.op.look": "查看玩家的",
-
-    // TPA相关
-    "tpa.cost": "传送将花费 ${cost} ${Scoreboard} ",
-    "tpa.d": "§c拒绝",
-    "tpa.d.request": "§c对方拒绝了传送请求。",
-    "tpa.d.request.you": "§e你已拒绝传送请求。",
-    "tpa.a": "§a同意",
-    "tpa.tp.okey": "§a传送成功!",
-    "tpa.accpet.request": "§a已同意传送请求。",
-    "tpa.request": "§a传送请求",
-    "tpa.request.cut": "§c传送中断，对方或你下线。",
-    "tpa.tp.fail.noonline": "§c传送失败，目标玩家已离线。",
-    "tpa.a.and.d": "§e可在表单点击【同意/拒绝】或输入 /tpayes(同意)/tpano(拒绝)",
-    "tpa.name.ls": "§d互传系统",
-    "tpa.tp.msg": "§a互传请求",
-    "tpa.exit": "§c操作已取消。",
-    "tpa.op.msg": "§c管理互传(开启后进入管理页面)",
-    "tpa.op.menu": "§c管理互传",
-    "tpa.send.time": "§e请求超时时间(秒)",
-    "tpa.send.fail": "§c目标玩家离线,无法发送请求",
-    "tpa.send.noway": "§c对方拒绝了所有传送请求",
-    "tpa.send.way": "§e请求提示方式",
-    "tpa.send.form": "form(对方弹窗)",
-    "tpa.send.bossbar": "bossbar(血条)",
-    "tpa.Enabled.lag": "§b是否启用延迟功能",
-    "tpa.max.lagnumber": "§b最大延迟秒数",
-    "tpa.player.offline": "§c对方(或你)下线,请求取消",
-    "tpa.request.timeout": "§c传送请求已超时",
-    "tpa.no.request": "§c你没有待处理的请求。",
-    "tpa.input.must.number": "§c请求超时必须是正整数！",
-    "tpa.must.biggerzero": "§c最大延迟必须>=0！",
-    "tpa.save.conf.ok": "保存配置成功！",
-    "tpa.no.callback": "§c对方已有未处理的请求, 稍后再试",
-    "tpa.choose.player": "§s选择目标玩家",
-    "tpa.allow.tp": "你现在 接受 所有传送请求。",
-    "tpa.noallow.tp": "你现在 拒绝 所有传送请求。",
-    "tpa.choose.fs": "§a传送方式",
-    "tpa.to.he.she": "§a传送到对方",
-    "tpa.to.here": "§e传送到我",
-    "tpa.noplayer.online": "§c当前没有其他在线玩家",
-    "tpa.fail": "传送失败:",
-
-    // 公告相关
-    "notice.backupto": "§a原公告已备份为 notice.txt.bak",
-    "notice.cannot.del": "§c不能删除所有行，至少保留一行！",
-    "notice.editor": "§l§e公告编辑器",
-    "notice.no.change": "§e公告内容未更改！",
-    "notice.exit.edit": "已取消编辑",
-    "notice.for.server": "§l§e服务器公告",
-    "notice.dont.showagain": "以后进服不自动弹出(除非公告更新或停用此开关)",
-    "notice.is.changed": "检测到新公告，玩家下次加入将强制显示",
-    "notice.save.ok": "保存公告成功！",
-
-    // 更新相关
-    "Upd.check": "正在检查新版本中.... 您可在config.json禁用自动更新！",
-    "Upd.success": "更新成功！稍后将重载插件",
-    "Upd.timeout": "获取版本信息超时，请检查网络连接",
-    "Upd.json.error": "版本信息格式错误，无法解析JSON",
-    "Upd.backup.now": "正在创建备份...",
-    "Upd.fail.backing": "更新失败，正在恢复备份...",
-    "Upd.back.success": "已恢复到更新前的版本",
-    "Upd.fail": "更新失败",
-    "network.error.1": "网络连接失败，请检查网络设置或稍后重试",
-    "file.permission.error": "文件写入权限不足，请检查插件目录权限",
-    "file.parse.error": "数据解析失败，可能是服务器返回格式错误",
-    "No.backup.canuse": "没有可用的备份",
-
-    // Tip相关
-    "Tip1": "如有Bug请联系作者反馈！！！！",
-    "Tip2": "感谢PHEyeji和小黑可爱喵提供技术支持和指导！感谢ender罗小黑提供在线网页支持！",
-    "Tip3": "在线config编辑器：https://jzrxh.work/projects/yessential/config.html",
-    "Version.Chinese": "版本:",
-
-    "wh.warn": "服务器启动时维护模式已启用，非OP玩家将无法加入!!!!!",
-    "Motd.config.isemp": "MOTD配置为空，跳过轮播",
-    "player.isnull": "玩家对象无效或已离线！",
-    "player.not.op": "§c权限不足！",
-    "gui.exit": "表单已关闭,未收到操作",
-    "server.tp.ok": "传送成功！",
-    "no.server.can.tp": "暂无可传送服务器!",
-    "no.ranking.data": "§c暂无排行榜数据！",
-    "ranking.list": "排行榜",
-    "server.config.loaderror": "读取 跨服传送 配置失败:",
-    "server.load.error": "服务器配置加载失败，请联系管理员！",
-    "server.no.select": "§c服务器选择无效！",
-    "server.from.title": "跨服传送列表",
-    "choose.a.server": "请选择一个服务器",
-    "server.tp.fail": "§c跨服传送失败，请检查目标服务器状态！",
-    "no.server.cantpto": "server.json 内容为空或 servers 键不存在！",
-    "suicide.kill.ok": "自杀执行成功！",
-    "pls.input.number": "请输入增加数量!",
-    "key.not.number": "请输入数字！",
-    "rp.loading.error": "加载红包数据失败",
-    "rp.menu.1": "红包",
-    "rp.send.packet": "发送红包",
-    "rp.open.packet": "领取红包",
-    "rp.all.help": "红包使用帮助",
-    "rp.send.amount": "要发送的红包数量：",
-    "rp.send.count": "红包金额：",
-    "rp.count.bigger.yourmoney": "红包总额度不能大于你的",
-    "redpacket.type": "红包类型：",
-    "rp.random.packet": "拼手气红包",
-    "rp.average.packet": "普通红包",
-    "back.to.point": "返回死亡点",
-    "back.helpinfo": "§a已记录您的死亡点！使用 /back 查看所有死亡点。",
-    "back.to.point.sure": "确认返回死亡点？",
-    "back.choose": "§6请选择要传送的死亡点：",
-    "back.list.Empty": "您没有死亡历史记录!",
-    "back.successful": "返回成功！",
-    "back.fail": "§c传送失败！",
-    "back.choose.null": "§c选择无效！",
-    "back.deathlog.error": "§c死亡点数据错误！",
-    "home.tp.system": "§6§l家园传送系统",
-    "home.add": "§l§a添加家",
-    "home.add.input": "请输入您的家名称",
-    "home.del": "§c§l删除家",
-    "home.del.choose": "请选择要删除的家",
-    "home.tp": "§b§l传送家",
-    "home.tp.choose": "请选择要传送的家",
-    "home.name.repetitive": "家名称已存在!",
-    "home.name.noinput": "请输入家名称!",
-    "home.input.name": "请输入您的家名称",
-    "home.create.new": "添加家",
-    "bag.is.full": "§c背包已满，无法给予物品！",
-    "rtp.onlycanusein.overworld": "§c只能在主世界使用随机传送！",
-    "module.no.Enabled": "所选功能尚未开启！",
-    "fc.error": "无法对非玩家对象执行此命令",
-    "fc.error2": "你都是管理员了用这个功能干什么（）",
-    "fc.success.quit": "成功退出灵魂出窍",
-    "fc.success.getin": "成功进入灵魂出窍，花费§e${Fcam}金币",
-    "fc.error.log1": "FCAM: setGameMode 恢复失败: ",
-    "fc.error.log2": "FCAM: TP 回原位失败: ",
-    "fc.error.log3": "FCAM: simulateDisconnect 失败: ",
-    "fc.error.log4": "FCAM: 自动退出失败: ",
-    "fc.error.log5": "FCAM: 移除 BossBar 失败: ",
-    "fc.timeout": "§c灵魂出窍时间已到，已自动退出！",
-    "hub.tp.check": "§l§a回城确认",
-    "hub.tp.now": "§a✔ 立即传送",
-    "hub.tp.notnow": "§c✘ 不是现在",
-    "hub.tp.success": "§l§b[YEST] §r §a成功传送到主城！",
-    "hub.tp.fail": "§l§b[YEST] §r 回城失败！原因：",
-    "crash.player.ok": "成功把玩家崩溃了！",
-    "crash.player.client": "§c使玩家客户端崩溃",
-    "carsh.function.list": "§c崩溃功能如下",
-    "stop.msg": "服务器关闭\n请稍后再来",
-    "pls.input.notice": "请输入公告内容，（换行用 \\n）",
-    "gamerule.KeepInventory.true": "死亡不掉落已启用",
-    "cannot.create.newfile": "无法创建数据存储对象",
-    "rtp.search.chunks": "§a正在寻找安全的传送位置，请稍候...",
-    "rtp.search.chunks2": "§e未找到理想位置，使用备用传送方案...",
-    "rtp.loading.chunks3": "§7正在加载区块...",
-    "rtp.loading.chunks2": "§7正在加载区块..",
-    "rtp.loading.chunks1": "§7正在加载区块.",
-    "rtp.cannotfind.safexyz": "§c无法找到安全的传送位置，请稍后再试",
-    "rtp.tp.success": "§a传送成功！",
-    "rtp.tp.success2": "§6已传送到安全高度，请自行寻找落脚点",
-    "rtp.loadchunks.timeout": "§c目标区块加载超时",
-    "rtp.error": "§c传送过程发生错误",
-    "pvp.is.on": "§6PVP 已开启",
-    "pvp.is.off": "§6PVP 已关闭",
-    "pvp.player.isoff": "附近玩家 ${player.realName} PVP 关闭, 你无法攻击他",
-    "your.pvp.isoff": "§l§b你关闭了 PVP",
-    "then.pvp.isoff": "§l§b对方关闭了 PVP",
-    "init.success": "所有模块加载成功！",
-    "init.fail": "部分模块加载失败，请检查日志",
-    "choose": "选择",
-    "success": "成功",
-    "one": "一个",
-    "player": "玩家",
-    "number": "数字",
-    "CoinName": "金币",
-    "to": "将",
-    "add": "加",
-
-    // ── 红包系统补全 ──────────────────────────────────────
-
-    // 红包类型短名（消息用 / 列表彩色 / 历史标签）
-    "rp.type.random.short":   "拼手气",
-    "rp.type.average.short":  "普通",
-    "rp.type.random.colored": "§6拼手气",
-    "rp.type.average.colored":"§b普通",
-    "rp.type.random.tag":     "§6[拼]",
-    "rp.type.average.tag":    "§b[普]",
-
-    // 过期退款
-    "rp.expired.refund": "§a你的红包#${id}已过期，退还§e${amount}§a${coin}",
-
-    // 发送红包
-    "rp.send.duplicate":        "§c请勿重复发送红包！",
-    "rp.send.param.error":      "§c参数错误: 金额和数量必须是数字",
-    "rp.send.usage":            "§c用法: /redpacket send <总金额> <红包个数> [玩家名] [祝福语] [类型]",
-    "rp.send.usage.type":       "§7类型: random(拼手气) 或 average(普通)",
-    "rp.send.amount.range":     "§c红包金额必须在${min}-${max}之间",
-    "rp.send.count.range":      "§c红包个数必须在1-${max}之间",
-    "rp.send.no.balance":       "§c余额不足，无法发送红包",
-    "rp.send.notify.target":    "§a你收到来自${sender}的${type}红包，输入§e/rp open§a领取",
-    "rp.send.success.specific": "§a成功向${player}发送${type}红包，金额:§e${amount}§a，数量:§e${count}",
-    "rp.send.broadcast":        "§a玩家§e${sender}§a发送了${type}全服红包，输入§e/rp open§a领取",
-    "rp.send.success.all":      "§a成功发送${type}全服红包，金额:§e${amount}§a，数量:§e${count}",
-    "rp.default.message":       "${sender}的红包",
-
-    // 领取红包
-    "rp.open.none":          "§c当前没有可领取的红包",
-    "rp.open.success":       "§a恭喜你领取到§e${sender}§a的${type}红包，获得§e${amount}§a${coin}!",
-    "rp.open.notify.sender": "§a玩家§e${player}§a领取了你的红包，获得§e${amount}§a${coin}",
-
-    // 红包列表
-    "rp.list.title":   "§l§6可领取红包",
-    "rp.list.content": "§7点击查看详情并领取",
-    "rp.list.button":  "§l${type} §e${sender}的红包\n§7金额: §f${amount} §7剩余: §a${remaining}/${count}\n§7过期: §f${expire}秒",
-    "rp.list.close":   "§c关闭",
-
-    // 红包历史
-    "rp.history.title":          "§l§6红包历史记录",
-    "rp.history.content":        "§7点击查看红包详情",
-    "rp.history.empty":          "§c你还没有红包记录",
-    "rp.history.status.active":  "§a进行中",
-    "rp.history.status.ended":   "§c已结束",
-    "rp.history.sent.amount":    "§7已领取: §f${amount}",
-    "rp.history.recv.amount":    "§7获得: §f${amount}",
-    "rp.role.sender":            "§b[发]",
-    "rp.role.receiver":          "§a[收]",
-
-    // 红包详情
-    "rp.detail.title":            "§l§6红包详情",
-    "rp.detail.sender":           "§f发送者: §e${sender}",
-    "rp.detail.target.type":      "§f目标类型: §e${type}",
-    "rp.target.all":              "全服红包",
-    "rp.target.specific":         "指定红包",
-    "rp.detail.packet.type":      "§f红包类型: §e${type}",
-    "rp.detail.target.player":    "§f指定玩家: §e${player}",
-    "rp.detail.amount":           "§f总金额: §e${amount}${coin}",
-    "rp.detail.count":            "§f红包个数: §e${count}",
-    "rp.detail.remaining.amount": "§f剩余金额: §e${amount}${coin}",
-    "rp.detail.remaining.count":  "§f剩余个数: §e${count}",
-    "rp.detail.message":          "§f祝福语: §e${msg}",
-    "rp.detail.expire":           "§f过期时间: §e${time}",
-    "rp.detail.recipients":       "§f领取记录:",
-    "rp.detail.recipient.item":   "§7- §e${name}",
-
-    // 帮助界面
-    "rp.help.content":      "选择命令查看详细说明",
-    "rp.help.view":         "查看红包",
-    "rp.help.history.btn":  "红包历史",
-    "rp.help.types.btn":    "红包类型说明",
-    "rp.help.detail.title": "§l§6红包帮助",
-    "rp.help.send.detail":
-        "§6发送红包命令: §a/rp send <金额> <数量> [玩家名] [祝福语] [类型]\n" +
-        "§7- §f金额: 红包总金额\n" +
-        "§7- §f数量: 红包个数\n" +
-        "§7- §f玩家名: 指定接收玩家(可选)\n" +
-        "§7- §f祝福语: 红包祝福语(可选)\n" +
-        "§7- §f类型: random(拼手气)或average(普通)(可选，默认random)\n" +
-        "§e示例: §a/rp send 1000 5 §7(发送5个总金额1000的拼手气红包)\n" +
-        "§e示例: §a/rp send 1000 5 average §7(发送5个总金额1000的普通红包)\n" +
-        "§e示例: §a/rp send 1000 5 Steve \"恭喜发财\" random §7(指定玩家的拼手气红包)",
-    "rp.help.open.detail":
-        "§6领取红包命令: §a/rp open\n" +
-        "§7自动领取最早可用的红包\n\n" +
-        "§6查看可领红包: §a/rp list\n" +
-        "§7查看所有可领取的红包列表",
-    "rp.help.list.detail":
-        "§6查看红包详情: §a/rp list\n" +
-        "§7查看所有可领取的红包\n\n" +
-        "§7点击红包可直接领取",
-    "rp.help.history.detail":
-        "§6查看红包历史: §a/rp history\n" +
-        "§7查看你发送和领取的红包记录",
-    "rp.help.type.detail":
-        "§6红包类型说明:\n" +
-        "§a1. 拼手气红包(random):\n" +
-        "§7- 每个红包金额随机分配\n" +
-        "§7- 金额在1到剩余均值的两倍之间随机\n" +
-        "§7- 最后一人获得剩余所有金额\n\n" +
-        "§b2. 普通红包(average):\n" +
-        "§7- 每个红包金额平均分配\n" +
-        "§7- 金额 = 剩余金额 / 剩余个数(取整)\n" +
-        "§7- 最后一人获得剩余所有金额",
-};
+// i18n 默认内容已完整迁移至 modules/I18n.js
 
 ll.registerPlugin(NAME, PluginInfo,regversion, {
     Author: "Nico6719",
@@ -403,7 +40,9 @@ ll.registerPlugin(NAME, PluginInfo,regversion, {
 // 全局MOTD定时器管理
 let motdTimerId = null;
 
-let lang = new JsonConfigFile(langFilePath, JSON.stringify(defaultLangContent));
+// lang 在此处以空文件初始化（JsonConfigFile 若文件已存在则从磁盘读取）
+// modules/I18n.js 加载后会用完整 defaultLangContent 重新赋值并同步到 globalThis.lang
+let lang = new JsonConfigFile(langFilePath, JSON.stringify({}));
 
 let conf = new JsonConfigFile(pluginpath +"/Config/config.json",JSON.stringify({}));
 
@@ -591,10 +230,13 @@ Object.assign(globalThis, {
     offlineMoney, offlineMoneyPath, MdataPath,
     // 常量
     YEST_LangDir, NAME, version, regversion, PluginInfo,
-    langFilePath, defaultLangContent,
+    langFilePath,
+    // defaultLangContent 由 modules/I18n.js 加载时写入 globalThis
     // 渐变日志工具（function 声明虽然会提升，但 GLOBAL_C1/C2 是 const，
     // 显式挂载确保 require() 沙箱内也能访问）
-    globalLerpColor, randomGradientLog
+    globalLerpColor, randomGradientLog,
+    // 文件工具（I18n.js 的 mergeLangFiles 需要）
+    AsyncFileManager
 });
 
 /**
@@ -669,11 +311,17 @@ Object.assign(globalThis, {
             initializePlugin();
 
             if (failedCount > 0) {
-                logWarn(lang.get("init.fail"));
+                const _lf = globalThis.lang || lang;
+                logWarn((_lf.get("init.fail")) || "部分模块加载失败，请检查日志");
             } else {
                 setTimeout(() => {
                 if (conf.get("SimpleLogOutPut")== false) {
-                logInfo(lang.get("init.success"));
+                const _l = globalThis.lang || lang;
+                logInfo((_l.get("init.success")) || "所有模块加载成功！");
+                logInfo("-".repeat(50));
+                logInfo((_l.get("Tip1")) || "");
+                logInfo((_l.get("Tip2")) || "");
+                logInfo((_l.get("Tip3")) || "");
                 logInfo("-".repeat(50));
                 }},100)
             }
@@ -775,14 +423,9 @@ function printGradientLogo() {
     });
 
     logger.log('');
-    logger.log(gradientLine(PluginInfo + lang.get("Version.Chinese") + version + ", 作者：Nico6719"));
-    setTimeout(() => {
-    if (conf.get("SimpleLogOutPut")== false) {
-    logger.log(gradientLine(lang.get("Tip1")));
-    logger.log(gradientLine(lang.get("Tip2")));
-    logger.log(gradientLine(lang.get("Tip3")));
-    logger.log(gradientLine("-".repeat(50)));
-    }},10)
+    // Tips 和分割线移至所有模块加载完毕后输出，确保 I18n 已就绪
+    logger.log(gradientLine(PluginInfo + "版本:" + version + ", 作者：Nico6719"));
+    randomGradientLog("-".repeat(50));
 }
 function initializePlugin() {
     // 第一步：获取并创建计分板
@@ -802,8 +445,7 @@ function initializePlugin() {
         mc.runcmdEx(`scoreboard objectives add ${scoreboardName} dummy`);
     }
     
-    // 第二步：异步合并语言文件
-    AsyncLanguageManager.mergeLangFiles();
+    // 第二步：异步合并语言文件（由 modules/I18n.js 在加载时自动处理）
     
     // 第三步：提示维护功能是否开启
     if (Maintenance.isActive) {
@@ -862,43 +504,7 @@ function initializePlugin() {
         })();
     }, 3000);
 }
-// 异步语言文件管理器
-class AsyncLanguageManager {
-    static async mergeLangFiles() {
-        try {
-            // 确保语言目录存在
-            if (!file.exists(YEST_LangDir)) {
-                file.mkdir(YEST_LangDir);
-            }
-            
-            // 异步读取现有语言文件
-            const currentLangData = await AsyncFileManager.readFile(langFilePath, JSON.stringify(defaultLangContent));
-            
-            // 合并数据
-            const mergedData = { ...currentLangData };
-            let addedCount = 0;
-            
-            for (const key in defaultLangContent) {
-                if (!(key in mergedData)) {
-                    mergedData[key] = defaultLangContent[key];
-                    addedCount++;
-                }
-            }
-            
-            // 如果有新键添加，则异步写入文件
-            if (addedCount > 0) {
-                await AsyncFileManager.writeFile(langFilePath, mergedData);
-                randomGradientLog(`语言文件已更新，新增 ${addedCount} 个条目`);
-                
-                // 重新初始化语言对象
-                lang = new JsonConfigFile(langFilePath, JSON.stringify(mergedData));
-                globalThis.lang = lang; // 同步更新全局引用，供模块访问
-            }
-        } catch (error) {
-            logger.error("合并语言文件时出错: " + error.message);
-        }
-    }
-}
+// AsyncLanguageManager 已迁移至 modules/I18n.js
 function ranking(plname) {
     let pl = mc.getPlayer(plname);
     if (!pl) return;
@@ -1341,7 +947,7 @@ function getUniqueTimestamp() {
 }
 
 // moneys指令相关
-const moneycmd = mc.newCommand("moneys", lang.get("CoinName"), PermType.GameMasters);
+const moneycmd = mc.newCommand("moneys", lang.get("CoinName") || "金币", PermType.GameMasters);
 moneycmd.mandatory("option", ParamType.String);
 moneycmd.optional("player", ParamType.String);
 moneycmd.optional("amount", ParamType.Int);
@@ -1394,7 +1000,7 @@ moneycmd.setCallback((cmd, ori, out, res) => {
     else out.error(info + lang.get("moneys.command.error"));
 });
 moneycmd.setup();
-let moneygui = mc.newCommand("moneygui",lang.get("CoinName"),PermType.Any)
+let moneygui = mc.newCommand("moneygui", lang.get("CoinName") || "金币", PermType.Any)
 moneygui.overload([])
 moneygui.setCallback((cmd,ori,out,res)=>{
     let pl = ori.player
