@@ -1,6 +1,10 @@
 {
     "modules": [
         {
+            "path": "I18n.js",
+            "name": "I18n"
+        },
+        {
             "path": "AsyncUpdateChecker.js",
             "name": "AsyncUpdateChecker"
         },
@@ -21,20 +25,20 @@
             "name": "ConfigManager"
         },
         {
-            "path": "RadomTeleportSystem.js",
-            "name": "RadomTeleportSystem"
-        },
-        {
-            "path": "PVP.js",
-            "name": "PVP"
-        },
-        {
             "path": "Fcam.js",
             "name": "Fcam"
         },
         {
             "path": "Notice.js",
             "name": "Notice"
+        },
+        {
+            "path": "PVP.js",
+            "name": "PVP"
+        },
+        {
+            "path": "RadomTeleportSystem.js",
+            "name": "RadomTeleportSystem"
         }
     ]
 }

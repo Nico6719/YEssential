@@ -69,46 +69,58 @@ function compareVersions(v1, v2) {
 
 class AsyncUpdateChecker {
     /**
+     * 所有已知模块的完整列表（硬编码兜底）
+     * 用于在 config.json 尚未迁移时补全缺失条目
+     */
+    static get KNOWN_FILES() {
+        return [
+            { url: 'YEssential.js',                    path: 'YEssential.js' },
+            { url: 'modules/I18n.js',                  path: './modules/I18n.js' },
+            { url: 'modules/Cleanmgr.js',              path: './modules/Cleanmgr.js' },
+            { url: 'modules/ConfigManager.js',         path: './modules/ConfigManager.js' },
+            { url: 'modules/AsyncUpdateChecker.js',    path: './modules/AsyncUpdateChecker.js' },
+            { url: 'modules/RadomTeleportSystem.js',   path: './modules/RadomTeleportSystem.js' },
+            { url: 'modules/Bstats.js',                path: './modules/Bstats.js' },
+            { url: 'modules/Cd.js',                    path: './modules/Cd.js' },
+            { url: 'modules/PVP.js',                   path: './modules/PVP.js' },
+            { url: 'modules/Fcam.js',                  path: './modules/Fcam.js' },
+            { url: 'modules/Notice.js',                path: './modules/Notice.js' }
+        ];
+    }
+
+    /**
      * 获取更新配置
-     * 从ConfigManager读取，如果不存在则使用默认配置
+     * 从 ConfigManager 读取，如果不存在则使用默认配置。
+     * ★ 不再强制 merge KNOWN_FILES，尊重服主对 config 的修改。
+     *   新模块缺失检测由 checkMissingFiles() 的第二阶段负责。
      */
     static getConfig() {
         try {
-            // 从配置文件读取
             const updateConfig = conf.get("Update");
-            
+
             if (updateConfig && typeof updateConfig === 'object') {
-                // 返回配置，确保所有必需字段都存在
                 return {
                     versionUrl: updateConfig.versionUrl || 'https://dl.mcmcc.cc/file/Version.json',
-                    baseUrl: updateConfig.baseUrl || 'https://dl.mcmcc.cc/file/',
-                    files: updateConfig.files || [],
+                    baseUrl:    updateConfig.baseUrl    || 'https://dl.mcmcc.cc/file/',
+                    files:      Array.isArray(updateConfig.files) ? updateConfig.files : [],
                     reloadDelay: updateConfig.reloadDelay || 1000,
-                    timeout: updateConfig.timeout || 30000,
-                    checkMissingFilesOnStart: updateConfig.checkMissingFilesOnStart !== undefined 
-                        ? updateConfig.checkMissingFilesOnStart 
+                    timeout:     updateConfig.timeout     || 30000,
+                    checkMissingFilesOnStart: updateConfig.checkMissingFilesOnStart !== undefined
+                        ? updateConfig.checkMissingFilesOnStart
                         : true
                 };
             }
         } catch (error) {
             logger.warn(`读取更新配置失败: ${error.message}，使用默认配置`);
         }
-        
-        // 返回默认配置（作为后备方案）
+
+        // config.json 完全不存在时的后备方案
         return {
             versionUrl: 'https://dl.mcmcc.cc/file/Version.json',
-            baseUrl: 'https://dl.mcmcc.cc/file/',
-            files: [
-                { url: 'YEssential.js', path: 'YEssential.js' },
-                { url: 'modules/Cleanmgr.js', path: './modules/Cleanmgr.js' },
-                { url: 'modules/ConfigManager.js', path: './modules/ConfigManager.js' },
-                { url: 'modules/AsyncUpdateChecker.js', path: './modules/AsyncUpdateChecker.js' },
-                { url: 'modules/RadomTeleportSystem.js', path: './modules/RadomTeleportSystem.js' },
-                { url: 'modules/Bstats.js', path: './modules/Bstats.js' },
-                { url: 'modules/Cd.js', path: './modules/Cd.js' }
-            ],
+            baseUrl:    'https://dl.mcmcc.cc/file/',
+            files:      this.KNOWN_FILES,
             reloadDelay: 1000,
-            timeout: 30000,
+            timeout:     30000,
             checkMissingFilesOnStart: true
         };
     }
@@ -143,25 +155,56 @@ class AsyncUpdateChecker {
 
     /**
      * 检查缺失的文件
+     *
+     * 分两个阶段：
+     *   阶段一：检查 config.Update.files 列出的文件是否存在于磁盘
+     *           → 服主自己管理的列表，缺了就修复
+     *   阶段二：检查 KNOWN_FILES 中不在 config 列表里且磁盘上也不存在的文件
+     *           → 这是新版本新增的模块，旧 config 还没有记录，需要自动补全下载
+     *           → 如果磁盘上已存在则跳过（说明服主自行放置或故意保留），不重复下载
+     *
+     * 这样服主从 config 里删掉某个模块条目后，只要磁盘上还有那个文件，
+     * 就不会被强制重新下载，完全尊重服主的配置意图。
+     *
      * @returns {Array} 缺失文件列表
      */
     static async checkMissingFiles() {
         const config = this.getConfig();
         const missingFiles = [];
-        
+        const checkedUrls = new Set();
+
+        // ── 阶段一：检查 config.files ──────────────────────────
         for (const file of config.files) {
+            checkedUrls.add(file.url);
             const fullPath = pluginpath + file.path;
-            
             try {
                 if (!File.exists(fullPath)) {
                     missingFiles.push(file);
-                    logger.warn(`文件缺失: ${file.path}`);
+                    logger.warn(`文件缺失 [config]: ${file.path}`);
                 }
             } catch (error) {
                 logger.error(`检查文件 ${file.path} 时出错: ${error.message}`);
             }
         }
-        
+
+        // ── 阶段二：检查 KNOWN_FILES 里 config 没有记录的新模块 ──
+        // 判断标准：url 不在 config.files 中 且 磁盘上也不存在
+        // 如果磁盘已存在则认为服主有意保留，跳过不下载
+        for (const knownFile of this.KNOWN_FILES) {
+            if (checkedUrls.has(knownFile.url)) continue; // 已在阶段一检查过
+
+            const fullPath = pluginpath + knownFile.path;
+            try {
+                if (!File.exists(fullPath)) {
+                    missingFiles.push(knownFile);
+                    randomGradientLog(`新增模块未找到，将自动下载: ${knownFile.path}`);
+                }
+                // 磁盘上已存在 → 服主自行管理，不干涉
+            } catch (error) {
+                logger.error(`检查新模块 ${knownFile.path} 时出错: ${error.message}`);
+            }
+        }
+
         return missingFiles;
     }
 
@@ -338,8 +381,8 @@ class AsyncUpdateChecker {
             // 写入所有文件
             await this.writeAllFiles(downloadResults);
             
-            colorLog("green", lang.get("Upd.success"));
-            logger.info(`成功下载 ${downloadResults.length} 个文件`);
+            randomGradientLog(lang.get("Upd.success"));
+            randomGradientLog(`成功下载 ${downloadResults.length} 个文件`);
             
             // 延迟重载插件
             await this.reloadPlugin();
@@ -379,7 +422,7 @@ class AsyncUpdateChecker {
                     
                     // 写入文件(使用原生方法)
                     File.writeTo(fullPath, result.data);
-                    logger.info(`写入文件成功: ${result.file.path}`);
+                    randomGradientLog(`写入文件成功: ${result.file.path}`);
                     return true;
                 } catch (error) {
                     logger.error(`写入 ${result.file.path} 失败: ${error.message}`);
@@ -400,7 +443,7 @@ class AsyncUpdateChecker {
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
             const backupDir = pluginpath + `./backups/backup_${timestamp}/`;
             
-            logger.info(lang.get("Upd.backup.now"));
+            randomGradientLog(lang.get("Upd.backup.now"));
             
             // 确保备份目录存在(使用原生方法)
             if (!File.exists(backupDir)) {
@@ -429,7 +472,7 @@ class AsyncUpdateChecker {
                     const content = File.readFrom(sourcePath);
                     if (content !== null) {
                         File.writeTo(backupPath, content);
-                        logger.info(`备份文件: ${file.path}`);
+                        randomGradientLog(`备份文件: ${file.path}`);
                     }
                 } catch (error) {
                     logger.warn(`备份 ${file.path} 失败: ${error.message}`);
@@ -476,7 +519,7 @@ class AsyncUpdateChecker {
                     const content = File.readFrom(backupPath);
                     if (content !== null) {
                         File.writeTo(targetPath, content);
-                        logger.info(`恢复文件: ${file.path}`);
+                        randomGradientLog(`恢复文件: ${file.path}`);
                     }
                 } catch (error) {
                     logger.error(`恢复 ${file.path} 失败: ${error.message}`);

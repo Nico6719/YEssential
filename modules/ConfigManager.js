@@ -2,12 +2,12 @@
 // randomGradientLog 由主文件通过 globalThis 注入，此处无需重复定义
 class ConfigManager {
     constructor() {
-        this.currentVersion = 286;
+        this.currentVersion = 287;
         this.pluginPath = pluginpath || "./plugins/YEssential";
         this.moduleListPath = `${this.pluginPath}/modules/modulelist.json`;
         // 默认配置
         this.configDefaults = {
-            "Version": 286,
+            "Version": 287,
             "Update": {
                 "EnableModule": true,
                 "CheckInterval": 120,
@@ -15,6 +15,7 @@ class ConfigManager {
                 "baseUrl": "https://dl.mcmcc.cc/file/",
                 "files": [
                     { "url": "YEssential.js",                    "path": "YEssential.js" },
+                    { "url": "modules/I18n.js",                  "path": "./modules/I18n.js" },
                     { "url": "modules/Cleanmgr.js",              "path": "./modules/Cleanmgr.js" },
                     { "url": "modules/ConfigManager.js",         "path": "./modules/ConfigManager.js" },
                     { "url": "modules/AsyncUpdateChecker.js",    "path": "./modules/AsyncUpdateChecker.js" },
@@ -128,6 +129,10 @@ class ConfigManager {
 
         // 默认模块列表
         this.defaultModules = [
+            {
+                "path": "I18n.js",
+                "name": "I18n"
+            },
             {
                 "path": "cleanmgr.js",
                 "name": "CleanMgr"
@@ -256,7 +261,7 @@ class ConfigManager {
                         "path": fileName,
                         "name": moduleName
                     };
-                    updatedModules.push(newModule);
+                    updatedModules.unshift(newModule);
                     randomGradientLog(`发现新模块: ${fileName} (${moduleName})`);
                     addedCount++;
                 }
@@ -375,7 +380,8 @@ class ConfigManager {
         this.backupConfig(oldVersion);
         
         const migrations = [
-            { version: 286, handler: () => this.migrateTo286() }
+            { version: 286, handler: () => this.migrateTo286() },
+            { version: 287, handler: () => this.migrateTo287() }
         ];
 
         migrations.forEach(migration => {
@@ -413,7 +419,7 @@ class ConfigManager {
 
     // ========== 版本特定迁移方法 ==========
 
-   migrateTo286() {
+    migrateTo286() {
     randomGradientLog("迁移到版本2.8.6...");
     
     // 迁移 TRServersEnabled 到 CrossServerTransfer
@@ -449,6 +455,84 @@ class ConfigManager {
     conf.set("CrossServerTransfer", config);
     conf.delete("TRServersEnabled");
     randomGradientLog("TRServersEnabled已迁移到CrossServerTransfer配置对象");
+    }
+
+    migrateTo287() {
+        randomGradientLog("更新配置版本到287");
+
+        // 新增模块: I18n, PVP, Fcam, Notice
+        const newFiles = [
+            { "url": "modules/I18n.js",   "path": "./modules/I18n.js" },
+            { "url": "modules/PVP.js",    "path": "./modules/PVP.js" },
+            { "url": "modules/Fcam.js",   "path": "./modules/Fcam.js" },
+            { "url": "modules/Notice.js", "path": "./modules/Notice.js" }
+        ];
+
+        let updateConfig = conf.get("Update");
+
+        if (!this.isValidObject(updateConfig)) {
+            // Update 块完全不存在，使用默认值（含新模块）
+            conf.set("Update", this.configDefaults.Update);
+            randomGradientLog("Update 配置不存在，已写入默认配置（含 PVP / Fcam / Notice）");
+            return;
+        }
+
+        // Update 块存在，只补充缺失的 files 条目
+        if (!Array.isArray(updateConfig.files)) {
+            updateConfig.files = [];
+        }
+
+        let addedModules = [];
+        newFiles.forEach(newFile => {
+            const exists = updateConfig.files.some(f => f.url === newFile.url);
+            if (!exists) {
+                updateConfig.files.push(newFile);
+                addedModules.push(newFile.url);
+            }
+        });
+
+        conf.set("Update", updateConfig);
+
+        if (addedModules.length > 0) {
+            randomGradientLog(`已向 Update.files 写入新模块: ${addedModules.join(", ")}`);
+        } else {
+            randomGradientLog("Update.files 中新模块已存在，无需重复写入");
+        }
+
+        // 确保 modulelist.json 中 I18n.js 始终排在第一位
+        this.ensureI18nFirst();
+    }
+
+    /**
+     * 确保 modulelist.json 中 I18n.js 排在第一位
+     * 若不存在则自动插入
+     */
+    ensureI18nFirst() {
+        try {
+            if (!this.moduleListConfig) {
+                randomGradientLog("moduleListConfig 未初始化，跳过 I18n 排序");
+                return;
+            }
+
+            let modules = this.moduleListConfig.get("modules");
+            if (!Array.isArray(modules)) {
+                randomGradientLog("modulelist.json 格式异常，跳过 I18n 排序");
+                return;
+            }
+
+            const i18nEntry = { "path": "I18n.js", "name": "I18n" };
+
+            // 移除已有的 I18n 条目（无论在哪个位置）
+            const filtered = modules.filter(m => m.path !== "I18n.js");
+
+            // 插到最前面
+            const reordered = [i18nEntry, ...filtered];
+
+            this.moduleListConfig.set("modules", reordered);
+            randomGradientLog("modulelist.json 已确保 I18n.js 排在第一位");
+        } catch (error) {
+            logger.error(`调整 modulelist.json 顺序失败: ${error.message}`);
+        }
     }
 
     
