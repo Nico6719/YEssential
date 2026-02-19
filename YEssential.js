@@ -22,8 +22,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件 `;
-const version = "2.9.7";
-const regversion =[2,9,7];
+const version = "2.9.8";
+const regversion =[2,9,8];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 // 提取默认语言对象 ,调用示例： pl.tell(info + lang.get("x.x"));
@@ -2904,26 +2904,14 @@ mc.listen("onLeft", (pl) => {
 // ======================
 // RTP2252 2.2.9
 // ======================
-//冷却Map
-let cooltime = new Map()
-setInterval(() => {
-    cooltime.forEach((v,k)=>{
-        if(v > 0){
-            cooltime.set(k,v-1)
-        }else{
-            cooltime.delete(k)
-        }
-    })
-}, 1000);
+// 冷却倒计时由 RadomTeleportSystem.js 内部管理
 ////rtp  remake
 const rtpResetCmd = mc.newCommand("rtpreset", "重置传送冷却", PermType.GameMasters);
 rtpResetCmd.overload([]);
 rtpResetCmd.mandatory("player", ParamType.Player);
 rtpResetCmd.setCallback((cmd, ori, out, res) => {
     const pl = ori.player;
-    const config = conf.get("RTP");
-    const cooldown = config.cooldown;
-    cooltime.set(pl.realName,0)
+    RadomTeleportSystem.cooltime.set(pl.realName, 0);
     out.success(`已重置 ${pl.realName} 的传送冷却`);
 });
 rtpResetCmd.setup();
