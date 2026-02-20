@@ -261,15 +261,18 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
     },
     "SimpleLogOutPut": false,   //简洁的日志输出，默认为关闭
     "CrashModuleEnabled": 0,  //崩端功能开关，默认为关闭
-    "LLMoney": 0,  //切换经济系统（0为记分板，1为LLmoney模式）
-    "Scoreboard": "money",  //计分板名称
-    "PayTaxRate": 0,   //转账税率（%）
+    "Economy": {  //经济模块设置
+                "mode": "scoreboard",  //经济模式 填llmoney为llmoney模式，填scoreboard为计分板模式
+                "PayTaxRate": 0,   //转账税率（%）
+                "RankingModel" : "New",   //金币排行版的样式 （可填New或Old）
+                "Scoreboard": "money",  //计分板项使用的名字，不可填中文！
+                "CoinName": "金币"   //金币名字
+    },
     "Back": 0 ,  //返回死亡点花费的金钱
     "Warp": 0 ,   //前往公共传送点花费的金钱
     "BackTipAfterDeath": 0,   //重生后是否自动弹窗（1开启，0关闭）
     "KeepInventory": 1,   //开服是否自动执行开启死亡不掉落指令
     "suicide": 0,   //自杀所花费的金钱
-    "RankingModel": 1,  //金币排行榜GUI样式 1为新版，2为旧版
     "Version": 265   //版本标识符，勿动！
 }
 ```
