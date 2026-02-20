@@ -1,5 +1,7 @@
 <div align="center">
 
+![YEssential](https://socialify.git.ci/Nico6719/YEssential/image?custom_language=JavaScript&description=1&font=Inter&forks=1&issues=1&language=1&logo=https://zh.minecraft.wiki/images/Bookshelf_JE4_BE2.png?21f85&name=1&owner=1&pattern=Plus&pulls=1&stargazers=1&theme=Auto)
+
 # 📦 YEssential
 **基于 LSE 的多功能基础插件**
 
@@ -448,7 +450,7 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
 ## 贡献
 
 本项目的诞生离不开PHEyeji等人的帮助与支持！<br>
-如果您也想为YEssential做贡献欢迎提交 Issue，共同完善 YEssential。
+如果您也想为YEssential做贡献欢迎提交 Issue，共同完善 YEssential。  
 
 ## Star History
 
