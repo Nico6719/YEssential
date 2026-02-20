@@ -1,10 +1,15 @@
-# 📦 YEssential  
+<div align="center">
+
+# 📦 YEssential
 **基于 LSE 的多功能基础插件**
-<p align="center">
-  <img src="https://img.shields.io/github/downloads/Nico6719/YEssential/total?style=flat-square&logo=github&color=33ccff&label=Downloads">
-  <img src="https://img.shields.io/github/v/release/Nico6719/YEssential?style=flat-square&logo=github&color=orange&label=Version">
-  <img src="https://img.shields.io/github/stars/Nico6719/YEssential?style=flat-square&logo=github&color=yellow&label=Stars">
-</p>
+
+![Downloads](https://img.shields.io/github/downloads/Nico6719/YEssential/total?style=flat-square&logo=github&color=33ccff&label=Downloads)
+![Version](https://img.shields.io/github/v/release/Nico6719/YEssential?style=flat-square&logo=github&color=orange&label=Version)
+![Stars](https://img.shields.io/github/stars/Nico6719/YEssential?style=flat-square&logo=github&color=yellow&label=Stars)
+
+</div>
+
+---
 > 一个简洁、实用的基础插件，适用于基岩版服务器。基于 LegacyScriptEngine (LSE) 的插件，并且可以迁移 TMEssential 的部分数据（如 home 和 warp 的数据）以及 [PMenu](https://www.minebbs.com/resources/pmenu.4277/) 的菜单数据（100%兼容！）导入配置文件/数据教程在文末。
 ## 📌 基本信息
 
