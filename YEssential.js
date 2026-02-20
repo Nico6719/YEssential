@@ -14,6 +14,9 @@
 未经允许禁止擅自修改或者发售
 该插件仅在[github,MineBBS,KLPBBS]发布
 禁止二次发布插件
+语言文件路径（defaultLangContent 及 AsyncLanguageManager 已迁移至 modules/I18n.js）
+调用示例： pl.tell(info + lang.get("x.x"))
+i18n 默认内容已完整迁移至 modules/I18n.js
 ----------------------------------*/
 // LiteLoader-AIDS automatic generated
 /// <reference path="c:\Users\Admin\ku/dts/helperlib/src/index.d.ts"/> 
@@ -22,14 +25,14 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件 `;
-const version = "2.10.0";
-const regversion =[2,10,0];
+const version = "2.10.1";
+const regversion =[2,10,1];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
-// 语言文件路径（defaultLangContent 及 AsyncLanguageManager 已迁移至 modules/I18n.js）
-// 调用示例： pl.tell(info + lang.get("x.x"))
+const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
+
 const langFilePath = YEST_LangDir + "zh_cn.json";
-// i18n 默认内容已完整迁移至 modules/I18n.js
+
 
 ll.registerPlugin(NAME, PluginInfo,regversion, {
     Author: "Nico6719",
@@ -41,10 +44,31 @@ ll.registerPlugin(NAME, PluginInfo,regversion, {
 let motdTimerId = null;
 
 // lang 在此处以空文件初始化（JsonConfigFile 若文件已存在则从磁盘读取）
+
 // modules/I18n.js 加载后会用完整 defaultLangContent 重新赋值并同步到 globalThis.lang
+
 let lang = new JsonConfigFile(langFilePath, JSON.stringify({}));
 
 let conf = new JsonConfigFile(pluginpath +"/Config/config.json",JSON.stringify({}));
+
+// ── Economy 统一读取层（兼容旧config和新Economy块）─────────
+const economyCfg = {
+    get mode()       {
+        const e = conf.get("Economy");
+        if (e) return e.mode || "scoreboard";
+        // 旧格式兼容：直接读conf，不能调自身
+        return conf.get("LLMoney") == 1 ? "llmoney" : "scoreboard";
+    },
+    get isLLMoney()  { return this.mode === "llmoney"; },
+    get scoreboard() {
+        const e = conf.get("Economy");
+        return (e ? e.Scoreboard : conf.get("Scoreboard")) || "money";
+    },
+    get coinName()   {
+        const e = conf.get("Economy");
+        return (e ? e.CoinName : conf.get("CoinName")) || lang.get("CoinName") || "金币";
+    }
+};
 
 let modulelist = new JsonConfigFile(pluginpath +"/modules/modulelist.json",JSON.stringify({
   "modules": [
@@ -438,7 +462,7 @@ function printGradientLogo() {
 }
 function initializePlugin() {
     // 第一步：获取并创建计分板
-    const scoreboardName = conf.get("Scoreboard") || "money";
+    const scoreboardName = economyCfg.scoreboard;
     
     // 检查计分板是否存在，不存在则创建
     try {
@@ -530,10 +554,10 @@ function ranking(plname) {
     // 3. [核心修复] 强制获取“你自己”的当前实时余额
     // 不管文件或缓存里是多少，现在立刻查一次真实的钱
     let myRealMoney;
-    if (conf.get("LLMoney") == 1) {
+    if (economyCfg.isLLMoney) {
         myRealMoney = pl.getMoney(); // LLMoney模式
     } else {
-        myRealMoney = pl.getScore(conf.get("Scoreboard") || "money"); // 计分板模式
+        myRealMoney = pl.getScore(economyCfg.scoreboard); // 计分板模式
     }
 
     // 如果获取到了余额，强制覆盖进列表，保证你自己看到的数据是100%正确的
@@ -561,9 +585,8 @@ function ranking(plname) {
     
     // 截取前50名
     const rankingData = lst.slice(0, 50);
-
     // === 模式 1: 详细 UI ===
-    if (conf.get("RankingModel") == 1) {
+    if (conf.get("Economy").RankingModel == "New" ) {
         const total = rankingData.reduce((sum, curr) => sum + curr.money, 0);
 
         let form = mc.newSimpleForm()
@@ -632,8 +655,8 @@ let moneyCache = new Map();
 let moneyDirty = false;
 function updateSinglePlayerCache(pl) {
     if (!pl) return;
-    const isLLMoney = conf.get("LLMoney") !== 0;
-    const moneyValue = isLLMoney ? pl.getMoney() : pl.getScore(conf.get("Scoreboard") || "money");
+    const isLLMoney = economyCfg.isLLMoney;
+    const moneyValue = isLLMoney ? pl.getMoney() : pl.getScore(economyCfg.scoreboard);
     if (moneyValue !== null && moneyValue !== undefined) {
         if (moneyCache.get(pl.realName) !== moneyValue) {
             moneyCache.set(pl.realName, moneyValue);
@@ -797,8 +820,8 @@ function displayMoneyInfo(pl, target, isSelf = true) {
     if (!pl || !target) return "信息获取失败";
     const prefix = isSelf ? "你的" : `玩家 ${target.realName} 的`;
     
-    if (!conf.get("LLMoney")) {
-        const money = target.getScore(conf.get("Scoreboard"));
+    if (!economyCfg.isLLMoney) {
+        const money = target.getScore(economyCfg.scoreboard);
         pl.sendText(info + `${prefix}当前金币为：${money}`);
         return `${prefix}${lang.get("CoinName")}为: ${money}`;
     } else {
@@ -815,14 +838,14 @@ mc.listen("onJoin",(pl)=>{
         rtpdata.init(pl.realName, {});
         MoneyHistory.init(pl.realName, {});
         // 初始化金币
-        if (conf.get("LLMoney") == 1) {
+        if (economyCfg.isLLMoney) {
             let currentMoney = pl.getMoney();
             if (currentMoney === null || currentMoney === undefined) {
                 pl.setMoney(0);
             }
         } else {
-            let score = pl.getScore(conf.get("Scoreboard"));
-            if (!score) pl.setScore(conf.get("Scoreboard"), 0);
+            let score = pl.getScore(economyCfg.scoreboard);
+            if (!score) pl.setScore(economyCfg.scoreboard, 0);
         }
         if (pl.isOP()) {
             return;
@@ -854,7 +877,7 @@ let suicidecmd = mc.newCommand("suicide","自杀",PermType.Any)
 suicidecmd.overload([])
 suicidecmd.setCallback((cmd,ori,out,res)=>{
     let pl = ori.player
-    if(!conf.get("LLMoney")){
+    if(!economyCfg.isLLMoney){
             if(!smartMoneyCheck(pl.realName,conf.get("suicide"))) return pl.tell(info + lang.get("money.no.enough"));
     }else{
             if(!smartMoneyCheck(pl.realName,conf.get("suicide"))) return pl.tell(info + lang.get("money.no.enough"));
@@ -969,7 +992,7 @@ moneycmd.setCallback((cmd, ori, out, res) => {
     const targetPl = mc.getPlayer(res.player);
     if (!targetPl) return out.error(info + lang.get("money.tr.noonline"));
 
-    const coinName = lang.get("CoinName");
+    const coinName = economyCfg.coinName;
     const history = MoneyHistory.get(targetPl.realName);
     const timestamp = getUniqueTimestamp();
 
@@ -1029,12 +1052,14 @@ function MoneyGui(plname){
 
     let fm = mc.newSimpleForm()
     fm.setTitle(lang.get("CoinName"))
-    fm.addButton(lang.get("money.query")+lang.get("CoinName"), "textures/ui/MCoin")
-    fm.addButton(lang.get("money.transfer")+lang.get("CoinName"), "textures/ui/trade_icon")
-    fm.addButton(lang.get("money.view")+lang.get("CoinName")+lang.get("money.history"), "textures/ui/book_addtextpage_default")
-    fm.addButton(lang.get("CoinName")+lang.get("money.player.list"), "textures/ui/icon_book_writable")
-    if (conf.get("RedPacket").EnabledModule== 1){
-    fm.addButton(lang.get("rp.menu.1"),"textures/ui/gift_square")
+    const _c = economyCfg.coinName
+    fm.addButton((lang.get("money.query") || "查询") + _c, "textures/ui/MCoin")
+    fm.addButton((lang.get("money.transfer") || "转账") + _c, "textures/ui/trade_icon")
+    fm.addButton(lang.get("money.offline.transfer.btn") || "转账给离线玩家", "textures/ui/FriendsDiversity")
+    fm.addButton((lang.get("money.view") || "查看") + _c + (lang.get("money.history") || "历史记录"), "textures/ui/book_addtextpage_default")
+    fm.addButton(_c + (lang.get("money.player.list") || "排行榜"), "textures/ui/icon_book_writable")
+    if (conf.get("RedPacket").EnabledModule == 1){
+    fm.addButton(lang.get("rp.menu.1") || "红包", "textures/ui/gift_square")
     } else {}
     pl.sendForm(fm,(pl,id)=>{
         if(id == null) return pl.tell(info + lang.get("gui.exit"));
@@ -1052,6 +1077,9 @@ function MoneyGui(plname){
                 MoneyTransferGui(pl.realName)
                 break
             case 2:
+                MoneyTransferOfflineGui(pl.realName)
+                break
+            case 3:
                 let moneyhisdata = MoneyHistory.get(pl.realName)
                 let jsonStr = JSON.stringify(moneyhisdata);
                 let items = jsonStr.slice(1, jsonStr.length - 1).split(',');
@@ -1071,10 +1099,10 @@ function MoneyGui(plname){
                     if(id == null) return pl.runcmd("moneygui")
                 })
                 break
-            case 3:
+            case 4:
                 ranking(pl.realName)
                 break
-            case 4:
+            case 5:
                 redpacketgui(pl.realName)
                 break
         }
@@ -1165,15 +1193,17 @@ function OPMoneyGui(plname){
 
     let fm = mc.newSimpleForm()
     fm.setTitle("(OP)"+lang.get("CoinName"))
-    fm.addButton(lang.get("money.op.add")+lang.get("CoinName"),"textures/ui/icon_best3")
-    fm.addButton(lang.get("money.op.remove")+lang.get("CoinName"),"textures/ui/redX1")
-    fm.addButton(lang.get("money.op.set")+lang.get("CoinName"), "textures/ui/gear")
-    fm.addButton(lang.get("money.op.look")+lang.get("CoinName"), "textures/ui/MCoin")
-    fm.addButton("查看玩家的"+lang.get("CoinName")+"历史记录", "textures/ui/book_addtextpage_default")
-    fm.addButton("全服"+lang.get("CoinName")+"排行榜", "textures/ui/icon_book_writable")
-    fm.addButton(lang.get("money.gui.useplayer"), "textures/ui/icon_multiplayer")
-    if (conf.get("RedPacket").EnabledModule== 1){
-    fm.addButton(lang.get("rp.menu.1"),"textures/ui/gift_square")
+    const _coin = economyCfg.coinName
+    fm.addButton((lang.get("money.op.add") || "增加玩家的") + _coin, "textures/ui/icon_best3")
+    fm.addButton((lang.get("money.op.remove") || "减少玩家的") + _coin, "textures/ui/redX1")
+    fm.addButton((lang.get("money.op.set") || "设置玩家的") + _coin, "textures/ui/gear")
+    fm.addButton(lang.get("money.op.offline.btn") || "对离线玩家进行金币操作", "textures/ui/FriendsDiversity")
+    fm.addButton((lang.get("money.op.look") || "查看玩家的") + _coin, "textures/ui/MCoin")
+    fm.addButton("查看玩家的" + _coin + "历史记录", "textures/ui/book_addtextpage_default")
+    fm.addButton("全服" + _coin + "排行榜", "textures/ui/icon_book_writable")
+    fm.addButton(lang.get("money.gui.useplayer") || "使用玩家的金钱菜单", "textures/ui/icon_multiplayer")
+    if (conf.get("RedPacket").EnabledModule == 1){
+    fm.addButton(lang.get("rp.menu.1") || "红包", "textures/ui/gift_square")
     } else {}
     pl.sendForm(fm,(pl,id)=>{
         if(id == null) return pl.tell(info + lang.get("gui.exit"));
@@ -1188,18 +1218,21 @@ function OPMoneyGui(plname){
                 MoneySetGui(pl.realName)
                 break
             case 3:
-                MoneyGetGui(pl.realName)
+                OPOfflineMoneyGui(pl.realName)
                 break
             case 4:
-                MoneyHistoryGui(pl.realName)
+                MoneyGetGui(pl.realName)
                 break
             case 5:
-                ranking(pl.realName)
+                MoneyHistoryGui(pl.realName)
                 break
             case 6:
-                MoneyGui(pl.realName)
+                ranking(pl.realName)
                 break
             case 7:
+                MoneyGui(pl.realName)
+                break
+            case 8:
                 redpacketgui(pl.realName)
                 break
         }
@@ -1254,7 +1287,7 @@ const OfflineMoneyCache = {
         const operations = OfflineMoneyCache.get(player.realName);
         if (operations.length === 0) return;
         
-        const coinName = lang.get("CoinName");
+        const coinName = economyCfg.coinName;
         let totalChange = 0;
         
         operations.forEach(op => {
@@ -1274,8 +1307,8 @@ const OfflineMoneyCache = {
         // 通知玩家
         if (totalChange !== 0) {
             const message = totalChange > 0 
-                ? `§a你离线期间收到了 ${totalChange} ${coinName}`
-                : `§c你离线期间扣除了 ${Math.abs(totalChange)} ${coinName}`;
+                ? `${info}§a离线期间金币变动 +${totalChange} ${coinName}`
+                : `${info}§c离线期间金币变动 ${totalChange} ${coinName}`;
             player.tell(message);
         }
         
@@ -1284,8 +1317,8 @@ const OfflineMoneyCache = {
 
 // --- 改进的 Economy 核心 ---
 const Economy = {
-    isScoreboard: () => conf.get("LLMoney") == 0,
-    getObjName: () => conf.get("Scoreboard"),
+    isScoreboard: () => !economyCfg.isLLMoney,
+    getObjName: () => economyCfg.scoreboard,
     
     // 获取余额
     get: (p) => {
@@ -1327,8 +1360,8 @@ const Economy = {
 };
 
 const EconomyManager = {
-    getScoreboard: () => conf.get("Scoreboard") || "money",
-    isLLMoney: () => !!conf.get("LLMoney"),
+    getScoreboard: () => economyCfg.scoreboard,
+    isLLMoney: () => !!economyCfg.isLLMoney,
     
     checkAndReduce: function(playerName, amount) {
         const player = mc.getPlayer(playerName);
@@ -1352,10 +1385,101 @@ const EconomyManager = {
 };
 
 
+// ══════════════════════════════════════════════════════════════
+// EconomyNotify - 经济操作通知系统
+// 作用：对在线玩家直接推送余额变动消息；对离线玩家存入队列，
+//       下次上线时在 onJoin 统一投递。
+// ══════════════════════════════════════════════════════════════
+const EconomyNotify = {
+
+    // ── 磁盘读写 ─────────────────────────────────────────────
+    _load: () => {
+        if (!File.exists(offlineNotifyPath)) File.writeTo(offlineNotifyPath, "{}");
+        try { return JSON.parse(File.readFrom(offlineNotifyPath)) || {}; }
+        catch(e) { return {}; }
+    },
+    _save: (data) => { File.writeTo(offlineNotifyPath, JSON.stringify(data, null, 2)); },
+
+    // ── 将消息存入离线队列 ────────────────────────────────────
+    addOffline: (playerName, msg) => {
+        const db = EconomyNotify._load();
+        if (!db[playerName]) db[playerName] = [];
+        db[playerName].push(msg);
+        EconomyNotify._save(db);
+    },
+
+    // ── 投递消息（在线则直发，离线则入队）───────────────────
+    send: (playerOrName, msg) => {
+        if (typeof playerOrName === "string") {
+            const online = mc.getPlayer(playerOrName);
+            if (online) { online.sendText(msg); }
+            else        { EconomyNotify.addOffline(playerOrName, msg); }
+        } else {
+            // 直接是 Player 对象
+            playerOrName.sendText(msg);
+        }
+    },
+
+    // ── 玩家上线时统一投递积压通知 ───────────────────────────
+    apply: (player) => {
+        const db   = EconomyNotify._load();
+        const msgs = db[player.realName];
+        if (!msgs || msgs.length === 0) return;
+
+        setTimeout(() => {
+            msgs.forEach(msg => player.sendText(msg));
+            delete db[player.realName];
+            EconomyNotify._save(db);
+        }, 1500);   // 稍作延迟，避免和其他上线消息重叠
+    },
+
+    // ── 格式化帮助函数（生成统一风格的余额变动提示）────────
+    // type: 'add' | 'reduce' | 'set'
+    fmt: {
+        // 转账 - 发送方
+        transferSend: (targetName, amount, tax, received, coinName, note) => {
+            return `${info}§e转账成功 §7-> §f${targetName} §7| 转出 §c${amount} §7税 §e${tax} §7到账 §a${received} ${coinName}` +
+                   (note ? ` §7| 备注：§f${note}` : "");
+        },
+        // 转账 - 收款方（在线）
+        transferReceive: (senderName, received, tax, coinName, note) => {
+            return `${info}§a收到转账 §7来自 §f${senderName} §7| 到账 §a${received} ${coinName}` +
+                   (tax > 0 ? ` §7(发方缴税 §e${tax}§7)` : "") +
+                   (note ? ` §7| 备注：§f${note}` : "");
+        },
+        // 离线转账 - 收款方（上线时投递）
+        transferReceiveOffline: (senderName, received, tax, coinName, note) => {
+            return `${info}§a离线转账到账 §7来自 §f${senderName} §7| 到账 §a${received} ${coinName}` +
+                   (tax > 0 ? ` §7(发方缴税 §e${tax}§7)` : "") +
+                   (note ? ` §7| 备注：§f${note}` : "");
+        },
+        // OP操作通知
+        adminOp: (opType, amount, coinName, adminName, note) => {
+            const colorMap = { add: "§a", reduce: "§c", set: "§e" };
+            const wordMap  = { add: "+", reduce: "-", set: "=" };
+            const c = colorMap[opType] || "§f";
+            const s = wordMap[opType]  || "";
+            return `${info}§7余额变动 ${c}${s}${amount} ${coinName} §7| 管理员 §f${adminName}` +
+                   (note ? ` §7| 备注：§f${note}` : "");
+        },
+        // 系统自动操作
+        system: (opType, amount, coinName, reason) => {
+            const colorMap = { add: "§a", reduce: "§c" };
+            const wordMap  = { add: "+", reduce: "-" };
+            const c = colorMap[opType] || "§f";
+            const s = wordMap[opType]  || "";
+            return `${info}§7系统余额变动 ${c}${s}${amount} ${coinName} §7| ${reason}`;
+        }
+    }
+};
+globalThis.EconomyNotify = EconomyNotify;
+
 // --- 玩家加入事件监听 ---
 mc.listen("onJoin", (player) => {
     // 应用离线货币操作
     OfflineMoneyCache.apply(player);
+    // 投递积压的经济通知
+    EconomyNotify.apply(player);
 });
 const Logger = {
     // 记录历史
@@ -1422,17 +1546,26 @@ function handleAdminOp(pl, target, opType, actionText, inputLabel) {
             return admin.tell(info + lang.get("money.setting.number")); // 使用原本的提示key
         }
         
-        const amount = Number(inputVal);
-        if (isNaN(amount)) return admin.tell(info + lang.get("key.not.number"));
+        // ✅ 修复：使用 parseInt 避免传入浮点数导致 addScore 崩溃
+        const amount = parseInt(inputVal, 10);
+        if (isNaN(amount) || amount <= 0) return admin.tell(info + lang.get("key.not.number"));
+
+        const coinName = economyCfg.coinName;
         
         // 执行经济操作
         Economy.execute(target, opType, amount);
         
         // 记录日志 (修复了原代码存错人的Bug)
-        const logMsg = `${lang.get("CoinName")}${actionText}${amount} (操作员: ${admin.realName})`;
+        const logMsg = `${coinName}${actionText}${amount} (操作员: ${admin.realName})`;
         Logger.add(target.realName, logMsg);
         
-        // 发送反馈
+        // ── 通知目标玩家（在线直发，离线入队）───────────────
+        EconomyNotify.send(
+            target,
+            EconomyNotify.fmt.adminOp(opType, amount, coinName, admin.realName)
+        );
+
+        // 发送反馈给操作员
         admin.sendText(`${info}${lang.get("success")}${lang.get("to")}${lang.get("player")}${target.realName}的${lang.get("CoinName")}${actionText}${amount}`);
         admin.sendText(`${info}玩家当前金币为：${Economy.get(target)}`);
     });
@@ -1472,7 +1605,7 @@ function MoneyTransferGui(plname) {
     const playerNames = mc.getOnlinePlayers().map(p => p.realName);
     const myBalance = Economy.get(pl);
     const taxRate = conf.get("PayTaxRate");
-    const coinName = lang.get("CoinName");
+    const coinName = economyCfg.coinName;
 
     const fm = mc.newCustomForm();
     fm.setTitle(lang.get("money.transfer.title") + coinName);
@@ -1521,6 +1654,7 @@ function MoneyTransferGui(plname) {
 
         const timeStr = system.getTimeStr();
         const noteMsg = note ? ` ${lang.get("money.tr.beizhu")}: ${note}` : "";
+        const coinName = economyCfg.coinName;
         
         Logger.add(player.realName, 
             `${timeStr} ${lang.get("money.transfer.log.send")
@@ -1538,22 +1672,217 @@ function MoneyTransferGui(plname) {
                 .replace("${tax}", tax)}${noteMsg}`
         );
 
-        player.sendText(info + lang.get("money.transfer.success.sender")
-            .replace("${amount}", finalAmount)
-            .replace("${received}", actualReceived));
-        target.sendText(info + lang.get("money.transfer.success.receiver")
-            .replace("${sender}", player.realName)
-            .replace("${amount}", actualReceived)
-            .replace("${coin}", coinName) + noteMsg);
+        // ── 通知双方 ─────────────────────────────────────────
+        player.sendText(EconomyNotify.fmt.transferSend(
+            target.realName, finalAmount, tax, actualReceived, coinName, note
+        ));
+        target.sendText(EconomyNotify.fmt.transferReceive(
+            player.realName, actualReceived, tax, coinName, note
+        ));
     });
 }
+// ══════════════════════════════════════════════════════════════
+// MoneyTransferOfflineGui - 玩家版：转账给离线玩家
+// ══════════════════════════════════════════════════════════════
+function MoneyTransferOfflineGui(plname) {
+    const pl = mc.getPlayer(plname);
+    if (!pl) return;
+
+    const coinName  = lang.get("CoinName");
+    const taxRate   = conf.get("PayTaxRate");
+    const myBalance = Economy.get(pl);
+
+    const fm = mc.newCustomForm();
+    fm.setTitle(lang.get("money.offline.transfer.title"));
+    fm.addLabel(
+        lang.get("money.offline.transfer.label")
+            .replace("${balance}", myBalance)
+            .replace("${coin}", coinName)
+            .replace("${rate}", taxRate)
+    );
+    fm.addInput(lang.get("money.offline.transfer.input.target"), lang.get("money.offline.transfer.input.target.hint"));
+    fm.addInput(lang.get("money.offline.transfer.input.amount"), lang.get("money.offline.transfer.input.amount.hint"));
+    fm.addInput(lang.get("money.offline.transfer.input.note"),   lang.get("money.offline.transfer.input.note.hint"));
+
+    pl.sendForm(fm, (player, data) => {
+        if (data == null) return player.runcmd("moneygui");
+
+        const [, rawTarget, rawAmount, note] = data;
+        const targetName = (rawTarget || "").trim();
+
+        if (!targetName) return player.tell(info + lang.get("money.offline.transfer.no.target"));
+        if (targetName === player.realName) return player.tell(info + lang.get("money.offline.transfer.self"));
+
+        if (mc.getPlayer(targetName)) {
+            return player.tell(info + lang.get("money.offline.transfer.target.online"));
+        }
+
+        const amountStr = (rawAmount || "").trim().toLowerCase();
+        const myBal     = Economy.get(player);
+        let   finalAmount;
+        if (amountStr === "all") {
+            finalAmount = myBal;
+        } else if (/^\d+$/.test(amountStr)) {
+            finalAmount = parseInt(amountStr, 10);
+        } else {
+            return player.tell(info + lang.get("key.not.number"));
+        }
+
+        if (finalAmount <= 0) return player.tell(info + lang.get("money.must.bigger0"));
+
+        const tax            = Math.floor(finalAmount * (taxRate / 100));
+        const actualReceived = finalAmount - tax;
+
+        if (actualReceived <= 0) return player.tell(info + lang.get("money.transfer.tax.notenough"));
+        if (myBal < finalAmount)  return player.tell(info + lang.get("money.no.enough"));
+
+        // ── 确认表单 ──────────────────────────────────────────
+        const confirmFm = mc.newSimpleForm();
+        confirmFm.setTitle(lang.get("money.offline.transfer.confirm.title"));
+        confirmFm.setContent(
+            lang.get("money.offline.transfer.confirm.content")
+                .replace("${target}",   targetName)
+                .replace("${amount}",   finalAmount)
+                .replace("${coin}",     coinName)
+                .replace("${tax}",      tax)
+                .replace("${rate}",     taxRate)
+                .replace("${received}", actualReceived) +
+            (note ? "\n" + lang.get("notify.transfer.note").replace("${note}", note) : "") +
+            "\n\n" + lang.get("money.offline.transfer.confirm.warn")
+        );
+        confirmFm.addButton(lang.get("money.offline.transfer.btn.confirm"), "textures/ui/realms_green_check");
+        confirmFm.addButton(lang.get("money.offline.transfer.btn.cancel"),  "textures/ui/cancel");
+
+        player.sendForm(confirmFm, (pl2, btnId) => {
+            if (btnId == null || btnId === 1) return pl2.tell(info + lang.get("money.offline.transfer.cancelled"));
+
+            if (Economy.get(pl2) < finalAmount) return pl2.tell(info + lang.get("money.no.enough"));
+
+            Economy.execute(pl2, 'reduce', finalAmount);
+            OfflineMoneyCache.add(targetName, 'add', actualReceived);
+
+            const timeStr = system.getTimeStr();
+            const noteMsg = note ? lang.get("money.offline.transfer.note.suffix").replace("${note}", note) : "";
+            Logger.add(pl2.realName,
+                timeStr + " " + lang.get("money.offline.transfer.log")
+                    .replace("${target}",   targetName)
+                    .replace("${amount}",   finalAmount)
+                    .replace("${tax}",      tax)
+                    .replace("${received}", actualReceived) + noteMsg
+            );
+
+            pl2.sendText(
+                EconomyNotify.fmt.transferSend(targetName, finalAmount, tax, actualReceived, coinName, note) +
+                "\n§7§o" + lang.get("money.offline.transfer.sender.offline.tip")
+            );
+            EconomyNotify.send(
+                targetName,
+                EconomyNotify.fmt.transferReceiveOffline(pl2.realName, actualReceived, tax, coinName, note)
+            );
+        });
+    });
+}
+
+// ══════════════════════════════════════════════════════════════
+// OPOfflineMoneyGui - OP版：对离线玩家执行金币增/减/设置
+// ══════════════════════════════════════════════════════════════
+function OPOfflineMoneyGui(plname) {
+    const pl = mc.getPlayer(plname);
+    if (!pl) return;
+
+    const coinName = economyCfg.coinName;
+
+    const fm = mc.newCustomForm();
+    fm.setTitle(lang.get("money.op.offline.title"));
+    fm.addLabel(lang.get("money.op.offline.label"));
+    fm.addInput(lang.get("money.op.offline.input.target"), lang.get("money.op.offline.input.target.hint"));
+    fm.addDropdown(lang.get("money.op.offline.dropdown"), [
+        lang.get("money.op.offline.type.add"),
+        lang.get("money.op.offline.type.reduce"),
+        lang.get("money.op.offline.type.set")
+    ]);
+    fm.addInput(lang.get("money.op.offline.input.amount"), lang.get("money.op.offline.input.amount.hint"));
+    fm.addInput(lang.get("money.op.offline.input.note"), lang.get("money.offline.transfer.input.note.hint"));
+
+    pl.sendForm(fm, (admin, data) => {
+        if (data == null) return admin.runcmd("moneygui");
+
+        const [, rawTarget, opIdx, rawAmount, note] = data;
+        const targetName = (rawTarget || "").trim();
+
+        if (!targetName) return admin.tell(info + lang.get("money.offline.transfer.no.target"));
+
+        const opTypeMap = ['add', 'reduce', 'set'];
+        const opWordMap = [
+            lang.get("money.op.offline.type.add"),
+            lang.get("money.op.offline.type.reduce"),
+            lang.get("money.op.offline.type.set")
+        ];
+        const opType = opTypeMap[opIdx];
+        const opWord = opWordMap[opIdx];
+
+        const amountStr = (rawAmount || "").trim();
+        if (!/^\d+$/.test(amountStr)) return admin.tell(info + lang.get("key.not.number"));
+        const amount = parseInt(amountStr, 10);
+        if (opType !== "set" && amount <= 0) return admin.tell(info + lang.get("money.must.bigger0"));
+        if (opType === "set" && amount < 0) return admin.tell(info + lang.get("money.must.bigger0"));
+
+        if (mc.getPlayer(targetName)) {
+            return admin.tell(info + lang.get("money.op.offline.target.online"));
+        }
+
+        // ── 确认表单 ──────────────────────────────────────────
+        const confirmFm = mc.newSimpleForm();
+        confirmFm.setTitle(lang.get("money.op.offline.confirm.title"));
+        confirmFm.setContent(
+            lang.get("money.op.offline.confirm.content")
+                .replace("${target}", targetName)
+                .replace("${opWord}", opWord)
+                .replace("${amount}", amount)
+                .replace("${coin}",   coinName) +
+            (note ? "\n" + lang.get("notify.transfer.note").replace("${note}", note) : "") +
+            "\n\n" + lang.get("money.op.offline.confirm.tip")
+        );
+        confirmFm.addButton(lang.get("money.offline.transfer.btn.confirm"), "textures/ui/realms_green_check");
+        confirmFm.addButton(lang.get("money.offline.transfer.btn.cancel"),  "textures/ui/cancel");
+
+        admin.sendForm(confirmFm, (adm, btnId) => {
+            if (btnId == null || btnId === 1) return adm.tell(info + lang.get("money.op.offline.cancelled"));
+
+            OfflineMoneyCache.add(targetName, opType, amount);
+
+            const timeStr = system.getTimeStr();
+            const noteMsg = note ? lang.get("money.offline.transfer.note.suffix").replace("${note}", note) : "";
+            Logger.add(targetName,
+                timeStr + " " + lang.get("money.op.offline.log")
+                    .replace("${opWord}", opWord)
+                    .replace("${amount}", amount)
+                    .replace("${coin}",   coinName)
+                    .replace("${admin}",  adm.realName) + noteMsg
+            );
+
+            EconomyNotify.send(
+                targetName,
+                EconomyNotify.fmt.adminOp(opType, amount, coinName, adm.realName, note)
+            );
+
+            adm.sendText(
+                info + lang.get("money.op.offline.success")
+                    .replace("${target}", targetName)
+                    .replace("${opWord}", opWord)
+                    .replace("${amount}", amount)
+                    .replace("${coin}",   coinName)
+            );
+        });
+    });
+}
+
 // [查询余额]
 function MoneyGetGui(plname) {
     const pl = mc.getPlayer(plname);
     if (!pl) return;
 
     openPlayerSelectionGui(pl, lang.get("money.op.look") + lang.get("CoinName"), (target) => {
-        // 假设 displayMoneyInfo 是外部定义的函数，保持调用
         displayMoneyInfo(pl, target, false); 
     });
 }
@@ -1844,7 +2173,7 @@ function BackGUI(plname) {
         }
         
         // 检查金钱
-        if (!conf.get("LLMoney")) {
+        if (!economyCfg.isLLMoney) {
             if (!smartMoneyCheck(pl.realName, conf.get("Back"))) return pl.tell(info + lang.get("money.no.enough"));
         } else {
             if (!smartMoneyCheck(pl.realName, conf.get("Back"))) return pl.tell(info + lang.get("money.no.enough"));
@@ -2042,60 +2371,48 @@ function AddHome(plname){
 // ======================
 // //拒绝指令
 // ======================
-let tpaSettingsCmd = mc.newCommand("tpasettings", "设置是否接收传送请求", PermType.Any);
-tpaSettingsCmd.overload([]);
-tpaSettingsCmd.setCallback((cmd, ori, out, res) => {
-    const pl = ori.player;
-    if (!pl) return;
-    let playerSettings = tpacfg.get(pl.realName);
-    if (!playerSettings) {
-        playerSettings = { acceptTpaRequests: true };
-        tpacfg.set(pl.realName, playerSettings);
-    }
-
-    const currentSetting = playerSettings.acceptTpaRequests;
-    const newSetting = !currentSetting;
-
-    tpacfg.set(pl.realName, {
-        ...playerSettings,
-        acceptTpaRequests: newSetting
-    });
-    
-    if (newSetting) {
-        pl.sendText(info+lang.get("tpa.allow.tp"));
-        }else{
-        pl.sendText(info+lang.get("tpa.noallow.tp"));
-        }
-});
-tpaSettingsCmd.setup();
 mc.regPlayerCmd("tpa","传送系统", (player, args) => {
-    showTpaMenu(player);
+    showTpaMainMenu(player);
 });
 const pendingTpaRequests = {};
-function showTpaMenu(player) {
-    let cost = conf.get("tpa").cost;
-    let Scoreboard = conf.get("Scoreboard");
-    let onlinePlayers = mc.getOnlinePlayers().filter(p => p.name !== player.name);
+
+// TPA 主菜单
+function showTpaMainMenu(player) {
     if (!conf.get("tpa").EnabledModule) {
         player.tell(info + lang.get("module.no.Enabled"));
         return;
     }
+    const fm = mc.newSimpleForm();
+    fm.setTitle("TPA 主菜单");
+    fm.setContent("请选择您要进行的操作：");
+    fm.addButton("传送到玩家");
+    fm.addButton("把玩家传过来");
+    fm.addButton("偏好设置");
+    player.sendForm(fm, (pl, id) => {
+        if (id == null) return;
+        if (id === 0) showTpaMenu(pl, "to");
+        else if (id === 1) showTpaMenu(pl, "here");
+        else if (id === 2) showTpaPrefsGui(pl);
+    });
+}
+
+function showTpaMenu(player, fixedDirection) {
+    let cost = conf.get("tpa").cost;
+    let Scoreboard = economyCfg.scoreboard;
+    let onlinePlayers = mc.getOnlinePlayers().filter(p => p.name !== player.name);
     if (onlinePlayers.length === 0) {
         player.tell(info + lang.get("tpa.noplayer.online"));
         return;
     }
     let form = mc.newCustomForm();
-    form.setTitle(info + lang.get("tpa.name.ls"));
+    form.setTitle(fixedDirection === "to" ? "传送到玩家" : "把玩家传过来");
     let nameList = onlinePlayers.map(p => p.name);
     form.addDropdown(lang.get("tpa.choose.player"), nameList);
-    form.addDropdown(lang.get("tpa.choose.fs"), [lang.get("tpa.to.he.she"), lang.get("tpa.to.here")]);
     form.addLabel(lang.get("tpa.cost").replace("${cost}", cost).replace("${Scoreboard}", Scoreboard));
-    const tpaConfig = conf.get("tpa") || {}; // 获取tpa配置节
+    const tpaConfig = conf.get("tpa") || {};
     let isDelayEnabled = tpaConfig.isDelayEnabled !== false;
     let maxD = Number(tpaConfig.maxDelay) || 20;
-    let timeoutSec = tpaConfig.requestTimeout || 60;
     
-    // 修复：使用局部变量跟踪是否添加了延迟滑块
     let hasDelaySlider = false;
     if (isDelayEnabled) {
         form.addSlider(`§e传送延迟(0~${maxD}秒)`, 0, maxD, 1, 0);
@@ -2114,20 +2431,13 @@ function showTpaMenu(player) {
         }
         let idx = 0;
         let targetIndex = data[idx++];
-        let modeIndex = data[idx++];
-        
-        // 跳过标签字段（标签不返回数据）
         idx++; // 跳过标签
         
         let delaySec = 0;
-        if (hasDelaySlider) {
-            delaySec = data[idx++];
-        }
+        if (hasDelaySlider) delaySec = data[idx++];
         
         let manage = false;
-        if (isOp) {
-            manage = data[idx++];
-        }
+        if (isOp) manage = data[idx++];
         
         if (manage === true) {
             showTpaManageForm(pl);
@@ -2135,8 +2445,35 @@ function showTpaMenu(player) {
         }
         
         let targetName = nameList[targetIndex];
-        let direction = (modeIndex === 0 ? "to" : "here");
-        sendTpaRequest(pl, targetName, direction, Math.floor(delaySec));
+        sendTpaRequest(pl, targetName, fixedDirection, Math.floor(delaySec));
+    });
+}
+
+// 玩家个人 TPA 偏好设置
+function showTpaPrefsGui(player) {
+    const prefs = tpacfg.get(player.realName) || {};
+    const tpaConfig = conf.get("tpa") || {};
+    
+    const fm = mc.newCustomForm();
+    fm.setTitle("tpa设置");
+    fm.addLabel("关闭此开关将立即拒绝任何tpa请求。");
+    fm.addSwitch("tpa开关", prefs.acceptTpaRequests !== false);
+    fm.addDropdown("接收到tpa请求时", ["弹窗提醒", "文字提醒"],
+        (prefs.promptType === "text" ? 1 : 0));
+    fm.addInput("tpa请求有效时间/秒", "秒", String(prefs.requestTimeout || tpaConfig.requestTimeout || 60));
+    
+    player.sendForm(fm, (pl, data) => {
+        if (!data) return;
+        const [, acceptSwitch, promptIdx, timeoutStr] = data;
+        const timeout = parseInt(timeoutStr);
+        const newPrefs = {
+            ...prefs,
+            acceptTpaRequests: acceptSwitch,
+            promptType: promptIdx === 0 ? "form" : "text",
+            requestTimeout: isNaN(timeout) || timeout <= 0 ? (tpaConfig.requestTimeout || 60) : timeout
+        };
+        tpacfg.set(pl.realName, newPrefs);
+        pl.tell(info + lang.get("tpa.save.conf.ok"));
     });
 }
 
@@ -2216,9 +2553,11 @@ function sendTpaRequest(fromPlayer, toPlayerName, direction, delaySec) {
         startTime: Date.now()
     };
     pendingTpaRequests[toPlayerName] = req;
-    const tpaConfig = conf.get("tpa") || {}; // 安全获取 tpa 配置
-    let pType = tpaConfig.promptType || "form";
-    let timeoutSec = tpaConfig.requestTimeout || 60;
+    const tpaConfig = conf.get("tpa") || {};
+    const toPrefs = tpacfg.get(toPlayerName) || {};
+    // 优先用目标玩家的个人偏好，没设置则用全局config
+    let pType = toPrefs.promptType || tpaConfig.promptType || "form";
+    let timeoutSec = toPrefs.requestTimeout || tpaConfig.requestTimeout || 60;
     toPlayer.tell(`${info}§e收到传送请求(${req.fromName}想${direction === "to" ? lang.get("tpa.to.here"):lang.get("tpa.to.he.she")})\n` +
                  (delaySec > 0 ? `§6并设置了延迟: ${delaySec}秒\n` : "") +
                  `${lang.get("tpa.a.and.d")}\n` +
@@ -2560,8 +2899,8 @@ asyncRtpCmd.setup();
 function smartMoneyCheck(plname, value) {
     const pl = mc.getPlayer(plname);
     if (!pl) return false;
-    const isLLMoney = conf.get("LLMoney") !== 0;
-    const scoreboard = conf.get("Scoreboard") || "money";
+    const isLLMoney = economyCfg.isLLMoney;
+    const scoreboard = economyCfg.scoreboard;
     let balance = isLLMoney ? pl.getMoney() : pl.getScore(scoreboard);
     if (balance === null || balance === undefined) {
         if (isLLMoney) pl.setMoney(0);
@@ -2627,8 +2966,8 @@ function handleExpiredPacket(packet) {
     if (packet.remainingAmount > 0) {
         const sender = mc.getPlayer(packet.sender);
         if (sender) {
-            if (conf.get("LLMoney") == 0) {
-                sender.addScore(conf.get("Scoreboard"), packet.remainingAmount);
+            if (!economyCfg.isLLMoney) {
+                sender.addScore(economyCfg.scoreboard, packet.remainingAmount);
             } else {
                 sender.addMoney(packet.remainingAmount);
             }
@@ -2697,8 +3036,8 @@ function handleSendRedPacket(pl, amount, count, targetPlayer, message, packetTyp
         return;
     }
 
-    let balance = conf.get("LLMoney") == 0
-        ? pl.getScore(conf.get("Scoreboard"))
+    let balance = !economyCfg.isLLMoney
+        ? pl.getScore(economyCfg.scoreboard)
         : pl.getMoney();
 
     if (balance < amount) {
@@ -2707,8 +3046,8 @@ function handleSendRedPacket(pl, amount, count, targetPlayer, message, packetTyp
     }
 
     // 扣费
-    if (conf.get("LLMoney") == 0) {
-        pl.reduceScore(conf.get("Scoreboard"), amount);
+    if (!economyCfg.isLLMoney) {
+        pl.reduceScore(economyCfg.scoreboard, amount);
     } else {
         pl.reduceMoney(amount);
     }
@@ -2818,14 +3157,14 @@ function handleOpenRedPacket(pl) {
     packet.recipients.push(pl.realName);
     redpacketData.set(`packets.${packet.id}`, packet);
 
-    if (conf.get("LLMoney") == 0) {
-        pl.addScore(conf.get("Scoreboard"), amount);
+    if (!economyCfg.isLLMoney) {
+        pl.addScore(economyCfg.scoreboard, amount);
     } else {
         pl.addMoney(amount);
     }
 
     const typeName = lang.get(packet.packetType === "random" ? "rp.type.random.short" : "rp.type.average.short");
-    const coinName = lang.get("CoinName");
+    const coinName = economyCfg.coinName;
 
     pl.tell(info + lang.get("rp.open.success")
         .replace("${sender}", packet.sender)
@@ -2939,7 +3278,7 @@ function handleRedPacketHistory(pl) {
 // ── 红包详情 ──────────────────────────────────────────────
 function showRedPacketDetail(pl, packet) {
     const form     = mc.newCustomForm().setTitle(lang.get("rp.detail.title"));
-    const coinName = lang.get("CoinName");
+    const coinName = economyCfg.coinName;
 
     form.addLabel(lang.get("rp.detail.sender").replace("${sender}", packet.sender));
 
