@@ -11,6 +11,7 @@ class ConfigManager {
             "Economy": {
                 "mode": "scoreboard",
                 "RankingModel" : "New",
+                "PayTaxRate": 0,
                 "Scoreboard": "money",
                 "CoinName": "金币"
             },
@@ -99,7 +100,6 @@ class ConfigManager {
             },
             "SimpleLogOutPut": false,
             "CrashModuleEnabled": 0,
-            "PayTaxRate": 0,
             "suicide": 0,
             "Back": 0,
             "Warp": 0,
@@ -506,33 +506,42 @@ class ConfigManager {
         this.ensureI18nFirst();
     }
 
-    migrateTo288() {
+migrateTo288() {
         randomGradientLog("迁移到版本2.8.8：整合Economy配置块...");
 
-        // 读取旧字段
-        const oldLLMoney   = conf.get("LLMoney");
+        // 1. 读取所有旧字段
+        const oldLLMoney = conf.get("LLMoney");
         const oldScoreboard = conf.get("Scoreboard");
-        const oldCoinName  = conf.get("CoinName");
-        const oldRankingModelconfig = conf.get("RankingModel")
+        const oldCoinName = conf.get("CoinName");
+        const oldRankingModelconfig = conf.get("RankingModel");
+        const oldPayTaxRate = conf.get("PayTaxRate"); // 读取税率
 
-        // 构建新 Economy 块（优先用旧值，否则用默认值）
+        // 2. 构建新 Economy 块
         const economy = {
-            mode:       (oldLLMoney == 1) ? "llmoney" : "scoreboard",
+            mode: (oldLLMoney == 1) ? "llmoney" : "scoreboard",
             RankingModel: (oldRankingModelconfig === undefined || oldRankingModelconfig == 1) ? "New" : "Old",
             Scoreboard: oldScoreboard || "money",
-            CoinName:   oldCoinName   || "金币"
+            CoinName: oldCoinName || "金币",
+            PayTaxRate: (oldPayTaxRate !== undefined) ? oldPayTaxRate : (this.configDefaults.PayTaxRate || 0)
         };
 
+        // 3. 写入新配置
         conf.set("Economy", economy);
 
-        // 删除旧的散落字段
-        if (oldLLMoney   !== undefined) { conf.delete("LLMoney");    }
-        if (oldRankingModelconfig   !== undefined) { conf.delete("RankingModel");    }
-        if (oldScoreboard !== undefined) { conf.delete("Scoreboard"); }
-        if (oldCoinName  !== undefined) { conf.delete("CoinName");   }
+        // 4. 彻底清理旧的散落字段
+        const keysToDelete = [
+            "LLMoney", 
+            "RankingModel", 
+            "Scoreboard", 
+            "CoinName", 
+            "PayTaxRate" // 记得删除这个
+        ];
 
-        randomGradientLog(`Economy配置已整合: mode=${economy.mode}, Scoreboard=${economy.Scoreboard}, CoinName=${economy.CoinName}`);
-
+        keysToDelete.forEach(key => {
+            if (conf.get(key) !== undefined) {
+                conf.delete(key);
+            }
+        });
     }
 
     /**
