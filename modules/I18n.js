@@ -55,8 +55,6 @@ const defaultLangContent = {
     "money.transfer.balance": "您的余额为: ${balance} ${coin}",
     "money.transfer.tax": "当前转账税率: ${rate}%",
     "money.transfer.input.amount": "输入数量或 'all'",
-    "money.transfer.success.sender": "转账成功！您支出了 ${amount}，对方收到 ${received}。",
-    "money.transfer.success.receiver": "您收到来自 ${sender} 的 ${amount} ${coin}。",
     "money.transfer.log.send": "转账给 ${target}, 数量:${amount}, 到账:${received}, 手续费:${tax}",
     "money.transfer.log.receive": "收到 ${sender} 转账, 数量:${amount}, 到账:${received}, 手续费:${tax}",
     "money.transfer.tax.notenough": "转账金额不足以支付手续费！",
@@ -90,6 +88,53 @@ const defaultLangContent = {
     "money.op.remove": "减少玩家的",
     "money.op.set": "设置玩家的",
     "money.op.look": "查看玩家的",
+
+    // 离线转账 - 玩家端按钮
+    "money.offline.transfer.btn": "转账给离线玩家",
+    "money.offline.transfer.title": "转账给离线玩家",
+    "money.offline.transfer.label": "当前余额：${balance} ${coin}\n税率：${rate}%\n注意：转账后将在对方下次上线时自动到账",
+    "money.offline.transfer.input.target": "目标玩家名（精确，区分大小写）",
+    "money.offline.transfer.input.target.hint": "例：Steve",
+    "money.offline.transfer.input.amount": "转账金额",
+    "money.offline.transfer.input.amount.hint": "输入整数或 all（全部）",
+    "money.offline.transfer.input.note": "备注（可选）",
+    "money.offline.transfer.input.note.hint": "留空则不附加备注",
+    "money.offline.transfer.no.target": "请输入目标玩家名！",
+    "money.offline.transfer.self": "不能转账给自己！",
+    "money.offline.transfer.target.online": "该玩家当前在线，请使用【转账】功能！",
+    "money.offline.transfer.confirm.title": "确认离线转账",
+    "money.offline.transfer.confirm.content": "转账对象：${target}\n转出金额：${amount} ${coin}\n税费：${tax} ${coin}  (${rate}%)\n对方到账：${received} ${coin}",
+    "money.offline.transfer.confirm.warn": "对方上线后才会收到金币，确认后不可撤回！",
+    "money.offline.transfer.btn.confirm": "确认转账",
+    "money.offline.transfer.btn.cancel": "取消",
+    "money.offline.transfer.cancelled": "已取消转账。",
+    "money.offline.transfer.log": "[离线转账→${target}] 转出:${amount} 税:${tax} 到账:${received}",
+    "money.offline.transfer.note.suffix": " 备注: ${note}",
+    "money.offline.transfer.sender.offline.tip": "（对方上线后到账）",
+
+    // 离线操作 - OP端按钮
+    "money.op.offline.btn": "对离线玩家进行金币操作",
+    "money.op.offline.title": "(OP) 离线玩家金币操作",
+    "money.op.offline.label": "对离线玩家的操作将在其下次上线时执行并通知。\n若目标玩家在线，请使用普通管理界面。",
+    "money.op.offline.input.target": "目标玩家名（精确，区分大小写）",
+    "money.op.offline.input.target.hint": "例：Steve",
+    "money.op.offline.dropdown": "操作类型",
+    "money.op.offline.type.add": "增加",
+    "money.op.offline.type.reduce": "扣除",
+    "money.op.offline.type.set": "设置为",
+    "money.op.offline.input.amount": "操作金额（整数）",
+    "money.op.offline.input.amount.hint": "例：100",
+    "money.op.offline.input.note": "备注（可选）",
+    "money.op.offline.target.online": "该玩家当前在线，请使用普通 OP 管理界面！",
+    "money.op.offline.confirm.title": "(OP) 确认离线操作",
+    "money.op.offline.confirm.content": "目标玩家：${target} (离线)\n操作类型：${opWord}\n操作金额：${amount} ${coin}",
+    "money.op.offline.confirm.tip": "操作将在玩家下次上线时执行并通知玩家。",
+    "money.op.offline.cancelled": "已取消操作。",
+    "money.op.offline.log": "[OP离线操作] ${opWord} ${amount} ${coin} (操作员:${admin})",
+    "money.op.offline.success": "操作已缓存 | ${target} ${opWord} ${amount} ${coin}",
+
+    // EconomyNotify - 备注标签（仍在confirm表单中使用）
+    "notify.transfer.note": "备注：${note}",
 
     // TPA相关
     "tpa.cost": "传送将花费 ${cost} ${Scoreboard} ",
@@ -389,11 +434,21 @@ class AsyncLanguageManager {
 
             // 有新 key 才写盘并刷新 lang 对象
             if (addedCount > 0) {
-                await AsyncFileManager.writeFile(langFilePath, mergedData);
-                randomGradientLog(`语言文件已更新，新增 ${addedCount} 个条目`);
+                const isFirstLoad = addedCount === Object.keys(defaultLangContent).length;
 
-                lang = new JsonConfigFile(langFilePath, JSON.stringify(mergedData));
-                globalThis.lang = lang;
+                await AsyncFileManager.writeFile(langFilePath, mergedData);
+
+                if (isFirstLoad) {
+                    randomGradientLog(`语言文件首次释放完成，正在自动重载插件...`);
+                    // 稍等一下确保文件写入完毕再 reload
+                    setTimeout(() => {
+                        mc.runcmdEx("ll reload YEssential");
+                    }, 500);
+                } else {
+                    randomGradientLog(`语言文件已更新，新增 ${addedCount} 个条目`);
+                    lang = new JsonConfigFile(langFilePath, JSON.stringify(mergedData));
+                    globalThis.lang = lang;
+                }
             }
         } catch (error) {
             logger.error("合并语言文件时出错: " + error.message);

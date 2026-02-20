@@ -17,7 +17,7 @@ class BStatsImpl {
         this.enabled = true;
         this.debugMode = true;
         this.pluginName = "YEssential";
-        this.pluginVersion = "2.10.0"; // 您的插件版本
+        this.pluginVersion = "2.10.1"; // 您的插件版本
 
         // 初始设为空，方便观察是否获取成功
         this.cachedCoreCount = "Unknown";

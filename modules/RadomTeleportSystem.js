@@ -308,78 +308,61 @@ class RadomTeleportSystem {
     /**
      * 主要的RTP执行方法
      */
+    
+    /**
+     * 主要的RTP执行方法 - 已修复余额校验与参数类型问题
+     */
     static async performRTPAsync(player) {
         const config = conf.get("RTP") || {};
-        const cost = config.cost || 0;
-        const cooldown = config.cooldown || 0;
+        const cost = Number(config.cost || 0); // 强制转为数字
+        const cooldown = Number(config.cooldown || 0);
         const playerName = player.realName;
+
         try {
             // 1. 冷却检查
-            if (RadomTeleportSystem.cooltime && RadomTeleportSystem.cooltime.has(player.realName)) {
-                const remainingTime = RadomTeleportSystem.cooltime.get(player.realName);
+            if (this.cooltime && this.cooltime.has(playerName)) {
+                const remainingTime = this.cooltime.get(playerName);
                 if (remainingTime > 0) {
                     player.sendText(info + `§c传送冷却中，剩余时间：${remainingTime}秒`);
                     return false;
                 }
             }
-
-            // 2. 金币检查
-            if (cost > 0) {
-                const balance = conf.get("LLMoney") 
-                    ? player.getMoney() 
-                    : player.getScore(conf.get("Scoreboard"));
-                    
-                if (balance < cost) {
-                    player.sendText(info + `§c您需要 ${cost}${lang.get("CoinName")} 才能使用随机传送！`);
-                    return false;
-                }
+            // 2. 余额检查
+            if (!smartMoneyCheck(player.realName, cost)) {
+            return player.tell(info + lang.get("money.no.enough"));
             }
 
-            // 3. 显示传送信息
+            // 3. 设置冷却 (防止连续点击)
+            if (cooldown > 0) {
+                this.cooltime.set(playerName, cooldown);
+            }
+
+            // 4. 开始寻找位置
             player.setTitle(info + lang.get("rtp.search.chunks"), 4);
 
-            // 4. 设置冷却
-            if (cooldown > 0 && RadomTeleportSystem.cooltime) {
-                RadomTeleportSystem.cooltime.set(player.realName, cooldown);
-            }
-
-            // 5. 扣除费用
-            if (cost > 0) {
-                if (conf.get("LLMoney")) {
-                    player.reduceMoney(cost);
-                } else {
-                    player.reduceScore(conf.get("Scoreboard"), cost);
-                }
-                player.sendText(info + `§e花费 ${cost}${lang.get("CoinName")}`);
-            }
-
-            // 6. 尝试找到合适的坐标并执行传送
             let safeLocation = null;
-            const maxCoordinateAttempts = 8; // 增加外层重试次数
+            const maxCoordinateAttempts = 5; // 适当减少外层循环，防止长时间无响应
 
             for (let attempt = 1; attempt <= maxCoordinateAttempts; attempt++) {
                 const { x, z } = this.generateRandomCoordinate();
                 
-                if (!this.isCoordinateValid(x, z)) {
-                    continue;
-                }
+                if (!this.isCoordinateValid(x, z)) continue;
                 
                 const distance = Math.floor(Math.sqrt(x * x + z * z));
-                player.setTitle(info + `§7尝试第 ${attempt} 次：坐标 X:${x}, Z:${z} (距离: ${distance}格)`, 4);
+                player.setTitle(info + `§7尝试第 ${attempt} 次扫描...`, 4);
 
-                // 执行GTA5动画（包含查找安全位置）
+                // 执行动画并返回安全位置
+                // 注意：performGTA5AnimationAsync 内部必须在 7s 结束后 resolve 位置信息
                 safeLocation = await this.performGTA5AnimationAsync(player, x, z, player.pos.dimid);
                 
-                if (safeLocation) {
-                    break;
-                } else {     
-                    if (attempt < maxCoordinateAttempts) {
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                    }
+                if (safeLocation) break;
+
+                if (attempt < maxCoordinateAttempts) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                 }
             }
 
-            // 7. 处理传送结果
+            // 5. 处理传送结果
             if (safeLocation) {
                 const finalDistance = Math.floor(Math.sqrt(
                     safeLocation.x * safeLocation.x + 
@@ -388,25 +371,23 @@ class RadomTeleportSystem {
                 
                 player.sendText(info + `§a传送成功！位置: ${safeLocation.x}, ${safeLocation.y}, ${safeLocation.z}`);
                 player.sendText(info + `§e距离出生点: §f${finalDistance} 格`);
-
                 return true;
             } else {
-                // 所有尝试都失败，使用备用方案
-                player.sendText(info + "§c无法找到安全位置，使用备用传送方案...");
-                mc.runcmdEx(`hud ${playerName} reset all`)
+                // 5. 彻底失败：走备用方案或退款
+                player.sendText(info + "§c常规搜索失败，正在启动紧急备用方案...");
                 const fallbackResult = await this.fallbackTeleport(player);
                 
                 if (!fallbackResult) {
+                    player.sendText(info + "§c备用方案也失败了，正在为您退款...");
                     this.refundPlayer(player, cost, cooldown);
                     return false;
                 }
-                
                 return true;
             }
 
         } catch (error) {
-            logger.error(`[RTP] RTP传送失败: ${error.message}\n${error.stack}`);
-            player.sendText(info + lang.get("rtp.error"));
+            logger.error(`[RTP] RTP传送异常: ${error.message}`);
+            player.sendText(info + "§4传送发生未知错误，费用已退还。");
             
             this.clearAnimation(player);
             this.refundPlayer(player, cost, cooldown);

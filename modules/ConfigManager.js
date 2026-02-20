@@ -2,36 +2,19 @@
 // randomGradientLog 由主文件通过 globalThis 注入，此处无需重复定义
 class ConfigManager {
     constructor() {
-        this.currentVersion = 287;
+        this.currentVersion = 288;
         this.pluginPath = pluginpath || "./plugins/YEssential";
         this.moduleListPath = `${this.pluginPath}/modules/modulelist.json`;
         // 默认配置
         this.configDefaults = {
             "Version": 287,
-            "Update": {
-                "EnableModule": true,
-                "CheckInterval": 120,
-                "versionUrl": "https://dl.mcmcc.cc/file/Version.json",
-                "baseUrl": "https://dl.mcmcc.cc/file/",
-                "files": [
-                    { "url": "YEssential.js",                    "path": "YEssential.js" },
-                    { "url": "modules/I18n.js",                  "path": "./modules/I18n.js" },
-                    { "url": "modules/Cleanmgr.js",              "path": "./modules/Cleanmgr.js" },
-                    { "url": "modules/ConfigManager.js",         "path": "./modules/ConfigManager.js" },
-                    { "url": "modules/AsyncUpdateChecker.js",    "path": "./modules/AsyncUpdateChecker.js" },
-                    { "url": "modules/RadomTeleportSystem.js",   "path": "./modules/RadomTeleportSystem.js" },
-                    { "url": "modules/Bstats.js",                "path": "./modules/Bstats.js" },
-                    { "url": "modules/Cd.js",                    "path": "./modules/Cd.js" },
-                    { "url": "modules/PVP.js",                   "path": "./modules/PVP.js" },
-                    { "url": "modules/Fcam.js",                  "path": "./modules/Fcam.js" },
-                    { "url": "modules/Notice.js",                "path": "./modules/Notice.js" }
-                ],
-                "reloadDelay": 1000,
-                "timeout": 30000,
-                "checkMissingFilesOnStart": true
+            "Economy": {
+                "mode": "scoreboard",
+                "RankingModel" : "New",
+                "Scoreboard": "money",
+                "CoinName": "金币"
             },
             "PVP": {
-                // 新增：PVP 模块的高级配置
                 "EnabledModule": true,
                 "DangerousBlocks": [
                     "minecraft:tnt",
@@ -40,25 +23,10 @@ class ConfigManager {
                     "minecraft:undyed_shulker_box"
                 ]
             },
-            "CrossServerTransfer": {
-                "EnabledModule": false,
-                "servers": [
-                    { "server_name": "生存服", "server_ip": "127.0.0.1", "server_port": 19132 }
-                ]
-            },
-            "Motd": {
-              "EnabledModule": true,
-              "message" : ["Bedrock_Server", "Geyser"],
-            },
             "Fcam": {
                 "EnableModule": false,
                 "CostMoney": 0,
                 "TimeOut": 0
-            },
-            "Bstats": {
-                "EnableModule": true, // 模块总开关
-                "serverUUID": "",      // 服务器唯一标识，留空会自动生成
-                "logSentData": false   // 是否在控制台显示发送的数据内容
             },
             "Notice":{
                 "EnableModule": false,
@@ -114,17 +82,51 @@ class ConfigManager {
                 "whmotdmsg": "服务器维护中，请勿进入！",
                 "whgamemsg": "服务器正在维护中，请您稍后再来!"
             },
+            "Bstats": {
+                "EnableModule": true, // 模块总开关
+                "serverUUID": "",      // 服务器唯一标识，留空会自动生成
+                "logSentData": false   // 是否在控制台显示发送的数据内容
+            },
+            "CrossServerTransfer": {
+                "EnabledModule": false,
+                "servers": [
+                    { "server_name": "生存服", "server_ip": "127.0.0.1", "server_port": 19132 }
+                ]
+            },
+            "Motd": {
+                "EnabledModule": true,
+                "message" : ["Bedrock_Server", "Geyser"],
+            },
             "SimpleLogOutPut": false,
             "CrashModuleEnabled": 0,
-            "RankingModel": 1,
-            "LLMoney": 0,
-            "Scoreboard": "money",
             "PayTaxRate": 0,
             "suicide": 0,
             "Back": 0,
             "Warp": 0,
             "BackTipAfterDeath": false,
-            "KeepInventory": false
+            "KeepInventory": false,
+            "Update": {
+                "EnableModule": true,
+                "CheckInterval": 120,
+                "versionUrl": "https://dl.mcmcc.cc/file/Version.json",
+                "baseUrl": "https://dl.mcmcc.cc/file/",
+                "files": [
+                    { "url": "YEssential.js",                    "path": "YEssential.js" },
+                    { "url": "modules/I18n.js",                  "path": "./modules/I18n.js" },
+                    { "url": "modules/Cleanmgr.js",              "path": "./modules/Cleanmgr.js" },
+                    { "url": "modules/ConfigManager.js",         "path": "./modules/ConfigManager.js" },
+                    { "url": "modules/AsyncUpdateChecker.js",    "path": "./modules/AsyncUpdateChecker.js" },
+                    { "url": "modules/RadomTeleportSystem.js",   "path": "./modules/RadomTeleportSystem.js" },
+                    { "url": "modules/Bstats.js",                "path": "./modules/Bstats.js" },
+                    { "url": "modules/Cd.js",                    "path": "./modules/Cd.js" },
+                    { "url": "modules/PVP.js",                   "path": "./modules/PVP.js" },
+                    { "url": "modules/Fcam.js",                  "path": "./modules/Fcam.js" },
+                    { "url": "modules/Notice.js",                "path": "./modules/Notice.js" }
+                ],
+                "reloadDelay": 1000,
+                "timeout": 30000,
+                "checkMissingFilesOnStart": true
+            },
         };
 
         // 默认模块列表
@@ -381,7 +383,8 @@ class ConfigManager {
         
         const migrations = [
             { version: 286, handler: () => this.migrateTo286() },
-            { version: 287, handler: () => this.migrateTo287() }
+            { version: 287, handler: () => this.migrateTo287() },
+            { version: 288, handler: () => this.migrateTo288() }
         ];
 
         migrations.forEach(migration => {
@@ -501,6 +504,35 @@ class ConfigManager {
 
         // 确保 modulelist.json 中 I18n.js 始终排在第一位
         this.ensureI18nFirst();
+    }
+
+    migrateTo288() {
+        randomGradientLog("迁移到版本2.8.8：整合Economy配置块...");
+
+        // 读取旧字段
+        const oldLLMoney   = conf.get("LLMoney");
+        const oldScoreboard = conf.get("Scoreboard");
+        const oldCoinName  = conf.get("CoinName");
+        const oldRankingModelconfig = conf.get("RankingModel")
+
+        // 构建新 Economy 块（优先用旧值，否则用默认值）
+        const economy = {
+            mode:       (oldLLMoney == 1) ? "llmoney" : "scoreboard",
+            RankingModel: (oldRankingModelconfig === undefined || oldRankingModelconfig == 1) ? "New" : "Old",
+            Scoreboard: oldScoreboard || "money",
+            CoinName:   oldCoinName   || "金币"
+        };
+
+        conf.set("Economy", economy);
+
+        // 删除旧的散落字段
+        if (oldLLMoney   !== undefined) { conf.delete("LLMoney");    }
+        if (oldRankingModelconfig   !== undefined) { conf.delete("RankingModel");    }
+        if (oldScoreboard !== undefined) { conf.delete("Scoreboard"); }
+        if (oldCoinName  !== undefined) { conf.delete("CoinName");   }
+
+        randomGradientLog(`Economy配置已整合: mode=${economy.mode}, Scoreboard=${economy.Scoreboard}, CoinName=${economy.CoinName}`);
+
     }
 
     /**
