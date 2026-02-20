@@ -66,7 +66,7 @@ const economyCfg = {
     },
     get coinName()   {
         const e = conf.get("Economy");
-        return (e ? e.CoinName : conf.get("CoinName")) || conf.get("Economy").CoinName || "金币";
+        return (e ? e.CoinName : conf.get("CoinName")) || lang.get("CoinName") || "金币";
     }
 };
 
