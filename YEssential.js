@@ -979,7 +979,7 @@ function getUniqueTimestamp() {
 }
 
 // moneys指令相关
-const moneycmd = mc.newCommand("moneys", conf.get("Economy").CoinName || "金币", PermType.GameMasters);
+const moneycmd = mc.newCommand("moneys", "金币", PermType.GameMasters);
 moneycmd.mandatory("option", ParamType.String);
 moneycmd.optional("player", ParamType.String);
 moneycmd.optional("amount", ParamType.Int);
@@ -1032,7 +1032,7 @@ moneycmd.setCallback((cmd, ori, out, res) => {
     else out.error(info + lang.get("moneys.command.error"));
 });
 moneycmd.setup();
-let moneygui = mc.newCommand("moneygui", conf.get("Economy").CoinName || "金币", PermType.Any)
+let moneygui = mc.newCommand("moneygui","金币", PermType.Any)
 moneygui.overload([])
 moneygui.setCallback((cmd,ori,out,res)=>{
     let pl = ori.player
