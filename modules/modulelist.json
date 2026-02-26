@@ -39,6 +39,10 @@
         {
             "path": "RadomTeleportSystem.js",
             "name": "RadomTeleportSystem"
+        },
+        {
+            "path": "Redpacket.js",
+            "name": "Redpacket"
         }
     ]
 }

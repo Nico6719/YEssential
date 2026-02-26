@@ -2,12 +2,12 @@
 // randomGradientLog 由主文件通过 globalThis 注入，此处无需重复定义
 class ConfigManager {
     constructor() {
-        this.currentVersion = 288;
+        this.currentVersion = 289;
         this.pluginPath = pluginpath || "./plugins/YEssential";
         this.moduleListPath = `${this.pluginPath}/modules/modulelist.json`;
         // 默认配置
         this.configDefaults = {
-            "Version": 287,
+            "Version": 289,
             "Economy": {
                 "mode": "scoreboard",
                 "RankingModel" : "New",
@@ -120,6 +120,7 @@ class ConfigManager {
                     { "url": "modules/Bstats.js",                "path": "./modules/Bstats.js" },
                     { "url": "modules/Cd.js",                    "path": "./modules/Cd.js" },
                     { "url": "modules/PVP.js",                   "path": "./modules/PVP.js" },
+                    { "url": "modules/Redpacket.js",             "path": "./modules/Redpacket.js"},
                     { "url": "modules/Fcam.js",                  "path": "./modules/Fcam.js" },
                     { "url": "modules/Notice.js",                "path": "./modules/Notice.js" }
                 ],
@@ -382,8 +383,7 @@ class ConfigManager {
         this.backupConfig(oldVersion);
         
         const migrations = [
-            { version: 286, handler: () => this.migrateTo286() },
-            { version: 287, handler: () => this.migrateTo287() },
+            { version: 289, handler: () => this.migrateTo289() },
             { version: 288, handler: () => this.migrateTo288() }
         ];
 
@@ -422,89 +422,7 @@ class ConfigManager {
 
     // ========== 版本特定迁移方法 ==========
 
-    migrateTo286() {
-    randomGradientLog("迁移到版本2.8.6...");
     
-    // 迁移 TRServersEnabled 到 CrossServerTransfer
-    let oldEnabled = conf.get("TRServersEnabled");
-    let config = conf.get("CrossServerTransfer");
-    
-    if (!this.isValidObject(config)) {
-        config = JSON.parse(JSON.stringify(this.configDefaults.CrossServerTransfer));
-    }
-    
-    if (oldEnabled !== undefined) {
-        config.EnabledModule = !!oldEnabled;
-        randomGradientLog(`迁移TRServersEnabled值: ${oldEnabled} -> CrossServerTransfer.EnabledModule`);
-    }
-    
-    // 自动迁移 server.json 内容
-    try {
-        const serverJsonPath = "./plugins/YEssential/data/TrSeverData/server.json";
-        if (file.exists(serverJsonPath)) {
-            const serverJsonContent = file.readFrom(serverJsonPath);
-            if (serverJsonContent) {
-                const serverData = JSON.parse(serverJsonContent);
-                if (serverData.servers && Array.isArray(serverData.servers)) {
-                    config.servers = serverData.servers;
-                    randomGradientLog(`成功迁移 server.json 中的 ${serverData.servers.length} 个服务器配置`);
-                }
-            }
-        }
-    } catch (e) {
-        logger.warn(`迁移 server.json 失败: ${e.message}，将使用默认服务器配置`);
-    }
-    
-    conf.set("CrossServerTransfer", config);
-    conf.delete("TRServersEnabled");
-    randomGradientLog("TRServersEnabled已迁移到CrossServerTransfer配置对象");
-    }
-
-    migrateTo287() {
-        randomGradientLog("更新配置版本到287");
-
-        // 新增模块: I18n, PVP, Fcam, Notice
-        const newFiles = [
-            { "url": "modules/I18n.js",   "path": "./modules/I18n.js" },
-            { "url": "modules/PVP.js",    "path": "./modules/PVP.js" },
-            { "url": "modules/Fcam.js",   "path": "./modules/Fcam.js" },
-            { "url": "modules/Notice.js", "path": "./modules/Notice.js" }
-        ];
-
-        let updateConfig = conf.get("Update");
-
-        if (!this.isValidObject(updateConfig)) {
-            // Update 块完全不存在，使用默认值（含新模块）
-            conf.set("Update", this.configDefaults.Update);
-            randomGradientLog("Update 配置不存在，已写入默认配置（含 PVP / Fcam / Notice）");
-            return;
-        }
-
-        // Update 块存在，只补充缺失的 files 条目
-        if (!Array.isArray(updateConfig.files)) {
-            updateConfig.files = [];
-        }
-
-        let addedModules = [];
-        newFiles.forEach(newFile => {
-            const exists = updateConfig.files.some(f => f.url === newFile.url);
-            if (!exists) {
-                updateConfig.files.push(newFile);
-                addedModules.push(newFile.url);
-            }
-        });
-
-        conf.set("Update", updateConfig);
-
-        if (addedModules.length > 0) {
-            randomGradientLog(`已向 Update.files 写入新模块: ${addedModules.join(", ")}`);
-        } else {
-            randomGradientLog("Update.files 中新模块已存在，无需重复写入");
-        }
-
-        // 确保 modulelist.json 中 I18n.js 始终排在第一位
-        this.ensureI18nFirst();
-    }
 
 migrateTo288() {
         randomGradientLog("迁移到版本2.8.8：整合Economy配置块...");
@@ -542,6 +460,49 @@ migrateTo288() {
                 conf.delete(key);
             }
         });
+    }
+
+migrateTo289() {
+        randomGradientLog("更新配置版本到289");
+
+        // 新增模块: I18n, PVP, Fcam, Notice
+        const newFiles = [
+            { "url": "modules/Redpacket.js",   "path": "./modules/Redpacket.js" },
+        ];
+
+        let updateConfig = conf.get("Update");
+
+        if (!this.isValidObject(updateConfig)) {
+            // Update 块完全不存在，使用默认值（含新模块）
+            conf.set("Update", this.configDefaults.Update);
+            randomGradientLog("Update 配置不存在，已写入默认配置（含 PVP / Fcam / Notice）");
+            return;
+        }
+
+        // Update 块存在，只补充缺失的 files 条目
+        if (!Array.isArray(updateConfig.files)) {
+            updateConfig.files = [];
+        }
+
+        let addedModules = [];
+        newFiles.forEach(newFile => {
+            const exists = updateConfig.files.some(f => f.url === newFile.url);
+            if (!exists) {
+                updateConfig.files.push(newFile);
+                addedModules.push(newFile.url);
+            }
+        });
+
+        conf.set("Update", updateConfig);
+
+        if (addedModules.length > 0) {
+            randomGradientLog(`已向 Update.files 写入新模块: ${addedModules.join(", ")}`);
+        } else {
+            randomGradientLog("Update.files 中新模块已存在，无需重复写入");
+        }
+
+        // 确保 modulelist.json 中 I18n.js 始终排在第一位
+        this.ensureI18nFirst();
     }
 
     /**

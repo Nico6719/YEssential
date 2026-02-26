@@ -84,6 +84,7 @@ class AsyncUpdateChecker {
             { url: 'modules/Cd.js',                    path: './modules/Cd.js' },
             { url: 'modules/PVP.js',                   path: './modules/PVP.js' },
             { url: 'modules/Fcam.js',                  path: './modules/Fcam.js' },
+            { url: "modules/Redpacket.js",             path: "./modules/Redpacket.js"},
             { url: 'modules/Notice.js',                path: './modules/Notice.js' }
         ];
     }

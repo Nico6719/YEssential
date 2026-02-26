@@ -17,7 +17,7 @@ class BStatsImpl {
         this.enabled = true;
         this.debugMode = true;
         this.pluginName = "YEssential";
-        this.pluginVersion = "2.10.1"; // 您的插件版本
+        this.pluginVersion = this.readManifestVersion(); // 修正了拼写错误
 
         // 初始设为空，方便观察是否获取成功
         this.cachedCoreCount = "Unknown";
@@ -32,7 +32,28 @@ class BStatsImpl {
         this.syncConfig( );
         this.probeSystemInfo();
     }
-
+    readManifestVersion() {
+    const path = './plugins/YEssential/manifest.json';
+    try {
+        if (File.exists(path)) {
+            const content = File.readFrom(path);
+            if (content) {
+                const json = JSON.parse(content);
+                // manifest.json 中版本字段通常是 version 或 version_name
+                const ver = json.version || json.version_name;
+                if (ver) {
+                    // 如果是数组形式 [2, 10, 1]，转成 "2.10.1"
+                    if (Array.isArray(ver)) return ver.join('.');
+                    return String(ver);
+                }
+            }
+        }
+    } catch (e) {
+        logger.error(`读取 manifest.json 失败: ${e.message}`);
+    }
+    // 读取失败则回退到硬编码版本
+    return "2.10.2";
+    }
     /**
      * 从 server.properties 文件中读取 online-mode 设置
      * @returns {number} 1 表示 true (在线模式), 0 表示 false (离线模式)
@@ -163,11 +184,11 @@ class BStatsImpl {
                 "pluginVersion": this.pluginVersion, // <--- 修正点：将插件版本移到此处
                 "customCharts": [
                     { "chartId": "lse_version", "type": "simple_pie", "data": { "value": pureLseVersion } },
-                    { "chartId": "economy_type", "type": "simple_pie", "data": { "value": (typeof conf !== 'undefined' && conf.get("LLMoney")) ? "LLMoney" : "Scoreboard" } },
+                    { "chartId": "economy_type", "type": "simple_pie", "data": { "value": (typeof conf !== 'undefined' && conf.get("Economy")?.mode === "LLMoney") ? "LLMoney" : "Scoreboard" } },
                     { "chartId": "installed_modules_count", "type": "simple_pie", "data": { "value": moduleCount.toString() } },
-                    { "chartId": "AutoUpdate", "type": "simple_pie", "data": { "value": (typeof conf !== 'undefined' && conf.get("Update").EnableModule) ? "Enabled" : "Disabled" } },
-                    { "chartId": "pay_tax_rate", "type": "simple_pie", "data": { "value": (typeof conf !== 'undefined' ? (conf.get("PayTaxRate") || 0) : 0).toString() + "%" } },
-                    { "chartId": "rtp_status", "type": "simple_pie", "data": { "value": (typeof conf !== 'undefined' && conf.get("RTP")?.EnabledModule) ? "Enabled" : "Disabled" } }
+                    { "chartId": "AutoUpdate", "type": "simple_pie", "data": { "value": (typeof conf !== 'undefined' && conf.get("Update")?.EnableModule) ? "Enabled" : "Disabled" } },
+                    { "chartId": "pay_tax_rate", "type": "simple_pie", "data": { "value": (typeof conf !== 'undefined' ? (conf.get("Economy")?.PayTaxRate ?? 0) : 0).toString() + "%" } },
+                    {"chartId": "rtp_status", "type": "simple_pie", "data": { "value": (typeof conf !== 'undefined' && conf.get("RTP")?.EnabledModule) ? "Enabled" : "Disabled" } }
                 ]
             }
         };
@@ -202,7 +223,6 @@ class BStatsImpl {
         // 延长到 30 秒，给异步命令足够的时间返回结果
         setTimeout(() => this.submit(), 30 * 1000);
         setInterval(() => this.submit(), 30 * 60 * 1000);
-        setTimeout(() => this.submit(), 30 * 1000);
         setTimeout(() => {
         if (this.debugMode) randomGradientLog(`${this.pluginName}遥测模块已启动。首次数据将在 30 秒后发送。`);
         },2000)
