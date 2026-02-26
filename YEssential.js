@@ -25,8 +25,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件 `;
-const version = "2.10.1";
-const regversion =[2,10,1];
+const version = "2.10.2";
+const regversion =[2,10,2];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
@@ -111,52 +111,10 @@ let servertp = new JsonConfigFile(datapath +"/TrSeverData/server.json", defaultS
 
 let tpacfg = new JsonConfigFile(datapath +"/TpaSettingsData/tpaAutoRejectConfig.json",JSON.stringify({}));
 
-let isSending = false
+// isSending 防重复锁已移至 modules/Redpacket.js
 
 
-// 创建红包数据对象
-// --- 红包系统底层优化 ---
-const redpacketData = {
-    path: datapath + "Redpacketdata/Redpacket.json",
-    data: { nextId: 1, packets: {} },
-
-    init() {
-        try {
-            const content = file.readFrom(this.path);
-            if (content) this.data = JSON.parse(content);
-        } catch (e) { logger.error(lang.get("rp.loading.error") + e); }
-    },
-
-    get(path) {
-        return path.split('.').reduce((obj, key) => (obj && obj[key] !== undefined) ? obj[key] : undefined, this.data);
-    },
-
-    set(path, value) {
-        const keys = path.split('.');
-        let curr = this.data;
-        keys.slice(0, -1).forEach(key => {
-            if (!curr[key]) curr[key] = {};
-            curr = curr[key];
-        });
-        curr[keys[keys.length - 1]] = value;
-        this.save();
-    },
-
-    delete(path) {
-        const keys = path.split('.');
-        let curr = this.data;
-        for (let i = 0; i < keys.length - 1; i++) {
-            if (!curr[keys[i]]) return;
-            curr = curr[keys[i]];
-        }
-        delete curr[keys[keys.length - 1]];
-        this.save();
-    },
-
-    save() {
-        file.writeTo(this.path, JSON.stringify(this.data, null, 2));
-    }
-};
+// 红包数据及红包系统逻辑已迁移至 modules/Redpacket.js
     
 // 异步文件操作工具类
 class AsyncFileManager {
@@ -255,6 +213,8 @@ Object.assign(globalThis, {
     // 常量
     YEST_LangDir, NAME, version, regversion, PluginInfo,
     langFilePath,
+    // Economy 配置对象（Redpacket.js 等模块需要）
+    economyCfg,
     // defaultLangContent 由 modules/I18n.js 加载时写入 globalThis
     // 渐变日志工具（function 声明虽然会提升，但 GLOBAL_C1/C2 是 const，
     // 显式挂载确保 require() 沙箱内也能访问）
@@ -1128,12 +1088,11 @@ function redpacketgui(plname) {
                     lang.get("rp.random.packet"), 
                     lang.get("rp.average.packet")
                 ]);
-                sendFm.addInput(lang.get("rp.send.amount"), "请输入红包个数");
-                sendFm.addInput(lang.get("rp.send.count"), "请输入总金额");
+                sendFm.addInput(lang.get("rp.send.amount"), "请输入总金额");
+                sendFm.addInput(lang.get("rp.send.count"), "请输入红包个数");
 
                 pl.sendForm(sendFm, (pl, data) => {
-                    if (data === null) return pl.runcmd("moneygui");
-
+                    if (data === null || data === undefined) return pl.runcmd("moneygui");
                     // 这里的索引必须严格对应上面的 add 顺序：
                     // data[0] -> Dropdown (类型)
                     // data[1] -> Input (金额)
@@ -1181,7 +1140,7 @@ function redpacketgui(plname) {
                 break;
 
             case 2: // 帮助
-                pl.runcmd("redpackethelp");
+                pl.runcmd("rphelp");
                 break;
         }
     });
@@ -2910,465 +2869,8 @@ function smartMoneyCheck(plname, value) {
     return isLLMoney ? pl.reduceMoney(value) : pl.reduceScore(scoreboard, value);
 }
 // ======================
-// Rp 红包系统优化
+// 红包系统已迁移至 modules/Redpacket.js
 // ======================
-const redpacketExpiryQueue = [];
-
-const redpacketCmd = mc.newCommand("redpacket", "红包功能", PermType.Any);
-redpacketCmd.setAlias("rp");
-
-redpacketCmd.setEnum("subcommand", ["send", "open", "list", "history"]);
-redpacketCmd.setEnum("packetType", ["random", "average"]);
-
-redpacketCmd.mandatory("subcommand", ParamType.Enum, "subcommand");
-redpacketCmd.optional("amount", ParamType.Int);
-redpacketCmd.optional("count", ParamType.Int);
-redpacketCmd.optional("player", ParamType.String);
-redpacketCmd.optional("message", ParamType.String);
-redpacketCmd.optional("packetType", ParamType.Enum, "packetType");
-
-redpacketCmd.overload(["subcommand", "amount", "count", "player", "message", "packetType"]);
-redpacketCmd.overload(["subcommand", "amount", "count", "player", "message"]);
-redpacketCmd.overload(["subcommand"]);
-
-redpacketCmd.setCallback((cmd, ori, out, res) => {
-    const pl = ori.player;
-    if (!pl) return;
-    if (!conf.get("RedPacket").EnabledModule) {
-        pl.tell(info + lang.get("module.no.Enabled"));
-        return;
-    }
-    const sub = res.subcommand;
-    switch (sub) {
-        case "send":
-            handleSendRedPacket(pl, res.amount, res.count, res.player, res.message, res.packetType);
-            break;
-        case "open":
-            handleOpenRedPacket(pl);
-            break;
-        case "list":
-            handleListRedPacket(pl);
-            break;
-        case "history":
-            handleRedPacketHistory(pl);
-            break;
-    }
-});
-redpacketCmd.setup();
-
-// ── 过期处理 ──────────────────────────────────────────────
-function handleExpiredPacket(packet) {
-    if (packet.remaining <= 0) return;
-
-    randomGradientLog(`[红包] 处理过期红包 #${packet.id}, 剩余金额: ${packet.remainingAmount}`);
-
-    if (packet.remainingAmount > 0) {
-        const sender = mc.getPlayer(packet.sender);
-        if (sender) {
-            if (!economyCfg.isLLMoney) {
-                sender.addScore(economyCfg.scoreboard, packet.remainingAmount);
-            } else {
-                sender.addMoney(packet.remainingAmount);
-            }
-            sender.tell(info + lang.get("rp.expired.refund")
-                .replace("${id}",     packet.id)
-                .replace("${amount}", packet.remainingAmount)
-                .replace("${coin}",   conf.get("Economy").CoinName));
-        }
-    }
-
-    redpacketData.delete(`packets.${packet.id}`);
-}
-
-// ── 发送红包 ──────────────────────────────────────────────
-function handleSendRedPacket(pl, amount, count, targetPlayer, message, packetType = "random") {
-    // 智能参数类型识别
-    if (typeof targetPlayer === "string") {
-        if (targetPlayer === "random" || targetPlayer === "average") {
-            packetType = targetPlayer;
-            targetPlayer = "";
-            message = "";
-        }
-        if (typeof message === "string" && (message === "random" || message === "average")) {
-            packetType = message;
-            message = "";
-        }
-    }
-    if (!packetType) packetType = "random";
-
-    if (!conf.get("RedPacket").EnabledModule) {
-        pl.tell(info + lang.get("module.no.Enabled"));
-        return;
-    }
-
-    if (isSending) {
-        pl.tell(info + lang.get("rp.send.duplicate"));
-        return;
-    }
-
-    if (typeof amount !== "number" || typeof count !== "number") {
-        pl.tell(info + lang.get("rp.send.param.error"));
-        return;
-    }
-
-    if (!amount || !count || count < 1) {
-        pl.tell(info + lang.get("rp.send.usage"));
-        pl.tell(info + lang.get("rp.send.usage.type"));
-        return;
-    }
-
-    const config     = conf.get("RedPacket");
-    const maxAmount  = config.maxAmount;
-    const maxCount   = config.maxCount;
-    const minAmount  = config.minAmount;
-
-    if (amount < minAmount || amount > maxAmount) {
-        pl.tell(info + lang.get("rp.send.amount.range")
-            .replace("${min}", minAmount)
-            .replace("${max}", maxAmount));
-        return;
-    }
-
-    if (count < 1 || count > maxCount) {
-        pl.tell(info + lang.get("rp.send.count.range")
-            .replace("${max}", maxCount));
-        return;
-    }
-
-    let balance = !economyCfg.isLLMoney
-        ? pl.getScore(economyCfg.scoreboard)
-        : pl.getMoney();
-
-    if (balance < amount) {
-        pl.tell(info + lang.get("rp.send.no.balance"));
-        return;
-    }
-
-    // 扣费
-    if (!economyCfg.isLLMoney) {
-        pl.reduceScore(economyCfg.scoreboard, amount);
-    } else {
-        pl.reduceMoney(amount);
-    }
-
-    // 创建红包
-    const packetId = redpacketData.get("nextId");
-    const packet = {
-        id:              packetId,
-        sender:          pl.realName,
-        amount:          amount,
-        count:           count,
-        remaining:       count,
-        remainingAmount: amount,
-        recipients:      [],
-        targetType:      targetPlayer ? "specific" : "all",
-        targetPlayer:    targetPlayer || "",
-        message:         message || lang.get("rp.default.message").replace("${sender}", pl.realName),
-        packetType:      packetType,
-        createdAt:       Date.now(),
-        expireAt:        Date.now() + (config.expireTime * 1000)
-    };
-
-    isSending = true;
-    redpacketData.set(`packets.${packetId}`, packet);
-    redpacketData.set("nextId", packetId + 1);
-
-    redpacketExpiryQueue.push({ id: packetId, expireAt: packet.expireAt });
-    redpacketExpiryQueue.sort((a, b) => a.expireAt - b.expireAt);
-
-    // 广播 / 通知
-    const typeName = lang.get(packetType === "random" ? "rp.type.random.short" : "rp.type.average.short");
-
-    if (targetPlayer) {
-        const target = mc.getPlayer(targetPlayer);
-        if (target) {
-            target.tell(info + lang.get("rp.send.notify.target")
-                .replace("${sender}", pl.realName)
-                .replace("${type}",   typeName));
-        }
-        pl.tell(info + lang.get("rp.send.success.specific")
-            .replace("${player}", targetPlayer)
-            .replace("${type}",   typeName)
-            .replace("${amount}", amount)
-            .replace("${count}",  count));
-    } else {
-        mc.broadcast(info + lang.get("rp.send.broadcast")
-            .replace("${sender}", pl.realName)
-            .replace("${type}",   typeName));
-        pl.tell(info + lang.get("rp.send.success.all")
-            .replace("${type}",   typeName)
-            .replace("${amount}", amount)
-            .replace("${count}",  count));
-    }
-
-    randomGradientLog(`[红包] 玩家 ${pl.realName} 发送${typeName}红包 #${packetId}, 类型: ${packet.targetType}, 金额: ${amount}, 数量: ${count}`);
-    isSending = false;
-}
-
-// ── 领取红包 ──────────────────────────────────────────────
-function handleOpenRedPacket(pl) {
-    const packets = redpacketData.get("packets") || {};
-    const now     = Date.now();
-    let availablePackets = [];
-
-    for (const id in packets) {
-        const packet = packets[id];
-
-        if (packet.expireAt < now) {
-            handleExpiredPacket(packet);
-            continue;
-        }
-
-        const canClaim =
-            packet.remaining > 0 &&
-            !packet.recipients.includes(pl.realName) &&
-            (packet.targetType === "all" ||
-             (packet.targetType === "specific" &&
-              packet.targetPlayer.toLowerCase() === pl.realName.toLowerCase()));
-
-        if (canClaim) availablePackets.push(packet);
-    }
-
-    if (availablePackets.length === 0) {
-        pl.tell(info + lang.get("rp.open.none"));
-        return;
-    }
-
-    availablePackets.sort((a, b) => a.createdAt - b.createdAt);
-    const packet = availablePackets[0];
-
-    // 计算金额
-    let amount;
-    if (packet.remaining === 1) {
-        amount = packet.remainingAmount;
-    } else if (packet.packetType === "random") {
-        const maxAmt = Math.min(
-            packet.remainingAmount - packet.remaining + 1,
-            Math.floor(packet.remainingAmount / packet.remaining * 2)
-        );
-        amount = Math.max(Math.floor(Math.random() * maxAmt) + 1, 1);
-    } else {
-        amount = Math.max(Math.floor(packet.remainingAmount / packet.remaining), 1);
-    }
-
-    packet.remaining--;
-    packet.remainingAmount -= amount;
-    packet.recipients.push(pl.realName);
-    redpacketData.set(`packets.${packet.id}`, packet);
-
-    if (!economyCfg.isLLMoney) {
-        pl.addScore(economyCfg.scoreboard, amount);
-    } else {
-        pl.addMoney(amount);
-    }
-
-    const typeName = lang.get(packet.packetType === "random" ? "rp.type.random.short" : "rp.type.average.short");
-    const coinName = economyCfg.coinName;
-
-    pl.tell(info + lang.get("rp.open.success")
-        .replace("${sender}", packet.sender)
-        .replace("${type}",   typeName)
-        .replace("${amount}", amount)
-        .replace("${coin}",   coinName));
-
-    randomGradientLog(`[红包] 玩家 ${pl.realName} 领取红包 #${packet.id}, 获得 ${amount} 金币`);
-
-    const sender = mc.getPlayer(packet.sender);
-    if (sender) {
-        sender.tell(info + lang.get("rp.open.notify.sender")
-            .replace("${player}", pl.realName)
-            .replace("${amount}", amount)
-            .replace("${coin}",   coinName));
-    }
-}
-
-// ── 红包列表 ──────────────────────────────────────────────
-function handleListRedPacket(pl) {
-    const packets = redpacketData.get("packets") || {};
-    const now     = Date.now();
-    let form = mc.newSimpleForm()
-        .setTitle(lang.get("rp.list.title"))
-        .setContent(lang.get("rp.list.content"));
-
-    let hasPackets = false;
-
-    for (const id in packets) {
-        const packet = packets[id];
-        if (packet.expireAt < now)    continue;
-        if (packet.remaining <= 0)    continue;
-        if (packet.recipients.includes(pl.realName)) continue;
-        if (packet.targetType === "specific" &&
-            packet.targetPlayer.toLowerCase() !== pl.realName.toLowerCase()) continue;
-
-        const expireIn = Math.ceil((packet.expireAt - now) / 1000);
-        const typeName = lang.get(packet.packetType === "random" ? "rp.type.random.colored" : "rp.type.average.colored");
-
-        form.addButton(lang.get("rp.list.button")
-            .replace("${type}",      typeName)
-            .replace("${sender}",    packet.sender)
-            .replace("${amount}",    packet.amount)
-            .replace("${remaining}", packet.remaining)
-            .replace("${count}",     packet.count)
-            .replace("${expire}",    expireIn));
-        hasPackets = true;
-    }
-
-    if (!hasPackets) {
-        form.setContent(lang.get("rp.open.none"));
-        form.addButton(lang.get("rp.list.close"));
-    }
-
-    if (form && pl) {
-        pl.sendForm(form, (player, id) => {
-            if (id !== null && hasPackets) {
-                handleOpenRedPacket(pl);
-            }
-        });
-    }
-}
-
-// ── 红包历史 ──────────────────────────────────────────────
-function handleRedPacketHistory(pl) {
-    const packets = redpacketData.get("packets") || {};
-    let history   = [];
-
-    for (const id in packets) {
-        const packet = packets[id];
-        if (packet.sender === pl.realName || packet.recipients.includes(pl.realName)) {
-            history.push(packet);
-        }
-    }
-
-    if (history.length === 0) {
-        pl.tell(info + lang.get("rp.history.empty"));
-        return;
-    }
-
-    history.sort((a, b) => b.createdAt - a.createdAt);
-
-    let form = mc.newSimpleForm()
-        .setTitle(lang.get("rp.history.title"))
-        .setContent(lang.get("rp.history.content"));
-
-    history.slice(0, 10).forEach(packet => {
-        const isSender = packet.sender === pl.realName;
-        const role     = lang.get(isSender ? "rp.role.sender" : "rp.role.receiver");
-        const typeTag  = lang.get(packet.packetType === "random" ? "rp.type.random.tag" : "rp.type.average.tag");
-        const status   = lang.get(packet.remaining > 0 ? "rp.history.status.active" : "rp.history.status.ended");
-        const received = isSender
-            ? lang.get("rp.history.sent.amount").replace("${amount}", packet.amount - packet.remainingAmount)
-            : lang.get("rp.history.recv.amount").replace("${amount}", packet.recipients.includes(pl.realName)
-                ? packet.amount - packet.remainingAmount : 0);
-
-        form.addButton(
-            `§l${role} ${typeTag} §e${packet.sender}的红包\n` +
-            `§7金额: §f${packet.amount} §7状态: ${status}\n` +
-            received
-        );
-    });
-
-    pl.sendForm(form, (player, id) => {
-        if (id !== null) {
-            showRedPacketDetail(pl, history[id]);
-        }
-    });
-}
-
-// ── 红包详情 ──────────────────────────────────────────────
-function showRedPacketDetail(pl, packet) {
-    const form     = mc.newCustomForm().setTitle(lang.get("rp.detail.title"));
-    const coinName = economyCfg.coinName;
-
-    form.addLabel(lang.get("rp.detail.sender").replace("${sender}", packet.sender));
-
-    const targetTypeStr = lang.get(packet.targetType === "all" ? "rp.target.all" : "rp.target.specific");
-    form.addLabel(lang.get("rp.detail.target.type").replace("${type}", targetTypeStr));
-
-    const packetTypeStr = lang.get(packet.packetType === "random" ? "rp.random.packet" : "rp.average.packet");
-    form.addLabel(lang.get("rp.detail.packet.type").replace("${type}", packetTypeStr));
-
-    if (packet.targetType === "specific") {
-        form.addLabel(lang.get("rp.detail.target.player").replace("${player}", packet.targetPlayer));
-    }
-
-    form.addLabel(lang.get("rp.detail.amount")
-        .replace("${amount}", packet.amount)
-        .replace("${coin}",   coinName));
-    form.addLabel(lang.get("rp.detail.count").replace("${count}", packet.count));
-    form.addLabel(lang.get("rp.detail.remaining.amount")
-        .replace("${amount}", packet.remainingAmount)
-        .replace("${coin}",   coinName));
-    form.addLabel(lang.get("rp.detail.remaining.count").replace("${count}", packet.remaining));
-    form.addLabel(lang.get("rp.detail.message").replace("${msg}", packet.message));
-    form.addLabel(lang.get("rp.detail.expire").replace("${time}", new Date(packet.expireAt).toLocaleTimeString()));
-    form.addLabel(lang.get("rp.detail.recipients"));
-
-    packet.recipients.forEach(recipient => {
-        form.addLabel(lang.get("rp.detail.recipient.item").replace("${name}", recipient));
-    });
-
-    pl.sendForm(form, (pl, id) => {
-        if (id !== null) {}
-        pl.runcmd("moneygui");
-    });
-}
-
-// ── 过期检测（每分钟） ────────────────────────────────────
-setInterval(() => {
-    const now     = Date.now();
-    const packets = redpacketData.get("packets") || {};
-    let updated   = false;
-
-    while (redpacketExpiryQueue.length > 0 && redpacketExpiryQueue[0].expireAt < now) {
-        const expired = redpacketExpiryQueue.shift();
-        const packet  = packets[expired.id];
-        if (packet && packet.expireAt < now) {
-            handleExpiredPacket(packet);
-            updated = true;
-        }
-    }
-
-    if (updated) redpacketData.save();
-}, 60 * 1000);
-
-// ── 帮助命令 ──────────────────────────────────────────────
-setTimeout(() => {
-mc.listen("onServerStarted", () => {
-        
-        if (!conf.get("RedPacket").EnabledModule) return;
-
-        mc.regPlayerCmd("redpackethelp", lang.get("rp.all.help"), (pl) => {
-            let helpForm = mc.newSimpleForm()
-                .setTitle(lang.get("rp.all.help"))
-                .setContent(lang.get("rp.help.content"));
-
-            helpForm.addButton(lang.get("rp.send.packet"));
-            helpForm.addButton(lang.get("rp.open.packet"));
-            helpForm.addButton(lang.get("rp.help.view"));
-            helpForm.addButton(lang.get("rp.help.history.btn"));
-            helpForm.addButton(lang.get("rp.help.types.btn"));
-
-            pl.sendForm(helpForm, (player, id) => {
-                if (id === null) return;
-
-                const detailKeys = [
-                    "rp.help.send.detail",
-                    "rp.help.open.detail",
-                    "rp.help.list.detail",
-                    "rp.help.history.detail",
-                    "rp.help.type.detail"
-                ];
-
-                let detailForm = mc.newCustomForm()
-                    .setTitle(lang.get("rp.help.detail.title"))
-                    .addLabel(lang.get(detailKeys[id]));
-
-                pl.sendForm(detailForm, () => {});
-            });
-        });
-   
-});
-},2000)
 function showInsufficientMoneyGui(pl, cost, returnCmd) {
     let fm = mc.newSimpleForm();
     fm.setTitle(lang.get("gui.insufficient.money.title"));
