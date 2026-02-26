@@ -113,7 +113,6 @@ let tpacfg = new JsonConfigFile(datapath +"/TpaSettingsData/tpaAutoRejectConfig.
 
 // isSending 防重复锁已移至 modules/Redpacket.js
 
-
 // 红包数据及红包系统逻辑已迁移至 modules/Redpacket.js
     
 // 异步文件操作工具类
@@ -1160,10 +1159,10 @@ function OPMoneyGui(plname){
     fm.addButton((lang.get("money.op.look") || "查看玩家的") + _coin, "textures/ui/MCoin")
     fm.addButton("查看玩家的" + _coin + "历史记录", "textures/ui/book_addtextpage_default")
     fm.addButton("全服" + _coin + "排行榜", "textures/ui/icon_book_writable")
-    fm.addButton(lang.get("money.gui.useplayer") || "使用玩家的金钱菜单", "textures/ui/icon_multiplayer")
     if (conf.get("RedPacket").EnabledModule == 1){
     fm.addButton(lang.get("rp.menu.1") || "红包", "textures/ui/gift_square")
     } else {}
+    fm.addButton(lang.get("money.gui.useplayer") || "使用玩家的金钱菜单", "textures/ui/icon_multiplayer")
     pl.sendForm(fm,(pl,id)=>{
         if(id == null) return pl.tell(info + lang.get("gui.exit"));
         switch(id){
@@ -1189,10 +1188,10 @@ function OPMoneyGui(plname){
                 ranking(pl.realName)
                 break
             case 7:
-                MoneyGui(pl.realName)
+                redpacketgui(pl.realName)
                 break
             case 8:
-                redpacketgui(pl.realName)
+                MoneyGui(pl.realName)
                 break
         }
     })
