@@ -78,7 +78,7 @@ var CleanMgr = (function () {
       "^minecraft:armor_stand$", "^minecraft:boat$", "^minecraft:sheep$","^minecraft:leash_knot$",
       "^minecraft:cow$", "^minecraft:pig$", "^minecraft:painting$"
     ],
-    notice: { notice1: 30, notice2: 10, notice3: 5 },
+    notice: { notice1: 30, notice2: 15, notice3: 5 },
     LowTpsClean: { 
       enable: true, 
       minimum: 15,
@@ -361,9 +361,9 @@ var CleanMgr = (function () {
     }
     if (n3 > 0 && n3 < n2) {
       state.scheduledTimeouts.push(setTimeout(function () {
-        mc.broadcast(lang.prefix + t("messages.cleanup_notice2", n3));
-        sendToastToAll(t("toast_title"), t("messages.cleanup_notice2", n3));
-      }, (n2 - n3) * 1000));
+        mc.broadcast(lang.prefix + t("messages.cleanup_notice3", n3));
+        sendToastToAll(t("toast_title"), t("messages.cleanup_notice3", n3));
+      }, (n1 - n3) * 1000));  // 修复：延迟基准为n1，而非n2
     }
     state.scheduledTimeouts.push(setTimeout(executeClean, n1 * 1000));
   }
@@ -432,9 +432,35 @@ var CleanMgr = (function () {
 
     cmd.setCallback(function(_cmd, _ori, _out, _res) {
         var p = _ori.player;
-        if (!p) return false;
         var act = _res.action;
         if (!act) act = "now";
+
+        // 后台（控制台）执行：无player对象，用logger输出反馈
+        if (!p) {
+            var cur = getTps();
+            if (act === "tps") {
+                logger.info(t("messages.tps_info", cur.toFixed(2)));
+            } else if (act === "status") {
+                logger.info("状态: " + state.phase + (state.lowTpsRetryTime > Date.now() ? " (TPS清理长冷却中)" : ""));
+            } else if (act === "cancel") {
+                if (state.phase === "scheduled") {
+                    state.scheduledTimeouts.forEach(clearTimeout);
+                    state.scheduledTimeouts = [];
+                    state.phase = "idle";
+                    mc.broadcast(lang.prefix + t("messages.cancel_success"));
+                    logger.info(t("messages.cancel_success"));
+                } else {
+                    logger.info(t("messages.no_scheduled_clean"));
+                }
+            } else if (act === "now") {
+                scheduleClean(false, null, false);
+                logger.info(t("messages.scheduled_clean", config.notice.notice1));
+            } else if (!act || act === "help") {
+                logger.info(t("messages.help_message"));
+            }
+            return true;
+        }
+
         return handleCleanCommand(p, act);
     });
 

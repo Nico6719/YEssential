@@ -52,7 +52,7 @@ class BStatsImpl {
         logger.error(`读取 manifest.json 失败: ${e.message}`);
     }
     // 读取失败则回退到硬编码版本
-    return "2.10.2";
+    return "2.10.3";
     }
     /**
      * 从 server.properties 文件中读取 online-mode 设置

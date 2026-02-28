@@ -3,6 +3,26 @@
  * YEssential 子模块
  */
 
+// ── 红包帮助弹窗（全局函数，供主文件直接调用）──────────────────
+globalThis.showRpHelp = function showRpHelp(pl) {
+    const helpKeys   = ["rp.send.packet","rp.open.packet","rp.help.view","rp.help.history.btn","rp.help.types.btn"];
+    const detailKeys = ["rp.help.send.detail","rp.help.open.detail","rp.help.list.detail","rp.help.history.detail","rp.help.type.detail"];
+
+    const L = globalThis.lang?.get?.bind(globalThis.lang) || (k => k);
+    const f = mc.newSimpleForm()
+        .setTitle(L("rp.all.help", "红包帮助"))
+        .setContent(L("rp.help.content", ""));
+    helpKeys.forEach(k => f.addButton(L(k, k)));
+
+    pl.sendForm(f, (player, id) => {
+        if (id == null) return;
+        const df = mc.newCustomForm()
+            .setTitle(L("rp.help.detail.title", "详情"))
+            .addLabel(L(detailKeys[id], detailKeys[id]));
+        pl.sendForm(df, () => {});
+    });
+}
+
 module.exports = {
     init() {
         const _conf    = globalThis.conf;
@@ -437,30 +457,11 @@ module.exports = {
         rpCmd.setup();
 
         // ════════════════════════════════════════════════════════
-        // 帮助指令  /rphelp
+        // 帮助指令  rphelp（聊天栏输入）
         // ════════════════════════════════════════════════════════
-        setTimeout(() => {
-            mc.listen("onServerStarted", () => {
-                if (!_conf.get("RedPacket")?.EnabledModule) return;
-                mc.regPlayerCmd("rphelp", L("rp.all.help", "红包帮助"), pl => {
-                    const helpKeys   = ["rp.send.packet","rp.open.packet","rp.help.view","rp.help.history.btn","rp.help.types.btn"];
-                    const detailKeys = ["rp.help.send.detail","rp.help.open.detail","rp.help.list.detail","rp.help.history.detail","rp.help.type.detail"];
-
-                    const f = mc.newSimpleForm()
-                        .setTitle(L("rp.all.help", "红包帮助"))
-                        .setContent(L("rp.help.content", ""));
-                    helpKeys.forEach(k => f.addButton(L(k, k)));
-
-                    pl.sendForm(f, (player, id) => {
-                        if (id == null) return;
-                        const df = mc.newCustomForm()
-                            .setTitle(L("rp.help.detail.title", "详情"))
-                            .addLabel(L(detailKeys[id], detailKeys[id]));
-                        pl.sendForm(df, () => {});
-                    });
-                });
-            });
-        }, 2000);
+        if (_conf.get("RedPacket")?.EnabledModule) {
+            mc.regPlayerCmd("rphelp", L("rp.all.help", "红包帮助"), pl => showRpHelp(pl));
+        }
 
         // ════════════════════════════════════════════════════════
         // 过期检测（每 30 秒）
