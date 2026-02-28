@@ -4,6 +4,7 @@
 
 # 📦 YEssential
 **基于 LSE 的多功能基础插件**
+**如果您使用的是低于1.21.80的版本的服务端请使用旧（小于等于2.10.2）版本!**
 
 ![](https://img.shields.io/github/v/release/Nico6719/YEssential?style=flat-square&logo=github&color=orange&label=Version)
 ![](https://img.shields.io/github/downloads/Nico6719/YEssential/total?style=flat-square&logo=github&color=33ccff&label=Downloads)
