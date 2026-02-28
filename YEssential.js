@@ -25,13 +25,18 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件 `;
-const version = "2.10.2";
-const regversion =[2,10,2];
+const version = "2.10.3";
+const regversion =[2,10,3];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
 
 const langFilePath = YEST_LangDir + "zh_cn.json";
+
+// ── Reload Guard ──────────────────────────────────────────────
+// LLSE reload 时不会清除旧的 mc.listen，重复注册会导致事件累积、栈溢出崩溃
+// 用全局变量保证所有 mc.listen 只注册一次
+const __YEST_FIRST_LOAD__ = !globalThis.__YEST_listeners_registered__;
 
 
 ll.registerPlugin(NAME, PluginInfo,regversion, {
@@ -623,7 +628,9 @@ function updateSinglePlayerCache(pl) {
         }
     }
 }
+if (__YEST_FIRST_LOAD__) {
 mc.listen("onJoin", (pl) => updateSinglePlayerCache(pl));
+}
 setInterval(() => {
     mc.getOnlinePlayers().forEach(pl => updateSinglePlayerCache(pl));
 }, 30000);
@@ -639,12 +646,14 @@ setInterval(() => {
 }, 60000);
 
 // 玩家退出时立即保存其数据
+if (__YEST_FIRST_LOAD__) {
 mc.listen("onLeft", (pl) => {
     if (moneyCache[pl.realName] !== undefined) {
         moneyranking.set(pl.realName, moneyCache[pl.realName]);
         delete moneyCache[pl.realName];
     }
 });
+}
 // YEssential.js - servers 命令
 let Sercmd = mc.newCommand("servers", "§l§a跨服传送", PermType.Any);
 Sercmd.overload([]);
@@ -789,6 +798,7 @@ function displayMoneyInfo(pl, target, isSelf = true) {
         return `${prefix}${conf.get("Economy").CoinName}为: ${money}`;
     }
 }
+if (__YEST_FIRST_LOAD__) {
 mc.listen("onJoin",(pl)=>{
    //if (conf.get("wh").status == 1) return;
    try {
@@ -822,6 +832,8 @@ mc.listen("onJoin",(pl)=>{
         logger.error(`玩家 ${pl.realName} 加入事件处理失败: ${error.message}`);
     }
 });
+}
+if (__YEST_FIRST_LOAD__) {
 mc.listen("onConsoleCmd",(cmd)=>{
     if(cmd.toLowerCase() != "stop" || lang.get("stop.msg") == 0 ) return
     let msg = lang.get("stop.msg")
@@ -830,6 +842,7 @@ mc.listen("onConsoleCmd",(cmd)=>{
     })
     mc.runcmdEx("stop")  //再次尝试
 })
+}
 //自杀模块
 
 let suicidecmd = mc.newCommand("suicide","自杀",PermType.Any)
@@ -916,6 +929,7 @@ whcmd.setCallback((cmd, ori, out, res) => {
 })
 whcmd.setup()
 
+if (__YEST_FIRST_LOAD__) {
 mc.listen("onPreJoin", (pl) => {
     // 检查模块是否启用
     let currentConfig = conf.get("wh") || { EnableModule: true, status: 0 , whmotdmsg: "服务器维护中，请勿进入！", whgamemsg: "服务器正在维护中，请您稍后再来!"};
@@ -926,6 +940,7 @@ mc.listen("onPreJoin", (pl) => {
         pl.kick(currentConfig.whgamemsg);            
     }
 })
+}
 
 function getRandomLetter() {
     return String.fromCharCode(65 + Math.floor(Math.random() * 26));
@@ -1087,8 +1102,8 @@ function redpacketgui(plname) {
                     lang.get("rp.random.packet"), 
                     lang.get("rp.average.packet")
                 ]);
-                sendFm.addInput(lang.get("rp.send.amount"), "请输入总金额");
-                sendFm.addInput(lang.get("rp.send.count"), "请输入红包个数");
+                sendFm.addInput(lang.get("rp.send.amount"), "请输入总金额", "1", lang.get("rp.send.amount.tip") || "");
+                sendFm.addInput(lang.get("rp.send.count"), "请输入红包个数", "1", lang.get("rp.send.count.tip") || "");
 
                 pl.sendForm(sendFm, (pl, data) => {
                     if (data === null || data === undefined) return pl.runcmd("moneygui");
@@ -1139,7 +1154,7 @@ function redpacketgui(plname) {
                 break;
 
             case 2: // 帮助
-                pl.runcmd("rphelp");
+                showRpHelp(pl);
                 break;
         }
     });
@@ -1433,12 +1448,14 @@ const EconomyNotify = {
 globalThis.EconomyNotify = EconomyNotify;
 
 // --- 玩家加入事件监听 ---
+if (__YEST_FIRST_LOAD__) {
 mc.listen("onJoin", (player) => {
     // 应用离线货币操作
     OfflineMoneyCache.apply(player);
     // 投递积压的经济通知
     EconomyNotify.apply(player);
 });
+}
 const Logger = {
     // 记录历史
     // targetName: 谁的钱变了
@@ -1494,7 +1511,7 @@ function openPlayerSelectionGui(pl, title, callback) {
 function handleAdminOp(pl, target, opType, actionText, inputLabel) {
     const fm = mc.newCustomForm();
     fm.setTitle(`${actionText} ${target.realName} 的 ${conf.get("Economy").CoinName}`);
-    fm.addInput(inputLabel, lang.get("key.not.number"));
+    fm.addInput(inputLabel, lang.get("key.not.number"), "0", lang.get("key.not.number.tip") || "");
     
     pl.sendForm(fm, (admin, data) => {
         if (data == null) return;
@@ -1572,8 +1589,8 @@ function MoneyTransferGui(plname) {
         .replace("${coin}", coinName) + "\n" + 
         lang.get("money.transfer.tax").replace("${rate}", taxRate));
     fm.addDropdown(lang.get("choose") + lang.get("one") + lang.get("player"), playerNames);
-    fm.addInput(lang.get("money.tr.amount"), lang.get("money.transfer.input.amount"));
-    fm.addInput(lang.get("money.tr.beizhu"), lang.get("money.tr.beizhu"));
+    fm.addInput(lang.get("money.tr.amount"), lang.get("money.transfer.input.amount"), "0", lang.get("money.tr.amount.tip") || "");
+    fm.addInput(lang.get("money.tr.beizhu"), lang.get("money.tr.beizhu"), "无", lang.get("money.tr.beizhu.tip") || "");
 
     pl.sendForm(fm, (player, data) => {
         if (data == null) return player.runcmd("moneygui");
@@ -1657,9 +1674,9 @@ function MoneyTransferOfflineGui(plname) {
             .replace("${coin}", coinName)
             .replace("${rate}", taxRate)
     );
-    fm.addInput(lang.get("money.offline.transfer.input.target"), lang.get("money.offline.transfer.input.target.hint"));
-    fm.addInput(lang.get("money.offline.transfer.input.amount"), lang.get("money.offline.transfer.input.amount.hint"));
-    fm.addInput(lang.get("money.offline.transfer.input.note"),   lang.get("money.offline.transfer.input.note.hint"));
+    fm.addInput(lang.get("money.offline.transfer.input.target"), lang.get("money.offline.transfer.input.target.hint"), "Steve", lang.get("money.offline.transfer.input.target.tip") || "");
+    fm.addInput(lang.get("money.offline.transfer.input.amount"), lang.get("money.offline.transfer.input.amount.hint"), "0", lang.get("money.offline.transfer.input.amount.tip") || "");
+    fm.addInput(lang.get("money.offline.transfer.input.note"),   lang.get("money.offline.transfer.input.note.hint"), "无", lang.get("money.offline.transfer.input.note.tip") || "");
 
     pl.sendForm(fm, (player, data) => {
         if (data == null) return player.runcmd("moneygui");
@@ -1730,7 +1747,7 @@ function MoneyTransferOfflineGui(plname) {
 
             pl2.sendText(
                 EconomyNotify.fmt.transferSend(targetName, finalAmount, tax, actualReceived, coinName, note) +
-                "\n§7§o" + lang.get("money.offline.transfer.sender.offline.tip")
+                "\n§7§o" + lang.get("money.offline.transfer.sender.offline.tip") || ""
             );
             EconomyNotify.send(
                 targetName,
@@ -1752,14 +1769,14 @@ function OPOfflineMoneyGui(plname) {
     const fm = mc.newCustomForm();
     fm.setTitle(lang.get("money.op.offline.title"));
     fm.addLabel(lang.get("money.op.offline.label"));
-    fm.addInput(lang.get("money.op.offline.input.target"), lang.get("money.op.offline.input.target.hint"));
+    fm.addInput(lang.get("money.op.offline.input.target"), lang.get("money.op.offline.input.target.hint"), "Steve", lang.get("money.op.offline.input.target.tip") || "");
     fm.addDropdown(lang.get("money.op.offline.dropdown"), [
         lang.get("money.op.offline.type.add"),
         lang.get("money.op.offline.type.reduce"),
         lang.get("money.op.offline.type.set")
     ]);
-    fm.addInput(lang.get("money.op.offline.input.amount"), lang.get("money.op.offline.input.amount.hint"));
-    fm.addInput(lang.get("money.op.offline.input.note"), lang.get("money.offline.transfer.input.note.hint"));
+    fm.addInput(lang.get("money.op.offline.input.amount"), lang.get("money.op.offline.input.amount.hint"), "0", lang.get("money.op.offline.input.amount.tip") || "");
+    fm.addInput(lang.get("money.op.offline.input.note"), lang.get("money.offline.transfer.input.note.hint"), "无", lang.get("money.op.offline.input.note.tip") || "");
 
     pl.sendForm(fm, (admin, data) => {
         if (data == null) return admin.runcmd("moneygui");
@@ -1798,7 +1815,7 @@ function OPOfflineMoneyGui(plname) {
                 .replace("${amount}", amount)
                 .replace("${coin}",   coinName) +
             (note ? "\n" + lang.get("notify.transfer.note").replace("${note}", note) : "") +
-            "\n\n" + lang.get("money.op.offline.confirm.tip")
+            "\n\n" + lang.get("money.op.offline.confirm.tip") || ""
         );
         confirmFm.addButton(lang.get("money.offline.transfer.btn.confirm"), "textures/ui/realms_green_check");
         confirmFm.addButton(lang.get("money.offline.transfer.btn.cancel"),  "textures/ui/cancel");
@@ -1989,7 +2006,7 @@ function WarpAddGui(plname) {
     fm.setTitle(lang.get("warp.add.point"));
     fm.addLabel(lang.get("warp.add.point.xyz"));
     fm.addLabel(lang.get("warp.teleport.coord") + `${pos.x.toFixed(1)},${pos.y.toFixed(1)},${pos.z.toFixed(1)} ${transdimid[pos.dimid]}`);
-    fm.addInput(lang.get("warp.input.name"), lang.get("warp.name"));
+    fm.addInput(lang.get("warp.input.name"), lang.get("warp.name"), "myWarp", lang.get("warp.input.name.tip") || "");
     
     pl.sendForm(fm, (pl, data) => {
         if (data == null) return pl.runcmd("warp");
@@ -2009,6 +2026,7 @@ function WarpAddGui(plname) {
 }
 
 
+if (__YEST_FIRST_LOAD__) {
 mc.listen("onRespawn",(pl)=>{
     if(conf.get("BackTipAfterDeath")) {
          setTimeout(() => {
@@ -2016,10 +2034,12 @@ mc.listen("onRespawn",(pl)=>{
             }, 100);
     }
 })
+}
 // 存储玩家死亡点数据
 let deathPoints = {};
 
 // 监听玩家死亡事件记录死亡点
+if (__YEST_FIRST_LOAD__) {
 mc.listen("onPlayerDie", function(pl, src) {
     let playerName = pl.realName;
     
@@ -2054,6 +2074,7 @@ mc.listen("onPlayerDie", function(pl, src) {
     
     pl.tell(info + lang.get("back.helpinfo"));
 });
+}
 
 let backcmd = mc.newCommand("back", "返回死亡点", PermType.Any)
 backcmd.overload([])
@@ -2304,7 +2325,7 @@ function AddHome(plname){
         fm.addLabel("当前坐标："+String(pl.pos))
         fm.addLabel("您的" + conf.get("Economy").CoinName + "：" + String(Economy.get(pl)))
         fm.addLabel("添加花费："+String(cost)+conf.get("Economy").CoinName)
-        fm.addInput((lang.get("home.add.input")))
+        fm.addInput((lang.get("home.add.input")), "home1", "home1", lang.get("home.add.input.tip") || "")
         pl.sendForm(fm,(pl,data)=>{
             if(data == null) return pl.runcmd("home")
             if(data[3] == "" || !data[3]) return pl.tell(info + lang.get("home.name.noinput"));
@@ -2417,7 +2438,7 @@ function showTpaPrefsGui(player) {
     fm.addSwitch("tpa开关", prefs.acceptTpaRequests !== false);
     fm.addDropdown("接收到tpa请求时", ["弹窗提醒", "文字提醒"],
         (prefs.promptType === "text" ? 1 : 0));
-    fm.addInput("tpa请求有效时间/秒", "秒", String(prefs.requestTimeout || tpaConfig.requestTimeout || 60));
+    fm.addInput("tpa请求有效时间/秒", "秒", String(prefs.requestTimeout || tpaConfig.requestTimeout || 60), lang.get("tpa.timeout.tip") || "");
     
     player.sendForm(fm, (pl, data) => {
         if (!data) return;
@@ -2439,11 +2460,11 @@ function showTpaManageForm(player) {
     const tpaConfig = conf.get("tpa") || {}; // <-- 添加这行
     let form = mc.newCustomForm();
     form.setTitle(lang.get("tpa.op.menu"));
-    form.addInput(lang.get("tpa.send.time"),lang.get("number"), "" + tpaConfig.requestTimeout);
+    form.addInput(lang.get("tpa.send.time"),lang.get("number"), "" + tpaConfig.requestTimeout, lang.get("tpa.send.time.tip") || "");
     form.addDropdown(lang.get("tpa.send.way"), [lang.get("tpa.send.form"), lang.get("tpa.send.bossbar")], (tpaConfig.promptType === "bossbar" ? 1 : 0));
     let isDelayOn = (tpaConfig.isDelayEnabled !== false);
     form.addSwitch(lang.get("tpa.Enabled.lag"), isDelayOn);
-    form.addInput(lang.get("tpa.max.lagnumber"), lang.get("number"), "" + (tpaConfig.maxDelay || 20));
+    form.addInput(lang.get("tpa.max.lagnumber"), lang.get("number"), "" + (tpaConfig.maxDelay || 20), lang.get("tpa.max.lagnumber.tip") || "");
     
     player.sendForm(form, (pl, data) => {
         if (!data) {
@@ -2801,6 +2822,7 @@ function clearTpaRequest(req) {
     }
 }
 
+if (__YEST_FIRST_LOAD__) {
 mc.listen("onLeft", (pl) => {
     let pname = pl.name;
     
@@ -2819,6 +2841,7 @@ mc.listen("onLeft", (pl) => {
         }
     }
 });
+}
 // ======================
 // RTP2252 2.2.9
 // ======================
@@ -2886,3 +2909,5 @@ function showInsufficientMoneyGui(pl, cost, returnCmd) {
         }
     });
 }
+// 标记 listener 已注册
+globalThis.__YEST_listeners_registered__ = true;
