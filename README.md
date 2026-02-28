@@ -17,7 +17,7 @@
 </div>
 
 ---
-> 一个简洁、实用的基础插件，适用于基岩版服务器。基于 LegacyScriptEngine (LSE) 的插件，并且可以迁移 TMEssential 的部分数据（如 home 和 warp 的数据）以及 [PMenu](https://www.minebbs.com/resources/pmenu.4277/) 的菜单数据（100%兼容！）导入配置文件/数据教程在文末。
+> 一个简洁、实用的基础插件，适用于基岩版服务器。基于 LegacyScriptEngine (LSE) 的插件，并且可以迁移 TMEssential 的部分数据（如 home 和 warp 的数据）以及 [PMenu](https://www.minebbs.com/resources/pmenu.4277/) 的菜单数据（100%兼容！）导入配置文件/数据教程在文末。\n
 > **如果您使用的是低于1.21.80的版本的服务端请使用（小于等于2.10.2）旧版本插件!**
 ## 📌 基本信息
 
