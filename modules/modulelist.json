@@ -1,8 +1,8 @@
 {
     "modules": [
         {
-            "path": "I18n.js",
-            "name": "I18n"
+            "path": "Cd.js",
+            "name": "Cd"
         },
         {
             "path": "AsyncUpdateChecker.js",
@@ -11,10 +11,6 @@
         {
             "path": "Bstats.js",
             "name": "Bstats"
-        },
-        {
-            "path": "Cd.js",
-            "name": "Cd"
         },
         {
             "path": "Cleanmgr.js",
@@ -27,6 +23,10 @@
         {
             "path": "Fcam.js",
             "name": "Fcam"
+        },
+        {
+            "path": "I18n.js",
+            "name": "I18n"
         },
         {
             "path": "Notice.js",

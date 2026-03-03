@@ -172,41 +172,19 @@ class AsyncUpdateChecker {
     static async checkMissingFiles() {
         const config = this.getConfig();
         const missingFiles = [];
-        const checkedUrls = new Set();
 
-        // ── 阶段一：检查 config.files ──────────────────────────
-        for (const file of config.files) {
-            checkedUrls.add(file.url);
-            const fullPath = pluginpath + file.path;
-            try {
-                if (!File.exists(fullPath)) {
-                    missingFiles.push(file);
-                    logger.warn(`文件缺失 [config]: ${file.path}`);
-                }
-            } catch (error) {
-                logger.error(`检查文件 ${file.path} 时出错: ${error.message}`);
+    for (const file of config.files) {
+        const fullPath = pluginpath + file.path;
+        try {
+            if (!File.exists(fullPath)) {
+                missingFiles.push(file);
+                logger.warn(`文件缺失 [config]: ${file.path}`);
             }
+        } catch (error) {
+            logger.error(`检查文件 ${file.path} 时出错: ${error.message}`);
         }
-
-        // ── 阶段二：检查 KNOWN_FILES 里 config 没有记录的新模块 ──
-        // 判断标准：url 不在 config.files 中 且 磁盘上也不存在
-        // 如果磁盘已存在则认为服主有意保留，跳过不下载
-        for (const knownFile of this.KNOWN_FILES) {
-            if (checkedUrls.has(knownFile.url)) continue; // 已在阶段一检查过
-
-            const fullPath = pluginpath + knownFile.path;
-            try {
-                if (!File.exists(fullPath)) {
-                    missingFiles.push(knownFile);
-                    randomGradientLog(`新增模块未找到，将自动下载: ${knownFile.path}`);
-                }
-                // 磁盘上已存在 → 服主自行管理，不干涉
-            } catch (error) {
-                logger.error(`检查新模块 ${knownFile.path} 时出错: ${error.message}`);
-            }
-        }
-
-        return missingFiles;
+    }
+    return missingFiles;
     }
 
     /**
