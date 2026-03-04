@@ -5,7 +5,7 @@
   "version": "2.10.3",
   "info": {
     "name": "YEssential",
-    "description": "YEssential | 基岩版多功能基础插件 | 拥有Home ，Warp ，Tpa ，Money ，Menu ，Cleanitem 等功能！",
+    "description": "YEssential基岩版多功能基础插件，拥有Home ，Warp ，Tpa ，Money ，Menu ，Cleanitem 等功能！",
     "tags": [
             "plugin",
             "Essential",
@@ -13,7 +13,7 @@
             "type:mod",
             "platform:levilamina"
         ],
-        "avatar_url": "https://zh.minecraft.wiki/images/thumb/Bookshelf_JE4_BE2.png/150px-Bookshelf_JE4_BE2.png?21f85"
+        "avatar_url": "https://zh.minecraft.wiki/images/thumb/Bookshelf_JE4_BE2.png/150px-Bookshelf_JE4_BE2.png"
   },
   "variants": [
     {
