@@ -20,7 +20,7 @@
       "selector": {},
       "assets": [
         {
-          "type": "zip"，
+          "type": "zip",
           "urls": [
             "https://{{tooth}}/releases/download/{{version}}/YEssential.zip"
           ],
