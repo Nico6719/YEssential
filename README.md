@@ -28,7 +28,10 @@
 - **支持迁移其他插件数据**：如 TMEssential 的 home 和 warp 数据可迁移到本插件等
 
 ---
-
+### 📦 安装方法
+- 方法1：使用lip安装，指令：lip install github.com/Nico6719/YEssential
+- 方法2：下载本插件解压到Plugins目录内即可
+---
 ## ⚙️ 插件亮点
 
 ### 功能
