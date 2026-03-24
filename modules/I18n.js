@@ -295,6 +295,8 @@ const defaultLangContent = {
     "crash.player.ok": "成功把玩家崩溃了！",
     "crash.player.client": "§c使玩家客户端崩溃",
     "carsh.function.list": "§c崩溃功能如下",
+    "crash.no.online": "§e当前没有其他在线玩家。",
+    "crash.target.offline": "§c目标玩家已离线，操作取消。",
     "stop.msg": "服务器关闭\n请稍后再来",
     "pls.input.notice": "请输入公告内容，（换行用 \\n）",
     "gamerule.KeepInventory.true": "死亡不掉落已启用",

@@ -44,11 +44,13 @@ function initPvpModule() {
         if (!pvpSettings || !pvpSettings.EnabledModule) return true;
 
         const protectionRange = Math.max(radius, 5);
-        const allPlayers      = mc.getOnlinePlayers();
 
-        const playersNearby = allPlayers.filter(player => {
+        // v2.10.5: 先按维度过滤，排除不同维度玩家，再做距离计算
+        const sameDimPlayers = mc.getOnlinePlayers().filter(p => p.pos && p.pos.dimid === pos.dimid);
+        if (sameDimPlayers.length < 2) return true;
+
+        const playersNearby = sameDimPlayers.filter(player => {
             const p = player.pos;
-            if (p.dimid !== pos.dimid) return false;
             const dist = Math.sqrt(
                 Math.pow(p.x - pos.x, 2) +
                 Math.pow(p.y - pos.y, 2) +

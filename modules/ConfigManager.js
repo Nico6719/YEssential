@@ -7,7 +7,7 @@ class ConfigManager {
         this.moduleListPath = `${this.pluginPath}/modules/modulelist.json`;
         // 默认配置
         this.configDefaults = {
-            "Version": 289,
+            "Version": 290,
             "Economy": {
                 "mode": "scoreboard",
                 "RankingModel" : "New",
@@ -98,8 +98,11 @@ class ConfigManager {
                 "EnabledModule": true,
                 "message" : ["Bedrock_Server", "Geyser"],
             },
+            "Crash": {
+                "EnabledModule": true ,
+                "LogCrashInfo": true
+            },
             "SimpleLogOutPut": false,
-            "CrashModuleEnabled": 0,
             "suicide": 0,
             "Back": 0,
             "Warp": 0,
@@ -122,7 +125,8 @@ class ConfigManager {
                     { "url": "modules/PVP.js",                   "path": "./modules/PVP.js" },
                     { "url": "modules/Redpacket.js",             "path": "./modules/Redpacket.js"},
                     { "url": "modules/Fcam.js",                  "path": "./modules/Fcam.js" },
-                    { "url": "modules/Notice.js",                "path": "./modules/Notice.js" }
+                    { "url": "modules/Notice.js",                "path": "./modules/Notice.js" },
+                     { "url": 'modules/Crash.js',                 "path": './modules/Crash.js' }
                 ],
                 "reloadDelay": 1000,
                 "timeout": 30000,
@@ -155,7 +159,7 @@ class ConfigManager {
             {
                 "path": "Cd.js",
                 "name": "Cd"
-            }
+            },
         ];
 
         // 废弃的配置项列表(需要删除的旧配置)
@@ -462,7 +466,7 @@ migrateTo288() {
         });
     }
 
-migrateTo289() {
+    migrateTo289() {
         randomGradientLog("更新配置版本到289");
 
         // 新增模块: I18n, PVP, Fcam, Notice
@@ -505,6 +509,43 @@ migrateTo289() {
         this.ensureI18nFirst();
     }
 
+migrateTo290() {
+    randomGradientLog("更新配置版本到290：迁移 Crash 配置...");
+
+    // 1. 读取旧的散落字段 (假设旧值 0 为 false, 1 为 true)
+    const oldCrashEnabled = conf.get("CrashModuleEnabled");
+    
+    // 2. 获取当前已有的 Crash 配置（如果有的话）
+    let currentCrash = conf.get("Crash") || {};
+
+    // 3. 构建新的 Crash 块
+    // 逻辑：如果旧字段存在且为 1，则开启新模块；否则沿用默认或已有配置
+    const crashConfig = {
+        EnabledModule: (oldCrashEnabled !== undefined) ? (oldCrashEnabled == 1) : (currentCrash.EnabledModule ?? true),
+        LogCrashInfo: currentCrash.LogCrashInfo ?? true
+    };
+
+    // 4. 写入新配置
+    conf.set("Crash", crashConfig);
+
+    // 5. 清理旧字段
+    if (oldCrashEnabled !== undefined) {
+        conf.delete("CrashModuleEnabled");
+        randomGradientLog("已迁移并删除旧配置项: CrashModuleEnabled");
+    }
+
+    // 6. 补充文件更新逻辑 (保持你原有的逻辑)
+    const newFiles = [{ "url": "modules/Crash.js", "path": "./modules/Crash.js" }];
+    let updateConfig = conf.get("Update") || {};
+    if (Array.isArray(updateConfig.files)) {
+        newFiles.forEach(newFile => {
+            if (!updateConfig.files.some(f => f.url === newFile.url)) {
+                updateConfig.files.push(newFile);
+            }
+        });
+        conf.set("Update", updateConfig);
+    }
+}
     /**
      * 确保 modulelist.json 中 I18n.js 排在第一位
      * 若不存在则自动插入

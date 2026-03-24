@@ -43,6 +43,10 @@
         {
             "path": "Redpacket.js",
             "name": "Redpacket"
+        },
+        {
+            "path": "Crash.js",
+            "name": "Crash"
         }
     ]
 }

@@ -2,7 +2,8 @@
 // v2.7.6 - 修复配置文件被重置问题；支持多触发物品；添加触发模式配置；优化事件绑定；移除冗余代码
 
 // ==================== 常量定义 ====================
-const info = "§l§6[-YEST-] §r";
+// 直接复用主文件已注册到 globalThis 的 info，避免 QuickJS 重复 const 声明报错
+const info = globalThis.info || "§l§6[-YEST-] §r";
 const MENU_CONFIG = {
     configPath: "./plugins/YEssential/Config/Cd/Config.json",
     menusPath: "./plugins/YEssential/data/Menus/",

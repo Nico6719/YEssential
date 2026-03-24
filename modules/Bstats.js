@@ -24,6 +24,8 @@ class BStatsImpl {
         this.cachedOsName = "Unknown";
         this.cachedOsArch = "Unknown";
         this.cachedOsVersion = "Unknown";
+        this.cachedRamTotal = "Unknown";
+        this.cachedRamAvail = "Unknown";
 
         this.platform = "bukkit"; // 保持为 "bukkit" 以便 bstats.org 接受
         this.baseUrl = `https://bstats.org/api/v2/data/${this.platform}`;
@@ -128,6 +130,31 @@ class BStatsImpl {
             updateVal("echo %OS%", "cachedOsName");
             updateVal("echo %PROCESSOR_ARCHITECTURE%", "cachedOsArch");
         }
+
+        // 4. 内存信息探测
+        // Linux: 读取 /proc/meminfo
+        try {
+            system.cmd("grep -E 'MemTotal|MemAvailable' /proc/meminfo", (exit, out) => {
+                if (exit === 0 && out) {
+                    const totalMatch = out.match(/MemTotal:\s+(\d+)/);
+                    const availMatch = out.match(/MemAvailable:\s+(\d+)/);
+                    if (totalMatch) this.cachedRamTotal = Math.round(parseInt(totalMatch[1]) / 1024) + " MB";
+                    if (availMatch) this.cachedRamAvail = Math.round(parseInt(availMatch[1]) / 1024) + " MB";
+                }
+            });
+        } catch(e) {}
+
+        // Windows: 用 wmic 查询（如果 Linux 命令没取到）
+        try {
+            system.cmd("wmic OS get TotalVisibleMemorySize,FreePhysicalMemory /value", (exit, out) => {
+                if (exit === 0 && out && this.cachedRamTotal === "Unknown") {
+                    const totalMatch = out.match(/TotalVisibleMemorySize=(\d+)/);
+                    const freeMatch  = out.match(/FreePhysicalMemory=(\d+)/);
+                    if (totalMatch) this.cachedRamTotal = Math.round(parseInt(totalMatch[1]) / 1024) + " MB";
+                    if (freeMatch)  this.cachedRamAvail = Math.round(parseInt(freeMatch[1])  / 1024) + " MB";
+                }
+            });
+        } catch(e) {}
     }
 
     generateUUID() {
@@ -167,6 +194,21 @@ class BStatsImpl {
         const finalOsArch = this.cachedOsArch !== "Unknown" ? this.cachedOsArch : "x86_64";
         const finalCoreCount = this.cachedCoreCount !== "Unknown" ? this.cachedCoreCount : "8";
         const finalOsVersion = this.cachedOsVersion !== "Unknown" ? this.cachedOsVersion : "10.0";
+        const finalRamTotal = this.cachedRamTotal !== "Unknown" ? this.cachedRamTotal : "Unknown";
+        const finalRamAvail = this.cachedRamAvail !== "Unknown" ? this.cachedRamAvail : "Unknown";
+
+        // 计算内存使用率（如果两项都有值）
+        let ramUsagePct = "Unknown";
+        if (finalRamTotal !== "Unknown" && finalRamAvail !== "Unknown") {
+            const total = parseInt(finalRamTotal);
+            const avail = parseInt(finalRamAvail);
+            const used  = total - avail;
+            ramUsagePct = Math.round((used / total) * 100) + "% (" + used + " MB / " + total + " MB)";
+        }
+
+        if (this.debugMode) {
+            randomGradientLog(`[Bstats] 内存信息 - 总计: ${finalRamTotal} | 可用: ${finalRamAvail} | 使用率: ${ramUsagePct}`);
+        }
 
         return {
             "serverUUID": this.serverUUID,
@@ -179,6 +221,9 @@ class BStatsImpl {
             "osArch": finalOsArch,
             "osVersion": finalOsVersion,
             "coreCount": parseInt(finalCoreCount) || 8,
+            "ramTotal": finalRamTotal,
+            "ramAvailable": finalRamAvail,
+            "ramUsage": ramUsagePct,
             "service": {
                 "id": this.pluginId,
                 "pluginVersion": this.pluginVersion, // <--- 修正点：将插件版本移到此处
