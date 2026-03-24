@@ -25,8 +25,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件 `;
-const version = "2.10.4";
-const regversion =[2,10,4];
+const version = "2.10.5";
+const regversion =[2,10,5];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
@@ -57,23 +57,26 @@ let lang = new JsonConfigFile(langFilePath, JSON.stringify({}));
 let conf = new JsonConfigFile(pluginpath +"/Config/config.json",JSON.stringify({}));
 
 // ── Economy 统一读取层（兼容旧config和新Economy块）─────────
-const economyCfg = {
-    get mode()       {
+// v2.10.5: 改为缓存模式，避免每次 getter 都重读配置文件
+// 调用 economyCfg.refresh() 可在 reload 后刷新缓存
+const economyCfg = (() => {
+    let _cache = null;
+    function _load() {
         const e = conf.get("Economy");
-        if (e) return e.mode || "scoreboard";
-        // 旧格式兼容：直接读conf，不能调自身
-        return conf.get("LLMoney") == 1 ? "llmoney" : "scoreboard";
-    },
-    get isLLMoney()  { return this.mode === "llmoney"; },
-    get scoreboard() {
-        const e = conf.get("Economy");
-        return (e ? e.Scoreboard : conf.get("Scoreboard")) || "money";
-    },
-    get coinName()   {
-        const e = conf.get("Economy");
-        return (e ? e.CoinName : conf.get("CoinName")) || lang.get("CoinName") || "金币";
+        return {
+            mode:       e ? (e.mode || "scoreboard") : (conf.get("LLMoney") == 1 ? "llmoney" : "scoreboard"),
+            scoreboard: (e ? e.Scoreboard : conf.get("Scoreboard")) || "money",
+            coinName:   (e ? e.CoinName   : conf.get("CoinName"))   || lang.get("CoinName") || "金币",
+        };
     }
-};
+    return {
+        refresh()        { _cache = _load(); },
+        get mode()       { return (_cache || (_cache = _load())).mode; },
+        get isLLMoney()  { return this.mode === "llmoney"; },
+        get scoreboard() { return (_cache || (_cache = _load())).scoreboard; },
+        get coinName()   { return (_cache || (_cache = _load())).coinName; },
+    };
+})();
 
 let modulelist = new JsonConfigFile(pluginpath +"/modules/modulelist.json",JSON.stringify({
   "modules": [
@@ -120,36 +123,32 @@ let tpacfg = new JsonConfigFile(datapath +"/TpaSettingsData/tpaAutoRejectConfig.
 
 // 红包数据及红包系统逻辑已迁移至 modules/Redpacket.js
     
-// 异步文件操作工具类
+// 文件操作工具类
+// v2.10.5: 移除了在 QuickJS 单线程环境下无实际异步效果的 Promise 包装，改为直接同步调用
 class AsyncFileManager {
-    static async readFile(path, defaultContent = '{}') {
-        return new Promise((resolve, reject) => {
-            try {
-                if (!file.exists(path)) {
-                    file.writeTo(path, defaultContent);
-                    resolve(JSON.parse(defaultContent));
-                } else {
-                    const content = file.readFrom(path);
-                    resolve(JSON.parse(content || defaultContent));
-                }
-            } catch (e) {
-                logger.error(`读取文件失败: ${path}`, e);
-                resolve(JSON.parse(defaultContent));
+    static readFile(path, defaultContent = '{}') {
+        try {
+            if (!file.exists(path)) {
+                file.writeTo(path, defaultContent);
+                return JSON.parse(defaultContent);
             }
-        });
+            const content = file.readFrom(path);
+            return JSON.parse(content || defaultContent);
+        } catch (e) {
+            logger.error(`读取文件失败: ${path}`, e);
+            return JSON.parse(defaultContent);
+        }
     }
 
-    static async writeFile(path, data) {
-        return new Promise((resolve, reject) => {
-            try {
-                const content = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
-                file.writeTo(path, content);
-                resolve(true);
-            } catch (e) {
-                logger.error(`写入文件失败: ${path}`, e);
-                reject(e);
-            }
-        });
+    static writeFile(path, data) {
+        try {
+            const content = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+            file.writeTo(path, content);
+            return true;
+        } catch (e) {
+            logger.error(`写入文件失败: ${path}`, e);
+            return false;
+        }
     }
 }
 // ── 全局随机颜色对（Logo、Tip、logInfo 共用）────────────────
@@ -628,9 +627,7 @@ function updateSinglePlayerCache(pl) {
         }
     }
 }
-if (__YEST_FIRST_LOAD__) {
-mc.listen("onJoin", (pl) => updateSinglePlayerCache(pl));
-}
+
 setInterval(() => {
     mc.getOnlinePlayers().forEach(pl => updateSinglePlayerCache(pl));
 }, 30000);
@@ -798,41 +795,7 @@ function displayMoneyInfo(pl, target, isSelf = true) {
         return `${prefix}${conf.get("Economy").CoinName}为: ${money}`;
     }
 }
-if (__YEST_FIRST_LOAD__) {
-mc.listen("onJoin",(pl)=>{
-   //if (conf.get("wh").status == 1) return;
-   try {
-        // 初始化玩家数据
-        homedata.init(pl.realName, {});
-        rtpdata.init(pl.realName, {});
-        MoneyHistory.init(pl.realName, {});
-        // 初始化金币
-        if (economyCfg.isLLMoney) {
-            let currentMoney = pl.getMoney();
-            if (currentMoney === null || currentMoney === undefined) {
-                pl.setMoney(0);
-            }
-        } else {
-            let score = pl.getScore(economyCfg.scoreboard);
-            if (!score) pl.setScore(economyCfg.scoreboard, 0);
-        }
-        if (pl.isOP()) {
-            return;
-        }
-        const xuid = pl.realName;
-        if (pvpConfig.get(xuid) === undefined) {
-            pvpConfig.set(xuid, false);
-        }
-        let plname = pl.realName
-        pl.setGameMode(0)
-        setTimeout(() => {
-            mc.runcmdEx(`tp ${plname} ${plname + "_sp"}`)
-        }, 1000);
-    } catch (error) {
-        logger.error(`玩家 ${pl.realName} 加入事件处理失败: ${error.message}`);
-    }
-});
-}
+
 if (__YEST_FIRST_LOAD__) {
 mc.listen("onConsoleCmd",(cmd)=>{
     if(cmd.toLowerCase() != "stop" || lang.get("stop.msg") == 0 ) return
@@ -1447,13 +1410,42 @@ const EconomyNotify = {
 };
 globalThis.EconomyNotify = EconomyNotify;
 
-// --- 玩家加入事件监听 ---
+// --- 玩家加入事件监听（v2.10.5：三处分散注册合并为一处）---
 if (__YEST_FIRST_LOAD__) {
-mc.listen("onJoin", (player) => {
-    // 应用离线货币操作
-    OfflineMoneyCache.apply(player);
-    // 投递积压的经济通知
-    EconomyNotify.apply(player);
+mc.listen("onJoin", (pl) => {
+    try {
+        // ── 1. 排行榜货币缓存 ──
+        updateSinglePlayerCache(pl);
+
+        // ── 2. 初始化玩家数据 ──
+        homedata.init(pl.realName, {});
+        rtpdata.init(pl.realName, {});
+        MoneyHistory.init(pl.realName, {});
+
+        // 初始化金币
+        if (economyCfg.isLLMoney) {
+            const currentMoney = pl.getMoney();
+            if (currentMoney === null || currentMoney === undefined) pl.setMoney(0);
+        } else {
+            const score = pl.getScore(economyCfg.scoreboard);
+            if (!score) pl.setScore(economyCfg.scoreboard, 0);
+        }
+
+        if (!pl.isOP()) {
+            const xuid = pl.realName;
+            if (pvpConfig.get(xuid) === undefined) pvpConfig.set(xuid, false);
+            const plname = pl.realName;
+            pl.setGameMode(0);
+            setTimeout(() => { mc.runcmdEx(`tp ${plname} ${plname + "_sp"}`); }, 1000);
+        }
+
+        // ── 3. 离线货币 & 经济通知投递 ──
+        OfflineMoneyCache.apply(pl);
+        EconomyNotify.apply(pl);
+
+    } catch (error) {
+        logger.error(`玩家 ${pl.realName} 加入事件处理失败: ${error.message}`);
+    }
 });
 }
 const Logger = {
@@ -2629,39 +2621,7 @@ mc.regPlayerCmd("tpayes", "§a同意传送请求", (pl) => {
 mc.regPlayerCmd("tpano", "§c拒绝传送请求", (pl) => {
     denyTpaRequest(pl.name);
 });
-mc.regPlayerCmd("crash", "§c使玩家客户端崩溃", (player,args) => {
-    if (!conf.get("CrashModuleEnabled")) {
-        player.tell(info + lang.get("module.no.Enabled"));
-        return;
-    }
-    if (!player || !player.isOP()) {
-        output.error(info + lang.get("player.not.op"));
-        return;
-    }
-    let crashplayer = mc.newCustomForm();
-    crashplayer.setTitle(lang.get("crash.player.client"));
-    crashplayer.addLabel(lang.get("carsh.function.list"));
-    let players = []
-    let playersname = []
-    let playerss = mc.getOnlinePlayers();
-    for(var i = 0;i < playerss.length;i++) {
-        let pl = playerss[i];
-        players[i] = pl;
-        playersname[i] = pl.name;
-    }
-    crashplayer.addDropdown("请选择玩家:", playersname);
-    player.sendForm(crashplayer,function(pl,crashplayerdata) {
-        if(crashplayerdata == null) {
-            pl.tell(info+lang.get("gui.exit"));
-        }else{
-            let player = crashplayerdata[1];
-            let playername = playersname[player];
-            let play = players[player];
-            play.crash();
-            pl.tell(info+lang.get("crash.player.ok"));
-        }
-    })
-},1);
+// v2.10.5: /crash 命令已迁移至 modules/Crash.js
 
 function acceptTpaRequest(targetName) {
     let cost = conf.get("tpa").cost;
