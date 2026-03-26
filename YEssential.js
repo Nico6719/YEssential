@@ -25,8 +25,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件 `;
-const version = "2.10.5";
-const regversion =[2,10,5];
+const version = "2.10.6";
+const regversion =[2,10,6];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
@@ -41,7 +41,7 @@ const __YEST_FIRST_LOAD__ = !globalThis.__YEST_listeners_registered__;
 
 ll.registerPlugin(NAME, PluginInfo,regversion, {
     Author: "Nico6719",
-    License: "GPL-3.0",
+    License: "AGPL-3.0",
     QQ : "1584573887",
 });
 
