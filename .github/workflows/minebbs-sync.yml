@@ -1,0 +1,32 @@
+name: Auto Sync to MineBBS
+
+on:
+  release:
+    types: [published] # 当你点击 "Publish Release" 时触发
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install axios cheerio form-data qs
+
+      - name: Run Sync Script
+        env:
+          # 以下变量请在项目 Settings -> Secrets 中配置
+          MINEBBS_COOKIE: ${{ secrets.MINEBBS_COOKIE }}
+          # 以下变量可根据实际情况修改
+          MINEBBS_TARGET_URL: 'https://www.minebbs.com/resources/sparkbridge-bot-qq.15586/post-update'
+          MINEBBS_FILE_PATH: './dist/plugin.zip' # ！！请修改为你打包出的文件实际路径
+          MINEBBS_VERSION: ${{ github.event.release.tag_name }}
+          MINEBBS_UPDATE_TITLE: 'GitHub 同步: ${{ github.event.release.name }}'
+          MINEBBS_CHANGE_LOG: ${{ github.event.release.body }}
+        run: node upload.js
