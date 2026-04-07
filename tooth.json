@@ -9,14 +9,12 @@
     "tags": [
       "plugin",
       "essential",
-      "lse",
-      "platform:levilamina"
+      "lse"
     ],
     "avatar_url": "https://zh.minecraft.wiki/images/thumb/Bookshelf_JE4_BE2.png/150px-Bookshelf_JE4_BE2.png"
   },
   "variants": [
     {
-      "label": "winx64",
       "platform": "win-x64",
       "assets": [
         {
@@ -35,7 +33,7 @@
       ]
     },
     {
-      "label": "linuxx64",
+      "label": "linux",
       "platform": "linux-x64",
       "assets": [
         {
