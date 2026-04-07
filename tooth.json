@@ -2,22 +2,24 @@
   "format_version": 3,
   "format_uuid": "289f771f-2c9a-4d73-9f3f-8492495a924d",
   "tooth": "github.com/Nico6719/YEssential",
-  "version": "2.10.8",
+  "version": "v2.10.8",
   "info": {
     "name": "YEssential",
-    "description": "YEssential基岩版多功能基础插件，拥有Home ，Warp ，Tpa ，Money ，Menu ，Cleanitem 等功能！",
+    "description": "YEssential基岩版多功能基础插件，拥有Home, Warp, Tpa, Money, Menu, Cleanitem等功能！",
     "tags": [
-            "plugin",
-            "Essential",
-            "lse",
-            "type:mod",
-            "platform:levilamina"
-        ],
-        "avatar_url": "https://zh.minecraft.wiki/images/thumb/Bookshelf_JE4_BE2.png/150px-Bookshelf_JE4_BE2.png"
+      "plugin",
+      "Essential",
+      "lse",
+      "type:mod",
+      "platform:levilamina"
+    ],
+    "avatar_url": "https://zh.minecraft.wiki/images/thumb/Bookshelf_JE4_BE2.png/150px-Bookshelf_JE4_BE2.png"
   },
   "variants": [
     {
-      "selector": {},
+      "selector": {
+        "platform": ["windows", "linux"]
+      },
       "assets": [
         {
           "type": "zip",
