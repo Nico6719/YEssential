@@ -47,6 +47,10 @@
         {
             "path": "Crash.js",
             "name": "Crash"
+        },
+        {
+            "path": "Sign.js",
+            "name": "Sign"
         }
     ]
 }
