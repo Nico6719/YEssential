@@ -8,7 +8,7 @@
        ╚═╝   ╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚═╝  ╚═╝╚══════╝
     
                           Produced by Nico6719 and PHEyeji
-                 This plugin is distributed under the GPLv3 License
+                 This plugin is distributed under the AGPLv3 License
 
 该插件由Nico6719,PHEyeji联合创作
 未经允许禁止擅自修改或者发售
@@ -19,18 +19,17 @@
 i18n 默认内容已完整迁移至 modules/I18n.js
 ----------------------------------*/
 // LiteLoader-AIDS automatic generated
-/// <reference path="c:\Users\Admin\ku/dts/helperlib/src/index.d.ts"/> 
+/// <reference path="c:\Users\Admin/dts/helperlib/src/index.d.ts"/> 
 const YEST_LangDir = "./plugins/YEssential/lang/";
 const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件 `;
-const version = "2.10.7";
-const regversion =[2,10,7];
+const version = "2.10.9";
+const regversion =[2,10,9];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
-
 const langFilePath = YEST_LangDir + "zh_cn.json";
 
 // ── Reload Guard ──────────────────────────────────────────────
@@ -381,15 +380,14 @@ Object.assign(globalThis, {
 })();
 function printGradientLogo() {
     const logo = [
-        "    __   __ ______   _____   _____  ______  _   _  _______  _____          _      ",
-        "    \\ \\ / /|  ____| / ____| / ____||  ____|| \\ | ||__   __||_   _|   /\\   | |     ",
-        "     \\ V / | |__   | (___  | (___  | |__   |  \\| |   | |     | |    /  \\  | |     ",
-        "      | |  |  __|   \\___ \\  \\___ \\ |  __|  | . ` |   | |     | |   / /\\ \\ | |     ",
-        "      | |  | |____  ____) | ____) || |____ | |\\  |   | |    _| |_ / ____ \\| |____ ",
-        "      |_|  |______||_____/ |_____/ |______||_| \\_|   |_|   |_____|/_/  \\_\\|______|",
-        " "
+    " __   _______ ____ ____  _____ _   _ _____ ___    _    _     ",
+    " \\ \\ / / ____/ ___/ ___|| ____| \\ | |_   _|_ _|  / \\  | |    ",
+    "  \\ V /|  _| \\___ \\___ \\|  _| |  \\| | | |  | |  / _ \\ | |    ",
+    "   | | | |___ ___) |__) | |___| |\\  | | |  | | / ___ \\| |___ ",
+    "   |_| |_____|____/____/|_____|_| \\_| |_| |___/_/   \\_\\_____|",                                                      
     ];
 
+                                               
     const reset = '\x1b[0m';
 
     // 单行渐变（版本信息 / Tip）—— 与 Logo 共用同一颜色对
