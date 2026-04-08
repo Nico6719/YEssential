@@ -887,3 +887,4 @@ if (typeof module !== "undefined" && module.exports) {
         MenuCommandHandler, MenuAdminHandler, GetClockCommandHandler
     };
 }
+setTimeout(() => { MenuEventListeners.register(); }, 2000);
