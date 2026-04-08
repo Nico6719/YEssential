@@ -55,10 +55,12 @@
 |MoreLangSupport |	多语言支持。	 |✅|
 |Notice |	自定义公告，支持颜色符号，\n换行，支持游戏内在线编辑！	 |✅|
 |FixExpLag	 |防止经验球卡服。 |	✅|
+|CD	 |菜单功能 |	✅|
 |Crash	 |崩溃玩家客户端（慎用！）。	 |✅|
 |RedPacket |	玩家可以自行发红包。	 |✅|
 |ServersTP |	一键传送到其他服务器。 |	✅|
-|PVP	PVP 功能， |防止玩家恶意攻击。	 |✅|
+|Sign |	每日签到系统 |	✅|
+|PVP	 |PVP自由开关功能，防止玩家恶意攻击。	 |✅|
 |Keepinventory	 |开服自动开启死亡不掉落。 |	✅|
 |AutoUpdate	 |自动更新插件本体并重载。	 |✅|
 |Bstats统计	 |统计BDS信息和在线人数（可在Config内关闭） |	✅|
