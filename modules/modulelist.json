@@ -1,10 +1,6 @@
 {
     "modules": [
         {
-            "path": "Cd.js",
-            "name": "Cd"
-        },
-        {
             "path": "AsyncUpdateChecker.js",
             "name": "AsyncUpdateChecker"
         },
@@ -13,12 +9,20 @@
             "name": "Bstats"
         },
         {
+            "path": "Cd.js",
+            "name": "Cd"
+        },
+        {
             "path": "Cleanmgr.js",
             "name": "Cleanmgr"
         },
         {
             "path": "ConfigManager.js",
             "name": "ConfigManager"
+        },
+        {
+            "path": "Crash.js",
+            "name": "Crash"
         },
         {
             "path": "Fcam.js",
@@ -43,10 +47,6 @@
         {
             "path": "Redpacket.js",
             "name": "Redpacket"
-        },
-        {
-            "path": "Crash.js",
-            "name": "Crash"
         },
         {
             "path": "Sign.js",

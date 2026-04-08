@@ -91,6 +91,7 @@ const defaultLangContent = {
     "money.op.remove": "减少玩家的",
     "money.op.set": "设置玩家的",
     "money.op.look": "查看玩家的",
+    "money.callback.lastgui":"返回经济系统主菜单",
 
     // 离线转账 - 玩家端按钮
     "money.offline.transfer.btn": "转账给离线玩家",
@@ -357,7 +358,7 @@ const defaultLangContent = {
     "rp.list.title":   "§l§6可领取红包",
     "rp.list.content": "§7点击查看详情并领取",
     "rp.list.button":  "§l${type} §e${sender}的红包\n§7金额: §f${amount} §7剩余: §a${remaining}/${count}\n§7过期: §f${expire}秒",
-    "rp.list.close":   "§c关闭",
+    "rp.list.close":   "§c关闭菜单",
 
     "rp.history.title":          "§l§6红包历史记录",
     "rp.history.content":        "§7点击查看红包详情",
