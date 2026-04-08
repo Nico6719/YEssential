@@ -14,6 +14,8 @@ const MENU_CONFIG = {
 
 // ==================== 全局状态 ====================
 const clickCooldown = {};
+// 同步锁：同一 tick 内阻止重复触发（onUseItem 与 onUseItemOn 会在同一毫秒同时派发）
+const menuPendingThisTick = new Set();
 
 // ==================== 配置管理器 ====================
 class MenuConfigManager {
@@ -373,16 +375,16 @@ class GetClockCommandHandler {
             var clockItem = mc.newItem("minecraft:clock", 1);
             if (!clockItem) { player.tell(info + "§c获取钟表失败"); return; }
 
-            // 用文档确认的 hasRoomFor 检查背包（Container API）
+            // 背包满时掉落到玩家脚下，否则直接给予
             if (!player.getInventory().hasRoomFor(clockItem)) {
-                player.tell(info + "§c背包已满，请清理背包后重试");
-                return;
+                mc.spawnItem(clockItem, player.pos);
+                player.tell(info + "§e已获得钟表（背包已满，已掉落在你脚下），此物品每人仅限领取一次");
+            } else {
+                player.giveItem(clockItem);
+                player.refreshItems();
+                player.tell(info + "§a已获得钟表，此物品每人仅限领取一次");
             }
-            // 用文档确认的 giveItem 给予物品（Player API）
-            player.giveItem(clockItem);
-            player.refreshItems();
             GetClockCommandHandler.markClaimed(player.xuid);
-            player.tell(info + "§a已获得钟表，此物品每人仅限领取一次");
         });
         cmd.setup();
     }
@@ -811,9 +813,8 @@ class MenuEventListeners {
     static register() {
         this.initializeResources();
         const mode = menuConfig.getItemsTriggerMode();
-        if (mode === 1)      { this.onUseItem(); }
-        else if (mode === 2) { this.onUseItemOn(); }
-        else                 { this.onUseItem(); this.onUseItemOn(); }
+        if (mode === 1)      { this.onUseItemOn(); }
+        else  { this.onUseItemOn(); }
         this.onJoin();
         this.onLeft();
     }
@@ -827,36 +828,44 @@ class MenuEventListeners {
             MenuDataManager.setMenu("main", MenuDataManager.getDefaultMainMenu());
     }
 
-    static onUseItem() {
-        mc.listen("onUseItem", (player, item) => {
-            const items = menuConfig.getItems();
-            if (items.includes(item.type) && !clickCooldown[player.xuid]) {
-                clickCooldown[player.xuid] = true;
-                MenuPlayerHandler.showMenu(player, menuConfig.getMain());
-                setTimeout(() => { clickCooldown[player.xuid] = false; }, 1000);
-            }
-        });
-    }
-
     static onUseItemOn() {
         mc.listen("onUseItemOn", (player, item, block) => {
             const items = menuConfig.getItems();
             if (!items.includes(item.type)) return;
-            var device = player.getDevice();
-            if (!MENU_CONFIG.mobileOS.includes(device.os) &&
-                !["Windows10", "Win32"].includes(device.os)) return;
+            const device = player.getDevice();
+            if (!MENU_CONFIG.mobileOS.includes(device.os)) return;
             if (block.hasContainer()) return;
-            if (!clickCooldown[player.xuid]) {
-                clickCooldown[player.xuid] = true;
-                MenuPlayerHandler.showMenu(player, menuConfig.getMain());
-                setTimeout(() => { clickCooldown[player.xuid] = false; }, 1000);
-            }
+            if (clickCooldown[player.xuid]) return;
+            if (menuPendingThisTick.has(player.xuid)) return;
+            menuPendingThisTick.add(player.xuid);
+            clickCooldown[player.xuid] = true;
+            MenuPlayerHandler.showMenu(player, menuConfig.getMain());
+            setTimeout(() => {
+                clickCooldown[player.xuid] = false;
+                menuPendingThisTick.delete(player.xuid);
+            }, 1000);
         });
     }
 
     static onJoin() {
         mc.listen("onJoin", (player) => {
             MenuEconomyManager.add(player, 0);
+
+            // 自动发钟：首次进服限领一次，背包满则掉落地上
+            if (!GetClockCommandHandler.hasClaimed(player.xuid)) {
+                var clockItem = mc.newItem("minecraft:clock", 1);
+                if (clockItem) {
+                    if (!player.getInventory().hasRoomFor(clockItem)) {
+                        mc.spawnItem(clockItem, player.pos);
+                        player.tell(info + "§e首次进服赠品：钟表已掉落在你脚下（背包已满），此物品每人仅限一次");
+                    } else {
+                        player.giveItem(clockItem);
+                        player.refreshItems();
+                        player.tell(info + "§a首次进服赠品：已获得钟表，此物品每人仅限一次");
+                    }
+                    GetClockCommandHandler.markClaimed(player.xuid);
+                }
+            }
         });
     }
 
@@ -878,4 +887,3 @@ if (typeof module !== "undefined" && module.exports) {
         MenuCommandHandler, MenuAdminHandler, GetClockCommandHandler
     };
 }
-setTimeout(() => { MenuEventListeners.register(); }, 2000);

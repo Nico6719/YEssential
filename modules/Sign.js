@@ -1,721 +1,897 @@
-/*
- * Sign.js - 签到系统模块
- * YEssential 子模块
- */
+// LiteLoader-AIDS automatic generated
+// v2.8.0 - 移除VIP功能；修复孤儿按钮泄漏；修复other-settings表单索引bug；
+//          修复冷却内存泄漏；修复文件名校验过严；移除死代码；
+//          修正getclock使用正确的giveItem API
 
-module.exports = {
-    init: function () {
-        initSignModule();
-    }
+// ==================== 常量定义 ====================
+const info = globalThis.info || "§l§6[-YEST-] §r";
+const MENU_CONFIG = {
+    configPath: "./plugins/YEssential/Config/Cd/Config.json",
+    menusPath:  "./plugins/YEssential/data/Menus/",
+    prefix:     "§e§l[菜单] §r",
+    mobileOS:   ["Android", "iOS"]
 };
 
-function initSignModule() {
+// ==================== 全局状态 ====================
+const clickCooldown = {};
 
-    // ── 全局依赖 ──────────────────────────────────────────────
-    var _info    = globalThis.info    || "§l§6[-YEST-] §r";
-    var _lang    = globalThis.lang;
-    var _Economy = globalThis.Economy;
-    var _eco     = globalThis.economyCfg;
-
-    function L(key, fallback) {
-        try {
-            var v = _lang && _lang.get(key);
-            return (v && v !== key) ? v : (fallback || key);
-        } catch (e) { return fallback || key; }
+// ==================== 配置管理器 ====================
+class MenuConfigManager {
+    constructor() {
+        this.ensureDirectory();
+        this.configFile = new JsonConfigFile(MENU_CONFIG.configPath, "{}");
     }
 
-    // ── 路径常量 ──────────────────────────────────────────────
-    var SIGN_DIR        = "./plugins/YEssential/data/Sign/";
-    var CONFIG_PATH     = "./plugins/YEssential/config/Sign/config.json";
-    var SIGNDATA_PATH   = "./plugins/YEssential/data/Sign/signdata.json";
-    var REWARDDATA_PATH = "./plugins/YEssential/data/Sign/reward.json";
-
-    var DEFAULT_REWARD_ITEMS = JSON.stringify([
-        "{\"Count\":1b,\"Damage\":0s,\"Name\":\"minecraft:cooked_chicken\",\"WasPickedUp\":0b}",
-        "{\"Count\":1b,\"Damage\":0s,\"Name\":\"minecraft:bread\",\"WasPickedUp\":0b}",
-        "{\"Count\":1b,\"Damage\":0s,\"Name\":\"minecraft:apple\",\"WasPickedUp\":0b}",
-        "{\"Count\":1b,\"Damage\":0s,\"Name\":\"minecraft:enchanted_golden_apple\",\"WasPickedUp\":0b}"
-    ]);
-
-    var DEFAULT_CONFIG = JSON.stringify({
-        version: "1.0.0",
-        sign: { switch: true, gui_arrange: 3 },
-        random_money: { min_money: 1000, max_money: 10000 },
-        random_exp:   { min_exp: 100,    max_exp:   1000  },
-        reward: ["item_1","item_2","money_1000","money_1000","random_money","item_1","money_1000"],
-        addition: { "3":"item_1","5":"money_500","7":"item_2","15":"item_2","30":"money_2000" }
-    });
-
-    // ── 确保目录存在 ──────────────────────────────────────────
-    if (!File.exists(SIGN_DIR)) File.createDir(SIGN_DIR);
-
-    // ── 数据文件 ──────────────────────────────────────────────
-    var config_data  = new JsonConfigFile(CONFIG_PATH,     DEFAULT_CONFIG);
-    var sign_data    = new JsonConfigFile(SIGNDATA_PATH,   "{}");
-    var reward_data  = new JsonConfigFile(REWARDDATA_PATH, DEFAULT_REWARD_ITEMS);
-
-    // ════════════════════════════════════════════════════════════
-    // 经济封装
-    // ════════════════════════════════════════════════════════════
-    var Money = {
-        add: function (player, amount) {
-            if (_Economy) return _Economy.execute(player, "add", amount);
-            var sb = _eco ? _eco.scoreboard : "money";
-            return player.addScore(sb, Number(amount));
-        },
-        coinName: function () {
-            return (_eco && _eco.coinName) ? _eco.coinName : "金币";
-        }
-    };
-
-    // ════════════════════════════════════════════════════════════
-    // 配置管理
-    // ════════════════════════════════════════════════════════════
-    var Config = {
-        get: function (key) {
-            config_data.reload();
-            if (key == null) return JSON.parse(config_data.read());
-            return config_data.get(key);
-        },
-        set: function (obj) {
-            var keys = Object.keys(obj);
-            for (var i = 0; i < keys.length; i++) {
-                config_data.set(keys[i], obj[keys[i]]);
-            }
-        },
-        getSign:        function () { return this.get("sign"); },
-        getRandomMoney: function () { return this.get("random_money"); },
-        getRandomExp:   function () { return this.get("random_exp"); },
-        getReward:      function () { return this.get("reward"); },
-        getAddition:    function () { return this.get("addition"); }
-    };
-
-    // ════════════════════════════════════════════════════════════
-    // 物品中文名映射（服务端语言为英文时作为兜底）
-    // ════════════════════════════════════════════════════════════
-    var ITEM_ZH = {
-        "minecraft:apple":                    "苹果",
-        "minecraft:golden_apple":             "金苹果",
-        "minecraft:enchanted_golden_apple":   "附魔金苹果",
-        "minecraft:bread":                    "面包",
-        "minecraft:cooked_chicken":           "熟鸡肉",
-        "minecraft:cooked_beef":              "牛排",
-        "minecraft:cooked_porkchop":          "熟猪排",
-        "minecraft:cooked_mutton":            "熟羊肉",
-        "minecraft:cooked_rabbit":            "熟兔肉",
-        "minecraft:cooked_cod":               "熟鳕鱼",
-        "minecraft:cooked_salmon":            "熟鲑鱼",
-        "minecraft:cookie":                   "曲奇",
-        "minecraft:cake":                     "蛋糕",
-        "minecraft:pumpkin_pie":              "南瓜派",
-        "minecraft:melon":                    "西瓜片",
-        "minecraft:carrot":                   "胡萝卜",
-        "minecraft:golden_carrot":            "金胡萝卜",
-        "minecraft:potato":                   "土豆",
-        "minecraft:baked_potato":             "烤土豆",
-        "minecraft:beetroot":                 "甜菜根",
-        "minecraft:diamond":                  "钻石",
-        "minecraft:emerald":                  "绿宝石",
-        "minecraft:gold_ingot":               "金锭",
-        "minecraft:iron_ingot":               "铁锭",
-        "minecraft:netherite_ingot":          "下界合金锭",
-        "minecraft:coal":                     "煤炭",
-        "minecraft:lapis_lazuli":             "青金石",
-        "minecraft:quartz":                   "下界石英",
-        "minecraft:amethyst_shard":           "紫水晶碎片",
-        "minecraft:experience_bottle":        "附魔之瓶",
-        "minecraft:book":                     "书",
-        "minecraft:enchanted_book":           "附魔书",
-        "minecraft:name_tag":                 "命名牌",
-        "minecraft:saddle":                   "鞍",
-        "minecraft:elytra":                   "鞘翅",
-        "minecraft:totem_of_undying":         "不死图腾",
-        "minecraft:ender_pearl":              "末影珍珠",
-        "minecraft:blaze_rod":                "烈焰棒",
-        "minecraft:ghast_tear":               "恶魂之泪",
-        "minecraft:nether_star":              "下界之星",
-        "minecraft:heart_of_the_sea":         "海洋之心",
-        "minecraft:shulker_shell":            "潜影贝壳",
-        "minecraft:prismarine_crystals":      "海晶碎片",
-        "minecraft:trident":                  "三叉戟",
-        "minecraft:arrow":                    "箭",
-        "minecraft:spectral_arrow":           "光灵箭",
-        "minecraft:tipped_arrow":             "药箭",
-        "minecraft:snowball":                 "雪球",
-        "minecraft:egg":                      "鸡蛋",
-        "minecraft:gunpowder":                "火药",
-        "minecraft:string":                   "线",
-        "minecraft:feather":                  "羽毛",
-        "minecraft:leather":                  "皮革",
-        "minecraft:wool":                     "羊毛",
-        "minecraft:glass":                    "玻璃",
-        "minecraft:torch":                    "火把",
-        "minecraft:lantern":                  "灯笼",
-        "minecraft:soul_lantern":             "灵魂灯笼",
-        "minecraft:flower_pot":               "花盆",
-        "minecraft:painting":                 "画",
-        "minecraft:item_frame":               "物品展示框"
-    };
-
-    function itemZhName(item) {
-        // 优先用映射表，否则用游戏返回的名字
-        var id = item.type; // e.g. "minecraft:cooked_chicken"
-        return ITEM_ZH[id] || item.name;
+    ensureDirectory() {
+        const dataDir  = "./plugins/YEssential/data/";
+        const menusDir = MENU_CONFIG.menusPath;
+        if (!File.exists(dataDir))  File.createDir(dataDir);
+        if (!File.exists(menusDir)) File.createDir(menusDir);
     }
 
-
-    var Reward = {
-        getItems: function () {
-            reward_data.reload();
-            return JSON.parse(reward_data.read());
-        },
-        randomMoney: function () {
-            var cfg = Config.getRandomMoney();
-            var min = cfg.min_money || 1000;
-            var max = cfg.max_money || 10000;
-            return Math.floor(Math.random() * (max - min + 1)) + min;
-        },
-        randomExp: function () {
-            var cfg = Config.getRandomExp();
-            var min = cfg.min_exp || 100;
-            var max = cfg.max_exp || 1000;
-            return Math.floor(Math.random() * (max - min + 1)) + min;
-        },
-        // 解析奖励标识符 => { name, reward, type }
-        parse: function (str) {
-            str = (str || "").trim();
-            var coin = Money.coinName();
-            if (str === "random_money") {
-                var m = this.randomMoney();
-                return { name: "随机" + coin + "x" + m, reward: m, type: "money" };
-            }
-            if (str === "random_item") {
-                var items = this.getItems();
-                var idx   = Math.floor(Math.random() * items.length);
-                var item  = mc.newItem(NBT.parseSNBT(items[idx]));
-                return { name: "随机物品:" + itemZhName(item) + "x" + item.count, reward: item, type: "item" };
-            }
-            if (str === "random_exp") {
-                var e = this.randomExp();
-                return { name: "随机经验" };
-            }
-            var parts = str.split("_");
-            var type  = parts[0];
-            var sub   = parts.slice(1).join("_");
-            if (type === "item") {
-                var iList = this.getItems();
-                var iIdx  = Number(sub) - 1;
-                if (iIdx < 0 || iIdx >= iList.length)
-                    return { name: "无奖励", reward: 0, type: "none" };
-                var it = mc.newItem(NBT.parseSNBT(iList[iIdx]));
-                return { name: itemZhName(it) + "x" + it.count, reward: it, type: "item" };
-            }
-            if (type === "money") {
-                var n = Number(sub);
-                return { name: coin + "x" + n, reward: n, type: "money" };
-            }
-            if (type === "exp") {
-                var n = Number(sub);
-                return { name: "经验x" + n, reward: n, type: "exp" };
-            }
-            return { name: "无奖励", reward: 0, type: "none" };
-        },
-        // 生成当月每日奖励列表
-        buildMonthly: function () {
-            var cfg  = Config.getReward();
-            var self = this;
-            var list = cfg.map(function (r) { return self.parse(r); });
-            var days = Sign.totalDaysInMonth();
-            while (list.length < days) list = list.concat(list);
-            return list.slice(0, days);
-        },
-        // 格式化为界面文本（补空格对齐列，中文字符按双倍宽度计算）
-        format: function (list) {
-            var today = new Date().getDate();
-            var cols  = Config.getSign().gui_arrange || 3;
-            // 每格视觉宽度（ASCII=1，中文=2），根据列数调整
-            var colW  = cols <= 2 ? 22 : cols === 3 ? 15 : cols === 4 ? 11 : 9;
-
-            // 计算字符串的视觉宽度（中文/全角算2）
-            function visLen(str) {
-                var w = 0;
-                for (var i = 0; i < str.length; i++) {
-                    w += str.charCodeAt(i) > 0x2E7F ? 2 : 1;
-                }
-                return w;
-            }
-
-            // 按视觉宽度截断字符串
-            function visTrunc(str, maxW) {
-                var w = 0;
-                for (var i = 0; i < str.length; i++) {
-                    var cw = str.charCodeAt(i) > 0x2E7F ? 2 : 1;
-                    if (w + cw > maxW) return str.slice(0, i) + ".";
-                    w += cw;
-                }
-                return str;
-            }
-
-            var text = "";
-            for (var i = 0; i < list.length; i++) {
-                var day    = i + 1;
-                var dayStr = (day < 10 ? "0" : "") + day;
-                var name   = list[i].name;
-                var maxName = colW - 3; // 减去 "01 " 的位置（3个ASCII）
-                name = visTrunc(name, maxName);
-                var raw  = dayStr + " " + name;
-                // 按视觉宽度补空格
-                var rw   = visLen(raw);
-                while (rw < colW) { raw += " "; rw++; }
-
-                var cell;
-                if (day < today)        cell = "§8" + raw + "§r";
-                else if (day === today) cell = "§e§l" + raw + "§r";
-                else                    cell = "§7" + raw;
-
-                text += cell;
-                if (day % cols === 0) text += "\n";
-            }
-            return text.trimRight ? text.trimRight() : text;
-        }
-    };
-
-    // ════════════════════════════════════════════════════════════
-    // 签到数据
-    // ════════════════════════════════════════════════════════════
-    var Sign = {
-        get: function (player) {
-            sign_data.reload();
-            if (player == null) return JSON.parse(sign_data.read());
-            var name = (typeof player === "string") ? player : player.realName;
-            return sign_data.get(name);
-        },
-        save: function (name, data) {
-            sign_data.set(name, data);
-        },
-        getCount:        function (player) { return Number((this.get(player) || {}).count         || 0); },
-        getWeeklyCount:  function (player) { return Number((this.get(player) || {}).weekly_count  || 0); },
-        getMonthlyCount: function (player) { return Number((this.get(player) || {}).monthly_count || 0); },
-        getContSign:     function (player) { return Number((this.get(player) || {}).cont_sign     || 0); },
-        getSignDate:     function (player) { return String((this.get(player) || {}).sign_date     || "---"); },
-        todayStr: function () {
-            var now = new Date();
-            var m   = now.getMonth() + 1;
-            var d   = now.getDate();
-            return now.getFullYear() + "-" + (m < 10 ? "0" + m : m) + "-" + (d < 10 ? "0" + d : d);
-        },
-        totalDaysInMonth: function () {
-            var n = new Date();
-            return new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate();
-        },
-        // 与今天的天数差 (0=今天已签, >0=未签)
-        timeDiff: function (player) {
-            var d = this.get(player);
-            if (!d || !d.sign_date) return 99;
-            var today = this.todayStr();
-            return Math.floor((new Date(today) - new Date(d.sign_date)) / 86400000);
-        },
-        // 打卡
-        clockIn: function (player) {
-            var name  = (typeof player === "string") ? player : player.realName;
-            var today = this.todayStr();
-            var d     = this.get(player);
-            if (d == null) {
-                d = { count: 1, weekly_count: 1, monthly_count: 1, cont_sign: 1, sign_date: today };
-            } else {
-                d.count = (d.count || 0) + 1;
-                if (new Date().getDay() === 0)    d.weekly_count  = 1;
-                else                              d.weekly_count  = (d.weekly_count  || 0) + 1;
-                if (new Date().getDate() === 1)   d.monthly_count = 1;
-                else                              d.monthly_count = (d.monthly_count || 0) + 1;
-                if (this.timeDiff(player) <= 1)   d.cont_sign     = (d.cont_sign     || 0) + 1;
-                else                              d.cont_sign     = 1;
-                d.sign_date = today;
-            }
-            this.save(name, d);
-        }
-    };
-
-    // ════════════════════════════════════════════════════════════
-    // 发放奖励 & 连续奖励检查
-    // ════════════════════════════════════════════════════════════
-    function giveReward(player, rewardObj) {
-        if (rewardObj.type === "item") {
-            var item = rewardObj.reward;
-            if (player.getInventory().hasRoomFor(item)) {
-                player.giveItem(item);
-            } else {
-                mc.spawnItem(item, player.pos);
-                player.sendToast("§l签到提示", "§e背包已满，奖励物品已掉落到脚下 ↓");
-            }
-        } else if (rewardObj.type === "money") {
-            Money.add(player, rewardObj.reward);
-        } else if (rewardObj.type === "exp") {
-            player.addExp(Number(rewardObj.reward));
-        }
+    get() {
+        this.configFile.reload();
+        const content = this.configFile.read();
+        return content ? JSON.parse(content) : {};
     }
 
-    function checkAddition(player) {
-        var cont     = Sign.getContSign(player);
-        var addition = Config.getAddition() || {};
-        var key      = String(cont);
-        if (addition[key]) {
-            var bonus = Reward.parse(addition[key]);
-            giveReward(player, bonus);
-            player.tell(_info + "§b§l连续签到里程碑！§r §e第 §6§l" + cont + "§r§e 天附加奖励：§f" + bonus.name);
-        }
+    set(data) {
+        Object.keys(data).forEach(key => this.configFile.set(key, data[key]));
     }
 
-    // ════════════════════════════════════════════════════════════
-    // GUI - 签到主界面
-    // ════════════════════════════════════════════════════════════
-    function openSignForm(player) {
-        var rewardList   = Reward.buildMonthly();
-        var rewardText   = Reward.format(rewardList);
-        var today        = new Date().getDate();
-        var canSign      = (Sign.timeDiff(player) > 0 || Sign.getCount(player) === 0);
-        var monthCnt     = Sign.getMonthlyCount(player);
-        var contCnt      = Sign.getContSign(player);
-        var totalCnt     = Sign.getCount(player);
+    getMoney()            { return this.get().money; }
+    getScore()            { return this.get().score; }
+    getItems()            { return this.get().items || []; }
+    getMain()             { return this.get().main; }
+    getShield()           { return this.get().shield || []; }
+    getItemsTriggerMode() { return this.get().itemsTriggerMode; }
 
-        var fm = mc.newSimpleForm();
-        fm.setTitle("§l§e每日签到");
-        fm.setContent(
-            "§e本月 §f" + monthCnt + " §7次   §b连续 §f" + contCnt + " §7天   §a累计 §f" + totalCnt + " §7次\n\n" +
-            "§7── 本月奖励一览 ──\n" +
-            rewardText + "\n\n" +
-            (canSign
-                ? "§a▶ 点击按钮立即签到并领取今日奖励！"
-                : "§7今日已完成签到，明天再来吧~")
+    validate() {
+        const cur = this.get();
+        const defaults = {
+            money: 0, score: "money",
+            items: ["minecraft:clock"],
+            itemsTriggerMode: 0, main: "main", shield: []
+        };
+        const patch = {};
+        if (![0, 1].includes(cur.money))               patch.money = defaults.money;
+        if (![0, 1, 2].includes(cur.itemsTriggerMode)) patch.itemsTriggerMode = defaults.itemsTriggerMode;
+        if (typeof cur.score !== "string")             patch.score = defaults.score;
+        if (typeof cur.main  !== "string")             patch.main  = defaults.main;
+        if (!(cur.items instanceof Array) || !cur.items.every(i => typeof i === "string"))
+            patch.items = defaults.items;
+        if (!(cur.shield instanceof Array) || !cur.shield.every(i => typeof i === "string"))
+            patch.shield = defaults.shield;
+        if (Object.keys(patch).length > 0) this.set(patch);
+    }
+}
+
+// ==================== 工具函数 ====================
+class MenuUtils {
+    // 修复bug：原版 /^[A-Za-z]+$/ 不允许数字，改为允许字母+数字
+    static isValidFileName(str) {
+        return /^[A-Za-z0-9]+$/.test(str) && str.length >= 1 && str.length <= 20;
+    }
+
+    static getMenuFiles(excludeMain) {
+        if (!File.exists(MENU_CONFIG.menusPath)) return [];
+        let files = File.getFilesList(MENU_CONFIG.menusPath);
+        if (excludeMain === true) {
+            const mainFile = menuConfig.getMain() + ".json";
+            files = files.filter(f => f !== mainFile);
+        }
+        return files;
+    }
+}
+
+// ==================== 经济系统 ====================
+class MenuEconomyManager {
+    static get(player) {
+        if (!menuConfig.getMoney()) return Number(player.getScore(menuConfig.getScore()));
+        if (typeof money !== "undefined") return Number(money.get(player.xuid));
+        return 0;
+    }
+
+    static add(player, amount) {
+        if (!menuConfig.getMoney()) return player.addScore(menuConfig.getScore(), Number(amount));
+        if (typeof money !== "undefined") return money.add(player.xuid, Number(amount));
+        return false;
+    }
+
+    static reduce(player, amount) {
+        if (!menuConfig.getMoney()) return player.reduceScore(menuConfig.getScore(), Number(amount));
+        if (typeof money !== "undefined") return money.reduce(player.xuid, Number(amount));
+        return false;
+    }
+}
+
+// ==================== 菜单数据管理器 ====================
+class MenuDataManager {
+    static getDefaultMainMenu() {
+        return {
+            title: "服务器菜单", content: "选择:",
+            buttons: [
+                { images: true,  image: "textures/items/apple", money: 0, text: "获取一个苹果", command: "give @s apple", type: "comm" },
+                { images: false, image: "textures/items/apple", money: 0, text: "发送一句你好",  command: "msg @a 你好",   type: "comm" },
+                { images: false, image: "textures/items/apple", money: 0, text: "管理员菜单",   command: "admin",        type: "form", oplist: [] }
+            ]
+        };
+    }
+
+    static getDefaultAdminMenu() {
+        return {
+            title: "管理员菜单", content: "选择:",
+            buttons: [
+                { images: false, image: "textures/items/apple", money: 0, text: "菜单设置", command: "cd set", type: "comm", oplist: [] },
+                { images: false, image: "textures/items/apple", money: 0, text: "返回",     command: "main",   type: "form", oplist: [] }
+            ]
+        };
+    }
+
+    static getDefaultSubMenu() {
+        return {
+            title: "初始菜单", content: "选择:",
+            buttons: [{ images: true, image: "textures/items/apple", money: 0, text: "返回", command: "main", type: "form" }]
+        };
+    }
+
+    static getMenu(fileName) {
+        if (!fileName.includes(".json")) fileName += ".json";
+        var menuFile = new JsonConfigFile(
+            MENU_CONFIG.menusPath + fileName,
+            JSON.stringify(this.getDefaultSubMenu())
         );
-        if (canSign) fm.addButton("§l§a立即签到", "textures/items/emerald");
-        else         fm.addButton("§8§l今日已签到", "textures/ui/confirm");
+        return JSON.parse(menuFile.read());
+    }
 
-        player.sendForm(fm, function (pl, id) {
+    static setMenu(fileName, data) {
+        if (!fileName.includes(".json")) fileName += ".json";
+        var menuFile = new JsonConfigFile(MENU_CONFIG.menusPath + fileName);
+        Object.keys(data).forEach(key => menuFile.set(key, data[key]));
+    }
+
+    static deleteMenu(fileName) {
+        if (!fileName.includes(".json")) fileName += ".json";
+        if (File.exists(MENU_CONFIG.menusPath + fileName))
+            File.delete(MENU_CONFIG.menusPath + fileName);
+    }
+
+    // 修复bug：删除子菜单后，清理其他所有菜单里指向该文件的孤儿按钮
+    static removeOrphanButtons(deletedFileName) {
+        var target = deletedFileName.replace(".json", "");
+        if (!File.exists(MENU_CONFIG.menusPath)) return;
+        var files = File.getFilesList(MENU_CONFIG.menusPath);
+        files.forEach(function(f) {
+            var menuData = MenuDataManager.getMenu(f);
+            if (!menuData || !menuData.buttons) return;
+            var before = menuData.buttons.length;
+            menuData.buttons = menuData.buttons.filter(function(btn) {
+                // 只清理 form/opfm 类型中 command 指向被删文件的按钮
+                return !((btn.type === "form" || btn.type === "opfm") && btn.command === target);
+            });
+            if (menuData.buttons.length !== before) {
+                File.writeTo(MENU_CONFIG.menusPath + f, JSON.stringify(menuData, null, 4));
+            }
+        });
+    }
+
+    static addButton(fileName, button, index) {
+        if (!fileName.includes(".json")) fileName += ".json";
+        var menuData = this.getMenu(fileName);
+        if (index == null || index === "") menuData.buttons.push(button);
+        else menuData.buttons.splice(index, 0, button);
+        File.writeTo(MENU_CONFIG.menusPath + fileName, JSON.stringify(menuData, null, 4));
+    }
+
+    static deleteButton(fileName, buttonIndex) {
+        if (!fileName.includes(".json")) fileName += ".json";
+        var menuData = this.getMenu(fileName);
+        if (buttonIndex >= 0 && buttonIndex < menuData.buttons.length) {
+            menuData.buttons.splice(buttonIndex, 1);
+            File.writeTo(MENU_CONFIG.menusPath + fileName, JSON.stringify(menuData, null, 4));
+            return true;
+        }
+        return false;
+    }
+
+    static updateButton(fileName, buttonIndex, newButton) {
+        if (!fileName.includes(".json")) fileName += ".json";
+        var menuData = this.getMenu(fileName);
+        if (buttonIndex >= 0 && buttonIndex < menuData.buttons.length) {
+            menuData.buttons[buttonIndex] = newButton;
+            File.writeTo(MENU_CONFIG.menusPath + fileName, JSON.stringify(menuData, null, 4));
+            return true;
+        }
+        return false;
+    }
+
+    static filterButtonsForPlayer(player, menuData) {
+        menuData.buttons = menuData.buttons.filter(function(button) {
+            // 向后兼容：旧配置里的vipfm/vipcm按钮对所有人都隐藏
+            if (button.type === "vipfm" || button.type === "vipcm") return false;
+            // 非OP玩家不显示管理员按钮
+            if (!player.isOP() && (button.type === "opfm" || button.type === "opcm")) return false;
+            return true;
+        });
+        return menuData;
+    }
+
+    static initializeAdminMenu() {
+        if (!File.exists(MENU_CONFIG.menusPath + "admin.json"))
+            this.setMenu("admin", this.getDefaultAdminMenu());
+    }
+}
+
+// ==================== 玩家菜单交互 ====================
+class MenuPlayerHandler {
+    static showMenu(player, fileName) {
+        var menuData = MenuDataManager.getMenu(fileName);
+        menuData = MenuDataManager.filterButtonsForPlayer(player, menuData);
+
+        if (!menuData.title || !menuData.content || !menuData.buttons) {
+            player.tell(info + "菜单配置错误", 5); return;
+        }
+        if (menuData.buttons.length === 0) {
+            player.tell(info + "菜单按钮为空", 5); return;
+        }
+
+        var form = mc.newSimpleForm();
+        form.setTitle(info + menuData.title);
+        form.setContent(menuData.content);
+        menuData.buttons.forEach(function(button) {
+            form.addButton(button.text, button.images ? button.image : "");
+        });
+
+        var self = this;
+        player.sendForm(form, function(pl, id) {
             if (id == null) return;
-            if (!canSign) {
-                pl.tell(_info + "§e今日签到已完成，明天 §6" + Sign.todayStr().slice(0,7) + "§e 继续哦~");
+            if (id >= 0 && id < menuData.buttons.length)
+                self.handleButtonClick(player, menuData.buttons[id], fileName);
+        });
+    }
+
+    static handleButtonClick(player, button, currentMenu) {
+        var requiredMoney = Number(button.money);
+        if (requiredMoney > 0 && MenuEconomyManager.get(player) < requiredMoney) {
+            this.showMenu(player, currentMenu);
+            player.tell(info + "金币不足", 5);
+            return;
+        }
+        switch (button.type) {
+            case "form": this.showMenu(player, button.command); break;
+            case "opfm": this.handleOpForm(player, button, currentMenu); break;
+            case "comm": this.executeCommand(player, button.command); break;
+            case "opcm": this.handleOpCommand(player, button, currentMenu); break;
+            default:
+                this.showMenu(player, currentMenu);
+                player.tell(info + "按钮类型错误", 5);
+                return;
+        }
+        if (requiredMoney > 0) MenuEconomyManager.reduce(player, requiredMoney);
+    }
+
+    static handleOpForm(player, button, currentMenu) {
+        var opList = button.oplist || [];
+        if (!player.isOP() && opList.length > 0 && opList.indexOf(player.realName) === -1) {
+            this.showMenu(player, currentMenu);
+            player.tell(info + "此功能仅限管理员使用", 5);
+            return;
+        }
+        this.showMenu(player, button.command);
+    }
+
+    static executeCommand(player, command) {
+        if (command.includes("@s") && !player.isOP())
+            mc.runcmdEx(command.replace("@s", player.realName));
+        else
+            player.runcmd("/" + command);
+    }
+
+    static handleOpCommand(player, button, currentMenu) {
+        var opList = button.oplist || [];
+        if (!player.isOP() && opList.length > 0 && opList.indexOf(player.realName) === -1) {
+            this.showMenu(player, currentMenu);
+            player.tell(info + "此功能仅限管理员使用", 5);
+            return;
+        }
+        this.executeCommand(player, button.command);
+    }
+}
+
+// ==================== 命令注册 ====================
+class MenuCommandHandler {
+    static register() {
+        var commands = [
+            { cmd: "menu", des: "menu", per: PermType.Any },
+            { cmd: "cd",   des: "menu", per: PermType.Any }
+        ];
+        var self = this;
+        commands.forEach(function(cmdInfo) {
+            var cmd = mc.newCommand(cmdInfo.cmd, cmdInfo.des, cmdInfo.per);
+            cmd.setAlias(cmdInfo.des);
+            cmd.setEnum("menuset", ["set"]);
+            cmd.optional("menuset", ParamType.Enum, "menuset", 1);
+            cmd.overload(["menuset"]);
+            cmd.setCallback(function(_cmd, ori, out, res) { self.callback(_cmd, ori, out, res); });
+            cmd.setup();
+        });
+    }
+
+    static callback(_cmd, ori, out, res) {
+        if (!ori.player) {
+            out.error(MENU_CONFIG.prefix + "§4请不要使用命令方块或控制台执行§f" + _cmd + "§4命令");
+            return;
+        }
+        if (!res.menuset) {
+            MenuPlayerHandler.showMenu(ori.player, menuConfig.getMain());
+        } else if (res.menuset === "set") {
+            if (!ori.player.isOP()) ori.player.tell(MENU_CONFIG.prefix + "你不是管理员!");
+            else MenuAdminHandler.showMainSettings(ori.player);
+        }
+    }
+}
+
+// ==================== 获取钟表命令（独立，每人限领一次）====================
+class GetClockCommandHandler {
+    static get dataPath() {
+        return "./plugins/YEssential/data/getclock_claimed.json";
+    }
+
+    // 兼容原格式：JSON 数组，每项为 xuid 字符串
+    static loadClaimed() {
+        if (!File.exists(this.dataPath)) {
+            File.writeTo(this.dataPath, "[]");
+            return [];
+        }
+        try {
+            var parsed = JSON.parse(File.readFrom(this.dataPath));
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (e) { return []; }
+    }
+
+    static saveClaimed(list) {
+        File.writeTo(this.dataPath, JSON.stringify(list));
+    }
+
+    static hasClaimed(xuid)  { return this.loadClaimed().indexOf(xuid) !== -1; }
+
+    static markClaimed(xuid) {
+        var list = this.loadClaimed();
+        if (list.indexOf(xuid) === -1) { list.push(xuid); this.saveClaimed(list); }
+    }
+
+    static register() {
+        var cmd = mc.newCommand("getclock", "获取钟表（每人限领一次）", PermType.Any);
+        cmd.overload([]);
+        cmd.setCallback(function(_cmd, ori, out, res) {
+            if (!ori.player) { out.error("§c请不要使用命令方块或控制台执行此命令"); return; }
+            var player = ori.player;
+            if (GetClockCommandHandler.hasClaimed(player.xuid)) {
+                player.tell(info + "§c你已经领取过钟表了");
                 return;
             }
-            var todayReward = rewardList[today - 1];
-            giveReward(pl, todayReward);
-            Sign.clockIn(pl);
-            checkAddition(pl);
-            var isFirst = Sign.getCount(pl) === 1;
-            if (isFirst)
-                pl.tell(_info + "§a§l签到成功！§r §e欢迎首次打卡 ✦  今日奖励：§f" + todayReward.name);
-            else
-                pl.tell(_info + "§a§l签到成功！§r §e连续打卡 §6§l" + Sign.getContSign(pl) + "§r§e 天 ✦  今日奖励：§f" + todayReward.name);
-        });
-    }
+            var clockItem = mc.newItem("minecraft:clock", 1);
+            if (!clockItem) { player.tell(info + "§c获取钟表失败"); return; }
 
-    // ════════════════════════════════════════════════════════════
-    // GUI - 管理主菜单
-    // ════════════════════════════════════════════════════════════
-    function openSetMain(player) {
-        var fm = mc.newSimpleForm();
-        fm.setTitle("§l§3签到管理后台");
-        fm.setContent("§7当前服务器签到系统配置中心，请选择要管理的模块：");
-        fm.addButton("§e§l经济参数查看\n§8查看当前经济模式与计分板", "textures/items/gold_ingot");
-        fm.addButton("§a§l签到参数设置\n§8开关、随机范围、列数", "textures/ui/settings_glyph_color_2x");
-        fm.addButton("§6§l每日奖励序列\n§8配置每天的签到奖励", "textures/ui/recipe_book_icon");
-        fm.addButton("§d§l奖励物品库\n§8管理可用的物品奖励列表", "textures/blocks/chest_front");
-        fm.addButton("§b§l连续签到奖励\n§8设置连续打卡里程碑奖励", "textures/items/diamond");
-        player.sendForm(fm, function (pl, id) {
-            if (id == null) return;
-            if (id === 0) openMoneyView(pl);
-            else if (id === 1) openSignParamSet(pl);
-            else if (id === 2) openDailyRewardSet(pl);
-            else if (id === 3) openItemLibSet(pl);
-            else if (id === 4) openAdditionSet(pl);
-        });
-    }
-
-    // ════════════════════════════════════════════════════════════
-    // GUI - 经济查看（只读，由 YEssential 主配置统一管理）
-    // ════════════════════════════════════════════════════════════
-    function openMoneyView(player) {
-        var sb   = _eco ? _eco.scoreboard : "money";
-        var mode = _eco ? _eco.mode       : "scoreboard";
-        var coin = Money.coinName();
-        var fm   = mc.newCustomForm();
-        fm.setTitle("§l§e经济参数概览");
-        fm.addLabel("§e当前经济模式  §f" + mode);
-        fm.addLabel("§e计分板名称    §f" + sb);
-        fm.addLabel("§e货币单位名称  §f" + coin);
-        fm.addLabel("§7以上参数在 YEssential 主配置 Economy 块统一管理，此处仅供查看。");
-        player.sendForm(fm, function (pl, id) {
-            if (id == null) openSetMain(pl);
-        });
-    }
-
-    // ════════════════════════════════════════════════════════════
-    // GUI - 签到参数设置
-    // ════════════════════════════════════════════════════════════
-    function openSignParamSet(player, errMsg) {
-        var signCfg   = Config.getSign();
-        var randMoney = Config.getRandomMoney();
-        var randExp   = Config.getRandomExp();
-
-        var fm = mc.newCustomForm();
-        fm.setTitle("§l§a签到参数设置");
-        fm.addSwitch("§l签到功能总开关§r §7(当前: " + (signCfg.switch ? "§a开启" : "§c关闭") + "§7)", signCfg.switch);
-        fm.addLabel("§6§l随机金币范围");
-        fm.addInput("§e最小值§7 (当前: " + randMoney.min_money + ")", "例如: 1000");
-        fm.addInput("§e最大值§7 (当前: " + randMoney.max_money + ")", "例如: 10000");
-        fm.addLabel("§b§l随机经验范围");
-        fm.addInput("§3最小值§7 (当前: " + randExp.min_exp + ")", "例如: 100");
-        fm.addInput("§3最大值§7 (当前: " + randExp.max_exp + ")", "例如: 1000");
-        fm.addLabel("§d§l界面布局");
-        fm.addInput("§5每行列数§7 (当前: " + signCfg.gui_arrange + "，范围 1~10)", "例如: 3");
-        if (errMsg) fm.addLabel("\n" + errMsg);
-
-        player.sendForm(fm, function (pl, id) {
-            if (id == null) { openSetMain(pl); return; }
-
-            function parseNum(raw, cur, min, max, label) {
-                if (raw === "") return cur;
-                var n = Number(raw);
-                if (isNaN(n) || n < min || n > max)
-                    throw new Error(label + " 必须是 " + min + "~" + max + " 之间的整数");
-                return n;
-            }
-            try {
-                var sw  = id[0];
-                var mn  = parseNum(id[1], randMoney.min_money, 1, 1000000, "随机金币最小值");
-                var mx  = parseNum(id[2], randMoney.max_money, 1, 1000000, "随机金币最大值");
-                var en  = parseNum(id[3], randExp.min_exp,     1, 10000,   "随机经验最小值");
-                var ex  = parseNum(id[4], randExp.max_exp,     1, 10000,   "随机经验最大值");
-                var ga  = parseNum(id[5], signCfg.gui_arrange, 1, 10,      "列数");
-                if (mn > mx) throw new Error("随机金币最小值不能大于最大值");
-                if (en > ex) throw new Error("随机经验最小值不能大于最大值");
-                Config.set({
-                    sign:         { switch: sw, gui_arrange: ga },
-                    random_money: { min_money: mn, max_money: mx },
-                    random_exp:   { min_exp:   en, max_exp:   ex }
-                });
-                openSignParamSet(pl, "§a✔ 修改成功");
-            } catch (err) {
-                openSignParamSet(pl, "§c✘ " + err.message);
-            }
-        });
-    }
-
-    // ════════════════════════════════════════════════════════════
-    // GUI - 每日奖励序列设置
-    // ════════════════════════════════════════════════════════════
-    function openDailyRewardSet(player, errMsg, modeHint) {
-        var rewardCfg  = Config.getReward();
-        var itemLib    = Reward.getItems();
-        var self       = Reward;
-
-        var rewardNames = rewardCfg.map(function (r, i) {
-            return "第" + (i + 1) + "天  " + self.parse(r).name;
-        });
-        var itemNames = itemLib.map(function (s, i) {
-            try { var it = mc.newItem(NBT.parseSNBT(s)); return (i + 1) + ". " + itemZhName(it) + " x" + it.count; }
-            catch (e) { return (i + 1) + ". (物品" + (i + 1) + ")"; }
-        });
-
-        var fm = mc.newCustomForm();
-        fm.setTitle("§l§6每日奖励序列");
-        fm.addLabel("§7当前共 §f" + rewardCfg.length + " §7项奖励（循环覆盖整月）");
-        fm.addDropdown("§l操作模式", ["✚ 添加", "✖ 删除", "✎ 修改"], modeHint || 0);
-        fm.addDropdown("§e序列位置§7 (删除/修改时生效)", rewardNames);
-        fm.addDropdown("§e奖励类型§7 (添加/修改时生效)",
-            ["随机物品", "随机" + Money.coinName(), "随机经验", "指定物品", "指定" + Money.coinName(), "指定经验"]);
-        fm.addDropdown("§e选择物品§7 (类型为指定物品时生效)", itemNames.length ? itemNames : ["(物品库为空)"]);
-        fm.addInput("§e" + Money.coinName() + "/经验数量§7 (类型为指定金币/经验时生效，留空默认100)", "例如: 500");
-        if (errMsg) fm.addLabel("\n" + errMsg);
-
-        player.sendForm(fm, function (pl, id) {
-            if (id == null) { openSetMain(pl); return; }
-            var mode  = id[0];
-            var pos   = id[1];
-            var type  = id[2];
-
-            function buildToken() {
-                if (type === 0) return "random_item";
-                if (type === 1) return "random_money";
-                if (type === 2) return "random_exp";
-                if (type === 3) return "item_" + (Number(id[3]) + 1);
-                var amt = (id[4] === "" || isNaN(id[4])) ? 100 : Number(id[4]);
-                return type === 4 ? "money_" + amt : "exp_" + amt;
-            }
-
-            var token = buildToken();
-            if (mode === 0) {
-                rewardCfg.push(token);
-            } else if (mode === 1) {
-                if (rewardCfg.length <= 1) { openDailyRewardSet(pl, "§c✘ 至少保留一项奖励", mode); return; }
-                rewardCfg.splice(pos, 1);
+            // 背包满时掉落到玩家脚下，否则直接给予
+            if (!player.getInventory().hasRoomFor(clockItem)) {
+                mc.spawnItem(clockItem, player.pos);
+                player.tell(info + "§e已获得钟表（背包已满，已掉落在你脚下），此物品每人仅限领取一次");
             } else {
-                rewardCfg.splice(pos, 1, token);
+                player.giveItem(clockItem);
+                player.refreshItems();
+                player.tell(info + "§a已获得钟表，此物品每人仅限领取一次");
             }
-            Config.set({ reward: rewardCfg });
-            openDailyRewardSet(pl, "§a✔ 操作成功", mode);
+            GetClockCommandHandler.markClaimed(player.xuid);
         });
+        cmd.setup();
     }
-
-    // ════════════════════════════════════════════════════════════
-    // GUI - 奖励物品库设置
-    // ════════════════════════════════════════════════════════════
-    function openItemLibSet(player, errMsg, modeHint) {
-        var itemLib = Reward.getItems();
-        var itemNames = itemLib.map(function (s, i) {
-            try { var it = mc.newItem(NBT.parseSNBT(s)); return (i + 1) + ". " + itemZhName(it) + " x" + it.count; }
-            catch (e) { return (i + 1) + ". (物品" + (i + 1) + ")"; }
-        });
-
-        var inv      = player.getInventory().getAllItems();
-        var invItems = [];
-        var invIndex = [];
-        for (var i = 0; i < inv.length; i++) {
-            if (inv[i] && inv[i].name !== "") {
-                invItems.push(itemZhName(inv[i]) + " x" + inv[i].count);
-                invIndex.push(i);
-            }
-        }
-
-        var fm = mc.newCustomForm();
-        fm.setTitle("§l§d奖励物品库");
-        fm.addLabel("§7当前物品库共 §f" + itemLib.length + " §7种物品\n§e添加/修改时将从背包中选取物品");
-        fm.addDropdown("§l操作模式", ["✚ 添加", "✖ 删除", "✎ 修改"], modeHint || 0);
-        fm.addDropdown("§e物品库选择§7 (删除/修改时生效)", itemNames.length ? itemNames : ["(物品库为空)"]);
-        fm.addDropdown("§e背包物品§7 (添加/修改时生效)", invItems.length ? invItems : ["(背包为空)"]);
-        fm.addInput("§e设置数量§7 (留空则使用背包实际数量，最大 64)", "例如: 32");
-        if (errMsg) fm.addLabel("\n" + errMsg);
-
-        player.sendForm(fm, function (pl, id) {
-            if (id == null) { openSetMain(pl); return; }
-            var mode = id[0];
-            if (invItems.length === 0 && mode !== 1) {
-                openItemLibSet(pl, "§c✘ 背包为空，无法添加或修改", mode); return;
-            }
-            var selItem = inv[invIndex[id[2]]];
-            var count   = 1;
-            if (selItem) {
-                count = (id[3] === "" || isNaN(id[3])) ? selItem.count : Math.min(Math.max(1, Number(id[3])), 64);
-            }
-
-            function makeSnbt() {
-                return selItem.getNbt().setByte("Count", count).toSNBT();
-            }
-
-            if (mode === 0) {
-                itemLib.push(makeSnbt());
-            } else if (mode === 1) {
-                if (itemLib.length <= 1) { openItemLibSet(pl, "§c✘ 至少保留一种物品", mode); return; }
-                itemLib.splice(id[1], 1);
-            } else {
-                itemLib.splice(id[1], 1, makeSnbt());
-            }
-            reward_data.write(JSON.stringify(itemLib, null, 4));
-            openItemLibSet(pl, "§a✔ 操作成功", mode);
-        });
-    }
-
-    // ════════════════════════════════════════════════════════════
-    // GUI - 连续签到附加奖励设置
-    // ════════════════════════════════════════════════════════════
-    function openAdditionSet(player, errMsg, modeHint) {
-        var addition = Config.getAddition() || {};
-        var itemLib  = Reward.getItems();
-        var itemNames = itemLib.map(function (s, i) {
-            try { var it = mc.newItem(NBT.parseSNBT(s)); return (i + 1) + ". " + itemZhName(it) + " x" + it.count; }
-            catch (e) { return (i + 1) + ". (物品" + (i + 1) + ")"; }
-        });
-
-        var addKeys = Object.keys(addition).sort(function (a, b) { return Number(a) - Number(b); });
-        var listText = "§l当前连续签到里程碑奖励：§r\n";
-        if (addKeys.length === 0) {
-            listText += "§7  (暂未配置)\n";
-        } else {
-            for (var i = 0; i < addKeys.length; i++) {
-                listText += "  §6第 §e§l" + addKeys[i] + "§r§6 天  §f➜  §a" + Reward.parse(addition[addKeys[i]]).name + "\n";
-            }
-        }
-        listText += "";
-
-        var fm = mc.newCustomForm();
-        fm.setTitle("§l§b连续签到附加奖励");
-        fm.addLabel(listText);
-        fm.addDropdown("§l操作模式", ["✚ 添加/修改", "✖ 删除"], modeHint || 0);
-        fm.addInput("§e目标天数§7 (1~365，到达该天数时触发)", "例如: 7");
-        fm.addDropdown("§e奖励类型§7 (添加/修改时生效)",
-            ["随机物品", "随机" + Money.coinName(), "随机经验", "指定物品", "指定" + Money.coinName(), "指定经验"]);
-        fm.addDropdown("§e选择物品§7 (类型为指定物品时生效)", itemNames.length ? itemNames : ["(物品库为空)"]);
-        fm.addInput("§e" + Money.coinName() + "/经验数量§7 (留空默认100)", "例如: 1000");
-        if (errMsg) fm.addLabel("\n" + errMsg);
-
-        player.sendForm(fm, function (pl, id) {
-            if (id == null) { openSetMain(pl); return; }
-            var dayStr = id[1].trim();
-            var day    = Number(dayStr);
-            if (dayStr === "" || isNaN(day) || day < 1 || day > 365) {
-                openAdditionSet(pl, "§c✘ 目标天数必须是 1~365 之间的整数", id[0]); return;
-            }
-            var key = String(day);
-            if (id[0] === 1) {
-                delete addition[key];
-            } else {
-                var type  = id[2];
-                var token;
-                if (type === 0)      token = "random_item";
-                else if (type === 1) token = "random_money";
-                else if (type === 2) token = "random_exp";
-                else if (type === 3) token = "item_" + (Number(id[3]) + 1);
-                else {
-                    var amt = (id[4] === "" || isNaN(id[4])) ? 100 : Number(id[4]);
-                    token   = type === 4 ? "money_" + amt : "exp_" + amt;
-                }
-                addition[key] = token;
-            }
-            Config.set({ addition: addition });
-            openAdditionSet(pl, "§a✔ 操作成功", id[0]);
-        });
-    }
-
-    // ════════════════════════════════════════════════════════════
-    // 命令注册
-    // ════════════════════════════════════════════════════════════
-    var signCmd = mc.newCommand("sign", "打开签到界面", PermType.Any);
-    signCmd.overload([]);
-    signCmd.setCallback(function (_cmd, ori, out) {
-        if (ori.type === 7) { out.error(_info + "§c请在游戏内执行 /sign 命令，不支持控制台"); return; }
-        if (!ori.player)    return;
-        if (!Config.getSign().switch) { ori.player.tell(_info + "§7签到功能当前已关闭"); return; }
-        openSignForm(ori.player);
-    });
-    signCmd.setup();
-
-    var setCmd = mc.newCommand("signset", "签到管理设置", PermType.GameMasters);
-    setCmd.overload([]);
-    setCmd.setCallback(function (_cmd, ori, out) {
-        if (!ori.player) { out.error(_info + "§c请在游戏内执行此命令"); return; }
-        openSetMain(ori.player);
-    });
-    setCmd.setup();
-
-    // ════════════════════════════════════════════════════════════
-    // 事件监听
-    // ════════════════════════════════════════════════════════════
-    mc.listen("onJoin", function (player) {
-        if (!Config.getSign().switch) return;
-        var neverSigned = Sign.getCount(player) === 0;
-        var needSign    = Sign.timeDiff(player) > 0;
-        if (neverSigned || needSign) {
-            setTimeout(function () {
-                var pl = mc.getPlayer(player.xuid);
-                if (pl) openSignForm(pl);
-            }, 3000);
-        }
-    });
-
-    mc.listen("onChat", function (player, msg) {
-        if (!/^签到$/.test(msg)) return;
-        if (!Config.getSign().switch) { player.tell(_info + "§7签到功能当前已关闭"); return; }
-        openSignForm(player);
-    });
-
 }
+
+// ==================== 管理员设置界面 ====================
+class MenuAdminHandler {
+    static showMainSettings(player) {
+        var form = mc.newSimpleForm();
+        form.setTitle(info + "菜单设置");
+        form.setContent("选择:");
+        form.addButton("经济设置");
+        form.addButton("添加菜单");
+        form.addButton("删除菜单");
+        form.addButton("修改菜单");
+        form.addButton("修改其他");
+        var self = this;
+        player.sendForm(form, function(pl, id) {
+            if (id == null) return;
+            switch (id) {
+                case 0: self.showMoneySettings(player); break;
+                case 1: self.showAddMenu(player);       break;
+                case 2: self.showDeleteMenu(player);    break;
+                case 3: self.showEditMenu(player);      break;
+                case 4: self.showOtherSettings(player); break;
+            }
+        });
+    }
+
+    static showMoneySettings(player, error, moneyType, scoreName) {
+        var currentMoneyType = menuConfig.getMoney();
+        var currentScore     = menuConfig.getScore();
+        var form = mc.newCustomForm();
+        form.setTitle("设置经济参数");
+        // data[0]=dropdown, data[1]=input
+        form.addDropdown("选择经济模式---当前: " + (currentMoneyType ? "LLMoney" : "计分板"),
+            ["计分板", "LLMoney"], moneyType != null ? moneyType : currentMoneyType);
+        form.addInput("输入计分板项--当前: " + currentScore, "例如: money",
+            scoreName != null ? scoreName : "");
+        if (error) form.addLabel(error);
+        var self = this;
+        player.sendForm(form, function(pl, data) {
+            if (!data) { self.showMainSettings(player); return; }
+            var selectedMoneyType = data[0], inputScore = data[1];
+            if (selectedMoneyType === currentMoneyType && inputScore === "") {
+                self.showMoneySettings(player, "§l§c你好像什么都没有操作", selectedMoneyType, inputScore);
+                return;
+            }
+            menuConfig.set({ money: selectedMoneyType });
+            if (inputScore !== "") menuConfig.set({ score: inputScore });
+            player.sendModalForm("§l§2修改成功", "已保存更改经济配置", "§1返回", "§1完成",
+                function(pl, btnId) {
+                    if (btnId === 0) self.showMainSettings(player);
+                    else self.showMoneySettings(player, "§l§2已完成更改");
+                });
+        });
+    }
+
+    static showAddMenu(player, type) {
+        if (!type) {
+            var form = mc.newSimpleForm();
+            form.setTitle("添加菜单");
+            form.setContent("选择操作:");
+            form.addButton("添加二级菜单");
+            form.addButton("添加菜单按钮");
+            form.addButton("返回上级");
+            var self = this;
+            player.sendForm(form, function(pl, id) {
+                if (id == null) return;
+                if (id === 0) self.showAddMenu(player, "add_menu");
+                else if (id === 1) self.showAddMenu(player, "add_button");
+                else if (id === 2) self.showMainSettings(player);
+            });
+            return;
+        }
+        if (type === "add_menu")    this.showAddSubMenu(player);
+        else if (type === "add_button") this.showAddButton(player);
+    }
+
+    static showAddSubMenu(player, error, formData) {
+        formData = formData || {};
+        var menuFiles   = MenuUtils.getMenuFiles();
+        var fileOptions = menuFiles.map(f => MenuDataManager.getMenu(f).title + " | " + f);
+        var form = mc.newCustomForm();
+        form.setTitle("添加二级菜单");
+        form.addDropdown("选择上级菜单", fileOptions, formData.parentIndex || 0);
+        form.addInput("二级菜单文件名称", "例如: aaa 或 menu2", formData.fileName || "");
+        form.addInput("二级菜单标题",     "例如: 二级菜单",      formData.title   || "");
+        form.addInput("二级菜单提示",     "例如: 选择:",         formData.content || "");
+        if (error) form.addLabel(error);
+        var self = this;
+        player.sendForm(form, function(pl, data) {
+            if (!data) { self.showAddMenu(player); return; }
+            var [parentIndex, fileName, title, content] = data;
+            // 修复bug：文件名改为支持字母+数字
+            if (!MenuUtils.isValidFileName(fileName)) {
+                self.showAddSubMenu(player, "§l§c文件名称不合法（仅限英文字母和数字，1-20个字符）",
+                    { parentIndex, fileName, title, content });
+                return;
+            }
+            if (File.exists(MENU_CONFIG.menusPath + fileName + ".json")) {
+                self.showAddSubMenu(player, "§l§c文件已存在", { parentIndex, fileName, title, content });
+                return;
+            }
+            MenuDataManager.addButton(menuFiles[parentIndex], {
+                images: true, image: "textures/items/apple", money: 0,
+                text: title, command: fileName, type: "form"
+            });
+            MenuDataManager.setMenu(fileName, {
+                title: title, content: content || "选择:",
+                buttons: MenuDataManager.getDefaultSubMenu().buttons
+            });
+            self.showAddMenu(player, "add_menu");
+            player.tell(MENU_CONFIG.prefix + "§2添加成功");
+        });
+    }
+
+    static showAddButton(player, error, formData) {
+        formData = formData || {};
+        var menuFiles = MenuUtils.getMenuFiles();
+        if (menuFiles.length === 0) {
+            player.tell(MENU_CONFIG.prefix + "§c没有可用的菜单文件");
+            this.showAddMenu(player); return;
+        }
+        var fileOptions = menuFiles.map(f => MenuDataManager.getMenu(f).title + " | " + f);
+        // 移除了VIP类型
+        var buttonTypes = ["玩家二级菜单", "管理员二级菜单", "玩家执行指令", "管理员执行指令"];
+        var form = mc.newCustomForm();
+        form.setTitle("添加菜单按钮");
+        form.addDropdown("选择菜单文件",          fileOptions,  formData.fileIndex   || 0);
+        form.addDropdown("选择按钮类型",          buttonTypes,  formData.buttonType  || 0);
+        form.addSwitch("是否开启按钮贴图",                      formData.enableImage || false);
+        form.addInput("[选填]按钮贴图地址",  "textures/items/apple", formData.imagePath  || "");
+        form.addInput("[必填]按钮标题",      "例如: 说你好",          formData.buttonText || "");
+        form.addInput("[必填]按钮执行的结果","例如: say @a 你好",     formData.command    || "");
+        form.addInput("[选填]按钮所需金币",  "例如: 999",             formData.money      || "");
+        form.addInput("[选填]按钮位置(0为首)","例如: 0",              formData.position ?? "");
+        if (error) form.addLabel(error);
+        var self = this;
+        player.sendForm(form, function(pl, data) {
+            if (!data) { self.showAddMenu(player); return; }
+            var [fileIndex, typeIndex, enableImage, imagePath, buttonText, command, money, position] = data;
+            if (!buttonText || !command) {
+                self.showAddButton(player, "§c标题和指令必填",
+                    { fileIndex, buttonType: typeIndex, enableImage, imagePath, buttonText, command, money, position });
+                return;
+            }
+            // typeMap 与 buttonTypes 对齐（已移除vipfm/vipcm）
+            var typeMap   = ["form", "opfm", "comm", "opcm"];
+            var newButton = {
+                images: enableImage, image: enableImage ? (imagePath || "textures/items/apple") : "",
+                money: parseInt(money) || 0, text: buttonText, command: command, type: typeMap[typeIndex]
+            };
+            if (typeMap[typeIndex].includes("op")) newButton.oplist = [];
+            MenuDataManager.addButton(menuFiles[fileIndex], newButton,
+                position !== "" ? parseInt(position) : null);
+            self.showAddMenu(player, "add_button");
+            player.tell(MENU_CONFIG.prefix + "§2添加成功");
+        });
+    }
+
+    static showDeleteMenu(player, type) {
+        if (!type) {
+            var form = mc.newSimpleForm();
+            form.setTitle("删除菜单");
+            form.setContent("选择操作:");
+            form.addButton("删除二级菜单");
+            form.addButton("删除菜单按钮");
+            form.addButton("返回上级");
+            var self = this;
+            player.sendForm(form, function(pl, id) {
+                if (id == null) return;
+                if (id === 0) self.showDeleteMenu(player, "del_menu");
+                else if (id === 1) self.showDeleteMenu(player, "del_button");
+                else if (id === 2) self.showMainSettings(player);
+            });
+            return;
+        }
+
+        if (type === "del_menu") {
+            var files = MenuUtils.getMenuFiles(true);
+            if (!files.length) {
+                player.tell(MENU_CONFIG.prefix + "§c无可删除的菜单");
+                this.showDeleteMenu(player); return;
+            }
+            var form = mc.newSimpleForm();
+            form.setTitle("删除二级菜单");
+            form.setContent("选择要删除的菜单:");
+            files.forEach(f => form.addButton(MenuDataManager.getMenu(f).title + " | " + f));
+            form.addButton("§c返回上级");
+            var self = this;
+            player.sendForm(form, function(pl, id) {
+                if (id == null || id === files.length) { self.showDeleteMenu(player); return; }
+                if (id >= 0 && id < files.length) {
+                    var deleted = files[id];
+                    MenuDataManager.deleteMenu(deleted);
+                    // 修复bug：清理其他菜单里指向该文件的孤儿按钮
+                    MenuDataManager.removeOrphanButtons(deleted);
+                    player.tell(MENU_CONFIG.prefix + "§2删除成功: " + deleted);
+                    self.showDeleteMenu(player, type);
+                } else { self.showDeleteMenu(player); }
+            });
+
+        } else if (type === "del_button") {
+            var files = MenuUtils.getMenuFiles();
+            if (!files.length) {
+                player.tell(MENU_CONFIG.prefix + "§c无可用的菜单");
+                this.showDeleteMenu(player); return;
+            }
+            var form = mc.newSimpleForm();
+            form.setTitle("删除菜单按钮");
+            form.setContent("选择菜单:");
+            files.forEach(f => form.addButton(MenuDataManager.getMenu(f).title + " | " + f));
+            form.addButton("§c返回上级");
+            var self = this;
+            player.sendForm(form, function(pl, fileId) {
+                if (fileId == null || fileId === files.length) { self.showDeleteMenu(player); return; }
+                if (fileId >= 0 && fileId < files.length) self.showDeleteButtonList(player, files[fileId]);
+                else self.showDeleteMenu(player);
+            });
+        }
+    }
+
+    static showDeleteButtonList(player, fileName) {
+        var menuData = MenuDataManager.getMenu(fileName);
+        if (!menuData.buttons || menuData.buttons.length === 0) {
+            player.tell(MENU_CONFIG.prefix + "§c该菜单没有按钮");
+            this.showDeleteMenu(player, "del_button"); return;
+        }
+        var form = mc.newSimpleForm();
+        form.setTitle("删除按钮 - " + menuData.title);
+        form.setContent("选择要删除的按钮:");
+        menuData.buttons.forEach(function(btn) {
+            var t = btn.text + " [" + btn.type + "]";
+            if (btn.money > 0) t += " (需" + btn.money + "金币)";
+            form.addButton(t);
+        });
+        form.addButton("§c返回上级");
+        var self = this;
+        player.sendForm(form, function(pl, btnId) {
+            if (btnId == null || btnId === menuData.buttons.length) {
+                self.showDeleteMenu(player, "del_button"); return;
+            }
+            if (btnId >= 0 && btnId < menuData.buttons.length) {
+                var deletedBtn = menuData.buttons[btnId];
+                if (MenuDataManager.deleteButton(fileName, btnId))
+                    player.tell(MENU_CONFIG.prefix + "§2删除成功: " + deletedBtn.text);
+                else
+                    player.tell(MENU_CONFIG.prefix + "§c删除失败");
+                self.showDeleteButtonList(player, fileName);
+            } else { self.showDeleteMenu(player, "del_button"); }
+        });
+    }
+
+    static showEditMenu(player, type) {
+        if (!type) {
+            var form = mc.newSimpleForm();
+            form.setTitle("修改菜单");
+            form.setContent("选择操作:");
+            form.addButton("修改菜单信息");
+            form.addButton("修改菜单按钮");
+            form.addButton("返回上级");
+            var self = this;
+            player.sendForm(form, function(pl, id) {
+                if (id == null) return;
+                if (id === 0) self.showEditMenu(player, "edit_menu");
+                else if (id === 1) self.showEditMenu(player, "edit_button");
+                else if (id === 2) self.showMainSettings(player);
+            });
+            return;
+        }
+        if (type === "edit_menu")        this.showEditMenuInfo(player);
+        else if (type === "edit_button") this.showEditButtonSelect(player);
+    }
+
+    static showEditMenuInfo(player) {
+        var files = MenuUtils.getMenuFiles();
+        if (!files.length) {
+            player.tell(MENU_CONFIG.prefix + "§c无可用的菜单");
+            this.showEditMenu(player); return;
+        }
+        var form = mc.newSimpleForm();
+        form.setTitle("修改菜单信息");
+        form.setContent("选择要修改的菜单:");
+        files.forEach(f => form.addButton(MenuDataManager.getMenu(f).title + " | " + f));
+        form.addButton("§c返回上级");
+        var self = this;
+        player.sendForm(form, function(pl, id) {
+            if (id == null || id === files.length) { self.showEditMenu(player); return; }
+            if (id >= 0 && id < files.length) self.showEditMenuInfoForm(player, files[id]);
+            else self.showEditMenu(player);
+        });
+    }
+
+    static showEditMenuInfoForm(player, fileName, error) {
+        var menuData = MenuDataManager.getMenu(fileName);
+        var form = mc.newCustomForm();
+        form.setTitle("修改菜单: " + fileName);
+        form.addInput("菜单标题", "当前: " + menuData.title,   menuData.title);
+        form.addInput("菜单内容", "当前: " + menuData.content, menuData.content);
+        if (error) form.addLabel(error);
+        var self = this;
+        player.sendForm(form, function(pl, data) {
+            if (!data) { self.showEditMenuInfo(player); return; }
+            var [newTitle, newContent] = data;
+            if (!newTitle || !newContent) {
+                self.showEditMenuInfoForm(player, fileName, "§c标题和内容不能为空"); return;
+            }
+            menuData.title = newTitle; menuData.content = newContent;
+            MenuDataManager.setMenu(fileName, menuData);
+            player.tell(MENU_CONFIG.prefix + "§2修改成功");
+            self.showEditMenuInfo(player);
+        });
+    }
+
+    static showEditButtonSelect(player) {
+        var files = MenuUtils.getMenuFiles();
+        if (!files.length) {
+            player.tell(MENU_CONFIG.prefix + "§c无可用的菜单");
+            this.showEditMenu(player); return;
+        }
+        var form = mc.newSimpleForm();
+        form.setTitle("修改菜单按钮");
+        form.setContent("选择菜单:");
+        files.forEach(f => form.addButton(MenuDataManager.getMenu(f).title + " | " + f));
+        form.addButton("§c返回上级");
+        var self = this;
+        player.sendForm(form, function(pl, id) {
+            if (id == null || id === files.length) { self.showEditMenu(player); return; }
+            if (id >= 0 && id < files.length) self.showEditButtonList(player, files[id]);
+            else self.showEditMenu(player);
+        });
+    }
+
+    static showEditButtonList(player, fileName) {
+        var menuData = MenuDataManager.getMenu(fileName);
+        if (!menuData.buttons || menuData.buttons.length === 0) {
+            player.tell(MENU_CONFIG.prefix + "§c该菜单没有按钮");
+            this.showEditButtonSelect(player); return;
+        }
+        var form = mc.newSimpleForm();
+        form.setTitle("修改按钮 - " + menuData.title);
+        form.setContent("选择要修改的按钮:");
+        menuData.buttons.forEach(btn => form.addButton(btn.text + " [" + btn.type + "]"));
+        form.addButton("§c返回上级");
+        var self = this;
+        player.sendForm(form, function(pl, btnId) {
+            if (btnId == null || btnId === menuData.buttons.length) {
+                self.showEditButtonSelect(player); return;
+            }
+            if (btnId >= 0 && btnId < menuData.buttons.length)
+                self.showEditButtonForm(player, fileName, btnId);
+            else self.showEditButtonSelect(player);
+        });
+    }
+
+    static showEditButtonForm(player, fileName, buttonIndex, error) {
+        var menuData = MenuDataManager.getMenu(fileName);
+        var button   = menuData.buttons[buttonIndex];
+
+        // 移除了VIP类型，typeMap与UI对齐
+        var typeMap     = ["form", "opfm", "comm", "opcm"];
+        var buttonTypes = ["玩家二级菜单", "管理员二级菜单", "玩家执行指令", "管理员执行指令"];
+
+        // 向后兼容：旧的vipfm/vipcm平滑迁移
+        var rawType = button.type;
+        if (rawType === "vipfm") rawType = "form";
+        if (rawType === "vipcm") rawType = "comm";
+        var currentTypeIndex = typeMap.indexOf(rawType);
+        if (currentTypeIndex === -1) currentTypeIndex = 0;
+
+        var form = mc.newCustomForm();
+        form.setTitle("修改按钮: " + button.text);
+        form.addDropdown("按钮类型",        buttonTypes, currentTypeIndex);
+        form.addSwitch("是否开启按钮贴图",               button.images  || false);
+        form.addInput("按钮贴图地址", "textures/items/apple", button.image   || "");
+        form.addInput("按钮标题",     "例如: 说你好",           button.text);
+        form.addInput("按钮执行的结果","例如: say @a 你好",     button.command);
+        form.addInput("按钮所需金币", "例如: 999",              String(button.money || 0));
+        if (error) form.addLabel(error);
+        var self = this;
+        player.sendForm(form, function(pl, data) {
+            if (!data) { self.showEditButtonList(player, fileName); return; }
+            var [typeIndex, enableImage, imagePath, buttonText, command, money] = data;
+            if (!buttonText || !command) {
+                self.showEditButtonForm(player, fileName, buttonIndex, "§c标题和指令不能为空"); return;
+            }
+            var newButton = {
+                images: enableImage, image: enableImage ? (imagePath || "textures/items/apple") : "",
+                money: parseInt(money) || 0, text: buttonText, command: command, type: typeMap[typeIndex]
+            };
+            if (typeMap[typeIndex].includes("op")) newButton.oplist = button.oplist || [];
+            if (MenuDataManager.updateButton(fileName, buttonIndex, newButton))
+                player.tell(MENU_CONFIG.prefix + "§2修改成功");
+            else
+                player.tell(MENU_CONFIG.prefix + "§c修改失败");
+            self.showEditButtonList(player, fileName);
+        });
+    }
+
+    static showOtherSettings(player, error) {
+        var files = MenuUtils.getMenuFiles();
+        var form = mc.newCustomForm();
+        form.setTitle("其他设置");
+        // 修复bug：label不占data下标，所以dropdown在data[0]
+        // 将当前主菜单名显示在标题里，省去了原来占位的addLabel
+        form.addDropdown("主菜单文件（当前: " + menuConfig.getMain() + "）",
+            ["不修改", ...files], 0);
+        if (error) form.addLabel(error);
+        var self = this;
+        player.sendForm(form, function(pl, data) {
+            if (!data) { self.showMainSettings(player); return; }
+            // data[0] = dropdown
+            if (data[0] > 0) {
+                menuConfig.set({ main: files[data[0] - 1].replace(".json", "") });
+                self.showOtherSettings(player, "§2修改成功");
+            } else {
+                self.showOtherSettings(player, "§e未做任何修改");
+            }
+        });
+    }
+}
+
+// ==================== 事件与初始化 ====================
+class MenuEventListeners {
+    static register() {
+        this.initializeResources();
+        const mode = menuConfig.getItemsTriggerMode();
+        if (mode === 1)      { this.onUseItem(); }
+        else if (mode === 2) { this.onUseItemOn(); }
+        else                 { this.onUseItem(); this.onUseItemOn(); }
+        this.onJoin();
+        this.onLeft();
+    }
+
+    static initializeResources() {
+        MenuCommandHandler.register();
+        GetClockCommandHandler.register();
+        MenuDataManager.initializeAdminMenu();
+        menuConfig.validate();
+        if (!File.exists(MENU_CONFIG.menusPath + "main.json"))
+            MenuDataManager.setMenu("main", MenuDataManager.getDefaultMainMenu());
+    }
+
+    static onUseItem() {
+        mc.listen("onUseItem", (player, item) => {
+            const items = menuConfig.getItems();
+            if (items.includes(item.type) && !clickCooldown[player.xuid]) {
+                clickCooldown[player.xuid] = true;
+                MenuPlayerHandler.showMenu(player, menuConfig.getMain());
+                setTimeout(() => { clickCooldown[player.xuid] = false; }, 1000);
+            }
+        });
+    }
+
+    static onUseItemOn() {
+        mc.listen("onUseItemOn", (player, item, block) => {
+            const items = menuConfig.getItems();
+            if (!items.includes(item.type)) return;
+            var device = player.getDevice();
+            if (!MENU_CONFIG.mobileOS.includes(device.os) &&
+                !["Windows10", "Win32"].includes(device.os)) return;
+            if (block.hasContainer()) return;
+            if (!clickCooldown[player.xuid]) {
+                clickCooldown[player.xuid] = true;
+                MenuPlayerHandler.showMenu(player, menuConfig.getMain());
+                setTimeout(() => { clickCooldown[player.xuid] = false; }, 1000);
+            }
+        });
+    }
+
+    static onJoin() {
+        mc.listen("onJoin", (player) => {
+            MenuEconomyManager.add(player, 0);
+
+            // 自动发钟：首次进服限领一次，背包满则掉落地上
+            if (!GetClockCommandHandler.hasClaimed(player.xuid)) {
+                var clockItem = mc.newItem("minecraft:clock", 1);
+                if (clockItem) {
+                    if (!player.getInventory().hasRoomFor(clockItem)) {
+                        mc.spawnItem(clockItem, player.pos);
+                        player.tell(info + "§e首次进服赠品：钟表已掉落在你脚下（背包已满），此物品每人仅限一次");
+                    } else {
+                        player.giveItem(clockItem);
+                        player.refreshItems();
+                        player.tell(info + "§a首次进服赠品：已获得钟表，此物品每人仅限一次");
+                    }
+                    GetClockCommandHandler.markClaimed(player.xuid);
+                }
+            }
+        });
+    }
+
+    // 修复bug：玩家离线时清理冷却缓存，防止长期运行内存泄漏
+    static onLeft() {
+        mc.listen("onLeft", (player) => {
+            delete clickCooldown[player.xuid];
+        });
+    }
+}
+
+// ==================== 模块导出与启动 ====================
+const menuConfig = new MenuConfigManager();
+
+if (typeof module !== "undefined" && module.exports) {
+    module.exports = {
+        MenuConfigManager, MenuEventListeners, MenuUtils,
+        MenuEconomyManager, MenuDataManager, MenuPlayerHandler,
+        MenuCommandHandler, MenuAdminHandler, GetClockCommandHandler
+    };
+}
+setTimeout(() => { MenuEventListeners.register(); }, 2000);
