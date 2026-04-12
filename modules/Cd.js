@@ -1,7 +1,5 @@
 // LiteLoader-AIDS automatic generated
-// v2.8.0 - 移除VIP功能；修复孤儿按钮泄漏；修复other-settings表单索引bug；
-//          修复冷却内存泄漏；修复文件名校验过严；移除死代码；
-//          修正getclock使用正确的giveItem API
+// v2.8.1 - 修复钟表无反应：事件名错误/平台过滤/mode死代码/孤立字符
 
 // ==================== 常量定义 ====================
 const info = globalThis.info || "§l§6[-YEST-] §r";
@@ -14,7 +12,6 @@ const MENU_CONFIG = {
 
 // ==================== 全局状态 ====================
 const clickCooldown = {};
-// 同步锁：同一 tick 内阻止重复触发（onUseItem 与 onUseItemOn 会在同一毫秒同时派发）
 const menuPendingThisTick = new Set();
 
 // ==================== 配置管理器 ====================
@@ -70,7 +67,6 @@ class MenuConfigManager {
 
 // ==================== 工具函数 ====================
 class MenuUtils {
-    // 修复bug：原版 /^[A-Za-z]+$/ 不允许数字，改为允许字母+数字
     static isValidFileName(str) {
         return /^[A-Za-z0-9]+$/.test(str) && str.length >= 1 && str.length <= 20;
     }
@@ -158,7 +154,6 @@ class MenuDataManager {
             File.delete(MENU_CONFIG.menusPath + fileName);
     }
 
-    // 修复bug：删除子菜单后，清理其他所有菜单里指向该文件的孤儿按钮
     static removeOrphanButtons(deletedFileName) {
         var target = deletedFileName.replace(".json", "");
         if (!File.exists(MENU_CONFIG.menusPath)) return;
@@ -168,7 +163,6 @@ class MenuDataManager {
             if (!menuData || !menuData.buttons) return;
             var before = menuData.buttons.length;
             menuData.buttons = menuData.buttons.filter(function(btn) {
-                // 只清理 form/opfm 类型中 command 指向被删文件的按钮
                 return !((btn.type === "form" || btn.type === "opfm") && btn.command === target);
             });
             if (menuData.buttons.length !== before) {
@@ -209,9 +203,7 @@ class MenuDataManager {
 
     static filterButtonsForPlayer(player, menuData) {
         menuData.buttons = menuData.buttons.filter(function(button) {
-            // 向后兼容：旧配置里的vipfm/vipcm按钮对所有人都隐藏
             if (button.type === "vipfm" || button.type === "vipcm") return false;
-            // 非OP玩家不显示管理员按钮
             if (!player.isOP() && (button.type === "opfm" || button.type === "opcm")) return false;
             return true;
         });
@@ -333,13 +325,12 @@ class MenuCommandHandler {
     }
 }
 
-// ==================== 获取钟表命令（独立，每人限领一次）====================
+// ==================== 获取钟表命令 ====================
 class GetClockCommandHandler {
     static get dataPath() {
         return "./plugins/YEssential/data/getclock_claimed.json";
     }
 
-    // 兼容原格式：JSON 数组，每项为 xuid 字符串
     static loadClaimed() {
         if (!File.exists(this.dataPath)) {
             File.writeTo(this.dataPath, "[]");
@@ -374,8 +365,6 @@ class GetClockCommandHandler {
             }
             var clockItem = mc.newItem("minecraft:clock", 1);
             if (!clockItem) { player.tell(info + "§c获取钟表失败"); return; }
-
-            // 背包满时掉落到玩家脚下，否则直接给予
             if (!player.getInventory().hasRoomFor(clockItem)) {
                 mc.spawnItem(clockItem, player.pos);
                 player.tell(info + "§e已获得钟表（背包已满，已掉落在你脚下），此物品每人仅限领取一次");
@@ -419,7 +408,6 @@ class MenuAdminHandler {
         var currentScore     = menuConfig.getScore();
         var form = mc.newCustomForm();
         form.setTitle("设置经济参数");
-        // data[0]=dropdown, data[1]=input
         form.addDropdown("选择经济模式---当前: " + (currentMoneyType ? "LLMoney" : "计分板"),
             ["计分板", "LLMoney"], moneyType != null ? moneyType : currentMoneyType);
         form.addInput("输入计分板项--当前: " + currentScore, "例如: money",
@@ -460,7 +448,7 @@ class MenuAdminHandler {
             });
             return;
         }
-        if (type === "add_menu")    this.showAddSubMenu(player);
+        if (type === "add_menu")        this.showAddSubMenu(player);
         else if (type === "add_button") this.showAddButton(player);
     }
 
@@ -478,8 +466,7 @@ class MenuAdminHandler {
         var self = this;
         player.sendForm(form, function(pl, data) {
             if (!data) { self.showAddMenu(player); return; }
-            var [parentIndex, fileName, title, content] = data;
-            // 修复bug：文件名改为支持字母+数字
+            var parentIndex = data[0], fileName = data[1], title = data[2], content = data[3];
             if (!MenuUtils.isValidFileName(fileName)) {
                 self.showAddSubMenu(player, "§l§c文件名称不合法（仅限英文字母和数字，1-20个字符）",
                     { parentIndex, fileName, title, content });
@@ -510,7 +497,6 @@ class MenuAdminHandler {
             this.showAddMenu(player); return;
         }
         var fileOptions = menuFiles.map(f => MenuDataManager.getMenu(f).title + " | " + f);
-        // 移除了VIP类型
         var buttonTypes = ["玩家二级菜单", "管理员二级菜单", "玩家执行指令", "管理员执行指令"];
         var form = mc.newCustomForm();
         form.setTitle("添加菜单按钮");
@@ -526,13 +512,14 @@ class MenuAdminHandler {
         var self = this;
         player.sendForm(form, function(pl, data) {
             if (!data) { self.showAddMenu(player); return; }
-            var [fileIndex, typeIndex, enableImage, imagePath, buttonText, command, money, position] = data;
+            var fileIndex   = data[0], typeIndex  = data[1], enableImage = data[2],
+                imagePath   = data[3], buttonText = data[4], command     = data[5],
+                money       = data[6], position   = data[7];
             if (!buttonText || !command) {
                 self.showAddButton(player, "§c标题和指令必填",
                     { fileIndex, buttonType: typeIndex, enableImage, imagePath, buttonText, command, money, position });
                 return;
             }
-            // typeMap 与 buttonTypes 对齐（已移除vipfm/vipcm）
             var typeMap   = ["form", "opfm", "comm", "opcm"];
             var newButton = {
                 images: enableImage, image: enableImage ? (imagePath || "textures/items/apple") : "",
@@ -581,7 +568,6 @@ class MenuAdminHandler {
                 if (id >= 0 && id < files.length) {
                     var deleted = files[id];
                     MenuDataManager.deleteMenu(deleted);
-                    // 修复bug：清理其他菜单里指向该文件的孤儿按钮
                     MenuDataManager.removeOrphanButtons(deleted);
                     player.tell(MENU_CONFIG.prefix + "§2删除成功: " + deleted);
                     self.showDeleteMenu(player, type);
@@ -689,7 +675,7 @@ class MenuAdminHandler {
         var self = this;
         player.sendForm(form, function(pl, data) {
             if (!data) { self.showEditMenuInfo(player); return; }
-            var [newTitle, newContent] = data;
+            var newTitle = data[0], newContent = data[1];
             if (!newTitle || !newContent) {
                 self.showEditMenuInfoForm(player, fileName, "§c标题和内容不能为空"); return;
             }
@@ -744,18 +730,13 @@ class MenuAdminHandler {
     static showEditButtonForm(player, fileName, buttonIndex, error) {
         var menuData = MenuDataManager.getMenu(fileName);
         var button   = menuData.buttons[buttonIndex];
-
-        // 移除了VIP类型，typeMap与UI对齐
         var typeMap     = ["form", "opfm", "comm", "opcm"];
         var buttonTypes = ["玩家二级菜单", "管理员二级菜单", "玩家执行指令", "管理员执行指令"];
-
-        // 向后兼容：旧的vipfm/vipcm平滑迁移
         var rawType = button.type;
         if (rawType === "vipfm") rawType = "form";
         if (rawType === "vipcm") rawType = "comm";
         var currentTypeIndex = typeMap.indexOf(rawType);
         if (currentTypeIndex === -1) currentTypeIndex = 0;
-
         var form = mc.newCustomForm();
         form.setTitle("修改按钮: " + button.text);
         form.addDropdown("按钮类型",        buttonTypes, currentTypeIndex);
@@ -768,7 +749,8 @@ class MenuAdminHandler {
         var self = this;
         player.sendForm(form, function(pl, data) {
             if (!data) { self.showEditButtonList(player, fileName); return; }
-            var [typeIndex, enableImage, imagePath, buttonText, command, money] = data;
+            var typeIndex   = data[0], enableImage = data[1], imagePath  = data[2],
+                buttonText  = data[3], command     = data[4], money      = data[5];
             if (!buttonText || !command) {
                 self.showEditButtonForm(player, fileName, buttonIndex, "§c标题和指令不能为空"); return;
             }
@@ -789,15 +771,12 @@ class MenuAdminHandler {
         var files = MenuUtils.getMenuFiles();
         var form = mc.newCustomForm();
         form.setTitle("其他设置");
-        // 修复bug：label不占data下标，所以dropdown在data[0]
-        // 将当前主菜单名显示在标题里，省去了原来占位的addLabel
         form.addDropdown("主菜单文件（当前: " + menuConfig.getMain() + "）",
             ["不修改", ...files], 0);
         if (error) form.addLabel(error);
         var self = this;
         player.sendForm(form, function(pl, data) {
             if (!data) { self.showMainSettings(player); return; }
-            // data[0] = dropdown
             if (data[0] > 0) {
                 menuConfig.set({ main: files[data[0] - 1].replace(".json", "") });
                 self.showOtherSettings(player, "§2修改成功");
@@ -813,8 +792,9 @@ class MenuEventListeners {
     static register() {
         this.initializeResources();
         const mode = menuConfig.getItemsTriggerMode();
-        if (mode === 1)      { this.onUseItemOn(); }
-        else  { this.onUseItemOn(); }
+        // Fix: mode=1 监听空气右键（onUseItem），其他情况监听右键方块（onUseItemOn）
+        if (mode === 1) { this.listenUseItem(); }
+        else            { this.listenUseItemOn(); }
         this.onJoin();
         this.onLeft();
     }
@@ -828,13 +808,29 @@ class MenuEventListeners {
             MenuDataManager.setMenu("main", MenuDataManager.getDefaultMainMenu());
     }
 
-    static onUseItemOn() {
+    // Fix: 右键方块触发（有 block 参数），不限制平台
+    static listenUseItemOn() {
         mc.listen("onUseItemOn", (player, item, block) => {
             const items = menuConfig.getItems();
             if (!items.includes(item.type)) return;
-            const device = player.getDevice();
-            if (!MENU_CONFIG.mobileOS.includes(device.os)) return;
             if (block.hasContainer()) return;
+            if (clickCooldown[player.xuid]) return;
+            if (menuPendingThisTick.has(player.xuid)) return;
+            menuPendingThisTick.add(player.xuid);
+            clickCooldown[player.xuid] = true;
+            MenuPlayerHandler.showMenu(player, menuConfig.getMain());
+            setTimeout(() => {
+                clickCooldown[player.xuid] = false;
+                menuPendingThisTick.delete(player.xuid);
+            }, 1000);
+        });
+    }
+
+    // Fix: 空气右键触发（无 block 参数），不限制平台
+    static listenUseItem() {
+        mc.listen("onUseItem", (player, item) => {
+            const items = menuConfig.getItems();
+            if (!items.includes(item.type)) return;
             if (clickCooldown[player.xuid]) return;
             if (menuPendingThisTick.has(player.xuid)) return;
             menuPendingThisTick.add(player.xuid);
@@ -850,8 +846,6 @@ class MenuEventListeners {
     static onJoin() {
         mc.listen("onJoin", (player) => {
             MenuEconomyManager.add(player, 0);
-
-            // 自动发钟：首次进服限领一次，背包满则掉落地上
             if (!GetClockCommandHandler.hasClaimed(player.xuid)) {
                 var clockItem = mc.newItem("minecraft:clock", 1);
                 if (clockItem) {
@@ -869,7 +863,6 @@ class MenuEventListeners {
         });
     }
 
-    // 修复bug：玩家离线时清理冷却缓存，防止长期运行内存泄漏
     static onLeft() {
         mc.listen("onLeft", (player) => {
             delete clickCooldown[player.xuid];

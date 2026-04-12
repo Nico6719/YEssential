@@ -1,171 +1,211 @@
 /**
- * LeviLamina_LSE_YEssential - bStats 遥测模块 
+ * LeviLamina_LSE_YEssential - bStats 遥测模块
+ *
+ * 改动：
+ *  1. UUID 持久化至 /plugins/YEssential/data/Bstats/uuid.json，完全脱离 conf
+ *  2. 上报失败最多重试 2 次，耗尽后 warn 并放弃，不影响服务器运行
+ *  3. 所有日志统一走 randomGradientLog（彩色渐变）或 logger.warn / logger.error
  */
-function randomGradientLog(text) {
-      const len = text.length;
-      let out = '';
-      for (let i = 0; i < len; i++) {
-          const t = len <= 1 ? 0 : i / (len - 1);
-          const [r, g, b] = globalLerpColor(t);
-          out += `\x1b[38;2;${r};${g};${b}m` + text[i];
-      }
-      logger.log(out + '\x1b[0m');
+
+const BSTATS_UUID_PATH = "./plugins/YEssential/data/Bstats/uuid.json";
+const BSTATS_MAX_RETRY = 2;
+
+// ─── UUID 工具 ────────────────────────────────────────────────────
+
+function generateUUID() {
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+        const r = (Math.random() * 16) | 0;
+        const v = c === "x" ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+    });
 }
-class BStatsImpl {
-    constructor(pluginId) {
-        this.pluginId = pluginId;
-        this.enabled = true;
-        this.debugMode = true;
-        this.pluginName = "YEssential";
-        this.pluginVersion = this.readManifestVersion(); // 修正了拼写错误
 
-        // 初始设为空，方便观察是否获取成功
-        this.cachedCoreCount = "Unknown";
-        this.cachedOsName = "Unknown";
-        this.cachedOsArch = "Unknown";
-        this.cachedOsVersion = "Unknown";
-        this.cachedRamTotal = "Unknown";
-        this.cachedRamAvail = "Unknown";
-
-        this.platform = "bukkit"; // 保持为 "bukkit" 以便 bstats.org 接受
-        this.baseUrl = `https://bstats.org/api/v2/data/${this.platform}`;
-
-        // 立即同步一次配置并探测系统信息
-        this.syncConfig( );
-        this.probeSystemInfo();
-    }
-    readManifestVersion() {
-    const path = './plugins/YEssential/manifest.json';
+function loadOrCreateUUID() {
     try {
-        if (File.exists(path)) {
-            const content = File.readFrom(path);
-            if (content) {
-                const json = JSON.parse(content);
-                // manifest.json 中版本字段通常是 version 或 version_name
-                const ver = json.version || json.version_name;
-                if (ver) {
-                    // 如果是数组形式 [2, 10, 1]，转成 "2.10.1"
-                    if (Array.isArray(ver)) return ver.join('.');
-                    return String(ver);
+        if (File.exists(BSTATS_UUID_PATH)) {
+            const raw = File.readFrom(BSTATS_UUID_PATH);
+            if (raw) {
+                const obj = JSON.parse(raw);
+                if (obj && typeof obj.uuid === "string" && obj.uuid.length === 36) {
+                    randomGradientLog("[Bstats] 已加载 UUID: " + obj.uuid);
+                    return obj.uuid;
                 }
             }
         }
     } catch (e) {
-        logger.error(`读取 manifest.json 失败: ${e.message}`);
+        logger.error("[Bstats] 读取 UUID 文件失败: " + e.message);
     }
-    // 读取失败则回退到硬编码版本
-    return "2.10.3";
+
+    const newUUID = generateUUID();
+    try {
+        File.writeTo(BSTATS_UUID_PATH, JSON.stringify({ uuid: newUUID }, null, 2));
+        randomGradientLog("[Bstats] 首次生成 UUID 并写入: " + BSTATS_UUID_PATH);
+    } catch (e) {
+        logger.error("[Bstats] 写入 UUID 文件失败: " + e.message);
     }
-    /**
-     * 从 server.properties 文件中读取 online-mode 设置
-     * @returns {number} 1 表示 true (在线模式), 0 表示 false (离线模式)
-     */
-    readServerProperties() {
-        const path = './server.properties';
+    return newUUID;
+}
+
+// ─── 带重试的 HTTP 上报 ───────────────────────────────────────────
+
+function postWithRetry(url, body, retryLeft) {
+    const attemptNo = BSTATS_MAX_RETRY - retryLeft + 1;
+    try {
+        network.httpPost(url, body, "application/json", function (status, result) {
+            if (status === 200) {
+                randomGradientLog("遥测数据上报成功 ");
+                return;
+            }
+            if (retryLeft > 1) {
+                logger.warn(
+                    "[Bstats] 上报失败（第 " + attemptNo + " 次 / 状态码: " + status + "），" +
+                    "1 秒后发起第 " + (attemptNo + 1) + " 次重试..."
+                );
+                setTimeout(function () { postWithRetry(url, body, retryLeft - 1); }, 1000);
+            } else {
+                logger.warn(
+                    "上报失败（第 " + attemptNo + " 次 / 状态码: " + status + "）。" +
+                    "已达最大重试次数 (" + BSTATS_MAX_RETRY + ")，本轮放弃。" 
+                );
+            }
+        });
+    } catch (e) {
+        if (retryLeft > 1) {
+            logger.warn(
+                "[Bstats] 网络请求异常（第 " + attemptNo + " 次: " + e.message + "），" +
+                "1 秒后发起第 " + (attemptNo + 1) + " 次重试..."
+            );
+            setTimeout(function () { postWithRetry(url, body, retryLeft - 1); }, 1000);
+        } else {
+            logger.warn(
+                "[Bstats] 网络请求异常（第 " + attemptNo + " 次: " + e.message + "）。" +
+                "已达最大重试次数 (" + BSTATS_MAX_RETRY + ")，本轮放弃。"
+            );
+        }
+    }
+}
+
+// ─── 主类 ─────────────────────────────────────────────────────────
+
+class BStatsImpl {
+    constructor(pluginId) {
+        this.pluginId      = pluginId;
+        this.enabled       = true;
+        this.debugMode     = true;
+        this.pluginName    = "YEssential";
+        this.pluginVersion = this.readManifestVersion();
+
+        this.cachedCoreCount = "Unknown";
+        this.cachedOsName    = "Unknown";
+        this.cachedOsArch    = "Unknown";
+        this.cachedOsVersion = "Unknown";
+        this.cachedRamTotal  = "Unknown";
+        this.cachedRamAvail  = "Unknown";
+        this._rawLinuxMem    = null;
+        this._rawWmicMem     = null;
+
+        this.platform = "bukkit";
+        this.baseUrl  = "https://bstats.org/api/v2/data/" + this.platform;
+
+        // UUID 从独立文件读，不再依赖 conf
+        this.serverUUID = loadOrCreateUUID();
+
+        this.syncConfig();
+        this.probeSystemInfo();
+    }
+
+    readManifestVersion() {
+        const path = "./plugins/YEssential/manifest.json";
         try {
             if (File.exists(path)) {
                 const content = File.readFrom(path);
-                const match = content.match(/^online-mode\s*=\s*(true|false)/m);
-                if (match) {
-                    const value = match[1];
-                    if (this.debugMode) randomGradientLog(`从 server.properties 读取到 online-mode: ${value}`);
-                    return value === 'true' ? 1 : 0;
+                if (content) {
+                    const json = JSON.parse(content);
+                    const ver  = json.version || json.version_name;
+                    if (ver) return Array.isArray(ver) ? ver.join(".") : String(ver);
                 }
             }
-            if (this.debugMode) logger.warn("server.properties 中未找到 'online-mode'，将使用默认值 1。");
         } catch (e) {
-            if (this.debugMode) logger.error(`读取 server.properties 失败: ${e.message}，将使用默认值 1。`);
+            logger.error("[Bstats] 读取 manifest.json 失败: " + e.message);
         }
-        // 默认返回 1 (在线模式)
+        return "2.10.11";
+    }
+
+    readServerProperties() {
+        const path = "./server.properties";
+        try {
+            if (File.exists(path)) {
+                const content = File.readFrom(path);
+                const match   = content.match(/^online-mode\s*=\s*(true|false)/m);
+                if (match) {
+                    if (this.debugMode)
+                        randomGradientLog("[Bstats] online-mode = " + match[1]);
+                    return match[1] === "true" ? 1 : 0;
+                }
+            }
+        } catch (e) {
+            if (this.debugMode)
+                logger.error("[Bstats] 读取 server.properties 失败: " + e.message);
+        }
         return 1;
     }
 
+    // 只同步开关，UUID 不再从 conf 读写
     syncConfig() {
         try {
-            if (typeof conf !== 'undefined') {
-                let bstatsConf = conf.get("Bstats") || {};
-                this.enabled = bstatsConf.EnableModule ?? true;
-                this.debugMode = bstatsConf.logSentData ?? true;
-                this.serverUUID = bstatsConf.serverUUID || this.generateUUID();
-                if (!bstatsConf.serverUUID) {
-                    bstatsConf.serverUUID = this.serverUUID;
-                    conf.set("Bstats", bstatsConf);
-                }
-            } else {
-                // 如果 conf 对象不存在，生成一个临时的 UUID
-                this.serverUUID = this.generateUUID();
+            if (typeof conf !== "undefined") {
+                const bstatsConf = conf.get("Bstats") || {};
+                this.enabled     = bstatsConf.EnableModule != null ? bstatsConf.EnableModule : true;
+                this.debugMode   = bstatsConf.logSentData  != null ? bstatsConf.logSentData  : true;
             }
         } catch (e) {
-            logger.error("同步配置失败: " + e.message);
+            logger.error("[Bstats] 同步配置失败: " + e.message);
         }
     }
 
-    // 深度探测系统信息
     probeSystemInfo() {
-        // 1. 尝试通过 process 对象获取
-        try {
-            if (typeof process !== 'undefined') {
-                this.cachedOsName = process.platform || this.cachedOsName;
-                this.cachedOsArch = process.arch || this.cachedOsArch;
-            }
-        } catch(e) {}
-
-        // 2. 尝试通过异步命令预加载
-        const updateVal = (cmd, prop) => {
+        const self = this;
+        const set = function (cmd, prop) {
             try {
-                system.cmd(cmd, (exit, out) => {
-                    if (exit === 0 && out) this[prop] = out.trim();
+                system.cmd(cmd, function (exit, out) {
+                    if (exit === 0 && out) self[prop] = out.trim();
                 });
-            } catch(e) {}
+            } catch (e) {}
         };
 
-        updateVal("nproc", "cachedCoreCount");
-        updateVal("uname -s", "cachedOsName");
-        updateVal("uname -m", "cachedOsArch");
-        updateVal("uname -r", "cachedOsVersion");
+        // Linux
+        set("nproc",    "cachedCoreCount");
+        set("uname -s", "cachedOsName");
+        set("uname -m", "cachedOsArch");
+        set("uname -r", "cachedOsVersion");
+        set("grep -E 'MemTotal|MemAvailable' /proc/meminfo", "_rawLinuxMem");
 
-        // 3. 针对 Windows 的特殊探测
-        if (this.cachedOsName === "Unknown") {
-            updateVal("echo %NUMBER_OF_PROCESSORS%", "cachedCoreCount");
-            updateVal("echo %OS%", "cachedOsName");
-            updateVal("echo %PROCESSOR_ARCHITECTURE%", "cachedOsArch");
-        }
+        // Windows 兜底
+        set("echo %NUMBER_OF_PROCESSORS%",                             "cachedCoreCount");
+        set("echo %OS%",                                               "cachedOsName");
+        set("echo %PROCESSOR_ARCHITECTURE%",                           "cachedOsArch");
+        set("wmic OS get TotalVisibleMemorySize,FreePhysicalMemory /value", "_rawWmicMem");
 
-        // 4. 内存信息探测
-        // Linux: 读取 /proc/meminfo
-        try {
-            system.cmd("grep -E 'MemTotal|MemAvailable' /proc/meminfo", (exit, out) => {
-                if (exit === 0 && out) {
-                    const totalMatch = out.match(/MemTotal:\s+(\d+)/);
-                    const availMatch = out.match(/MemAvailable:\s+(\d+)/);
-                    if (totalMatch) this.cachedRamTotal = Math.round(parseInt(totalMatch[1]) / 1024) + " MB";
-                    if (availMatch) this.cachedRamAvail = Math.round(parseInt(availMatch[1]) / 1024) + " MB";
-                }
-            });
-        } catch(e) {}
-
-        // Windows: 用 wmic 查询（如果 Linux 命令没取到）
-        try {
-            system.cmd("wmic OS get TotalVisibleMemorySize,FreePhysicalMemory /value", (exit, out) => {
-                if (exit === 0 && out && this.cachedRamTotal === "Unknown") {
-                    const totalMatch = out.match(/TotalVisibleMemorySize=(\d+)/);
-                    const freeMatch  = out.match(/FreePhysicalMemory=(\d+)/);
-                    if (totalMatch) this.cachedRamTotal = Math.round(parseInt(totalMatch[1]) / 1024) + " MB";
-                    if (freeMatch)  this.cachedRamAvail = Math.round(parseInt(freeMatch[1])  / 1024) + " MB";
-                }
-            });
-        } catch(e) {}
+        // 28 秒后解析，确保在 30 秒首次上报前就绪
+        setTimeout(function () { self._parseMemInfo(); }, 28 * 1000);
     }
 
-    generateUUID() {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-        });
+    _parseMemInfo() {
+        if (this._rawLinuxMem) {
+            const totalM = this._rawLinuxMem.match(/MemTotal:\s+(\d+)/);
+            const availM = this._rawLinuxMem.match(/MemAvailable:\s+(\d+)/);
+            if (totalM) this.cachedRamTotal = Math.round(parseInt(totalM[1]) / 1024) + " MB";
+            if (availM) this.cachedRamAvail = Math.round(parseInt(availM[1]) / 1024) + " MB";
+        }
+        if (this._rawWmicMem && this.cachedRamTotal === "Unknown") {
+            const totalM = this._rawWmicMem.match(/TotalVisibleMemorySize=(\d+)/);
+            const freeM  = this._rawWmicMem.match(/FreePhysicalMemory=(\d+)/);
+            if (totalM) this.cachedRamTotal = Math.round(parseInt(totalM[1]) / 1024) + " MB";
+            if (freeM)  this.cachedRamAvail = Math.round(parseInt(freeM[1])  / 1024) + " MB";
+        }
     }
 
     collectData() {
-        // 每次收集数据时都重新同步配置，确保 UUID 等信息是最新的
         this.syncConfig();
 
         let playerCount = 0;
@@ -173,31 +213,27 @@ class BStatsImpl {
 
         let moduleCount = 0;
         try {
-            const moduleListPath = "./plugins/YEssential/modules/modulelist.json";
-            if (File.exists(moduleListPath)) {
-                const content = File.readFrom(moduleListPath);
-                if (content) {
-                    const json = JSON.parse(content);
-                    if (json && json.modules) moduleCount = json.modules.length;
-                }
+            const mlPath = "./plugins/YEssential/modules/modulelist.json";
+            if (File.exists(mlPath)) {
+                const raw  = File.readFrom(mlPath);
+                const json = raw ? JSON.parse(raw) : null;
+                if (json && json.modules) moduleCount = json.modules.length;
             }
         } catch (e) {}
 
-        const lseVerRaw = (typeof ll !== 'undefined') ? ll.versionString() : "Unknown";
-        const pureLseVersion = lseVerRaw.replace("LSE-QuickJS ", "").split(" ")[0];
+        const lseVerRaw  = (typeof ll !== "undefined") ? ll.versionString() : "Unknown";
+        const pureLseVer = lseVerRaw.replace("LSE-QuickJS ", "").split(" ")[0];
 
-        let mcVer = (typeof mc !== 'undefined' ? mc.getBDSVersion() : "1.21.0");
-        if (mcVer.startsWith('v')) mcVer = mcVer.substring(1);
+        let mcVer = (typeof mc !== "undefined") ? mc.getBDSVersion() : "1.21.0";
+        if (mcVer.startsWith("v")) mcVer = mcVer.substring(1);
 
-        // 最终兜底：如果探测失败，至少给一个看起来真实的占位符
-        const finalOsName = this.cachedOsName !== "Unknown" ? this.cachedOsName : "Windows";
-        const finalOsArch = this.cachedOsArch !== "Unknown" ? this.cachedOsArch : "x86_64";
+        const finalOsName    = this.cachedOsName    !== "Unknown" ? this.cachedOsName    : "Windows";
+        const finalOsArch    = this.cachedOsArch    !== "Unknown" ? this.cachedOsArch    : "x86_64";
         const finalCoreCount = this.cachedCoreCount !== "Unknown" ? this.cachedCoreCount : "8";
         const finalOsVersion = this.cachedOsVersion !== "Unknown" ? this.cachedOsVersion : "10.0";
-        const finalRamTotal = this.cachedRamTotal !== "Unknown" ? this.cachedRamTotal : "Unknown";
-        const finalRamAvail = this.cachedRamAvail !== "Unknown" ? this.cachedRamAvail : "Unknown";
+        const finalRamTotal  = this.cachedRamTotal  !== "Unknown" ? this.cachedRamTotal  : "Unknown";
+        const finalRamAvail  = this.cachedRamAvail  !== "Unknown" ? this.cachedRamAvail  : "Unknown";
 
-        // 计算内存使用率（如果两项都有值）
         let ramUsagePct = "Unknown";
         if (finalRamTotal !== "Unknown" && finalRamAvail !== "Unknown") {
             const total = parseInt(finalRamTotal);
@@ -207,33 +243,41 @@ class BStatsImpl {
         }
 
         if (this.debugMode) {
-            randomGradientLog(`[Bstats] 内存信息 - 总计: ${finalRamTotal} | 可用: ${finalRamAvail} | 使用率: ${ramUsagePct}`);
+            randomGradientLog(
+                "[Bstats] 内存 — 总计: " + finalRamTotal +
+                " | 可用: " + finalRamAvail +
+                " | 使用率: " + ramUsagePct
+            );
         }
 
+        const econConf = (typeof conf !== "undefined") ? conf.get("Economy") : null;
+        const rtpConf  = (typeof conf !== "undefined") ? conf.get("RTP")     : null;
+        const updConf  = (typeof conf !== "undefined") ? conf.get("Update")  : null;
+
         return {
-            "serverUUID": this.serverUUID,
-            "metricsVersion": "2",
-            "playerAmount": playerCount,
-            "onlineMode": this.readServerProperties(), 
-            "bukkitVersion": mcVer,
-            "javaVersion": "N/A (Bedrock)",
-            "osName": finalOsName,
-            "osArch": finalOsArch,
-            "osVersion": finalOsVersion,
-            "coreCount": parseInt(finalCoreCount) || 8,
-            "ramTotal": finalRamTotal,
-            "ramAvailable": finalRamAvail,
-            "ramUsage": ramUsagePct,
-            "service": {
-                "id": this.pluginId,
-                "pluginVersion": this.pluginVersion, // <--- 修正点：将插件版本移到此处
-                "customCharts": [
-                    { "chartId": "lse_version", "type": "simple_pie", "data": { "value": pureLseVersion } },
-                    { "chartId": "economy_type", "type": "simple_pie", "data": { "value": (typeof conf !== 'undefined' && conf.get("Economy")?.mode === "LLMoney") ? "LLMoney" : "Scoreboard" } },
-                    { "chartId": "installed_modules_count", "type": "simple_pie", "data": { "value": moduleCount.toString() } },
-                    { "chartId": "AutoUpdate", "type": "simple_pie", "data": { "value": (typeof conf !== 'undefined' && conf.get("Update")?.EnableModule) ? "Enabled" : "Disabled" } },
-                    { "chartId": "pay_tax_rate", "type": "simple_pie", "data": { "value": (typeof conf !== 'undefined' ? (conf.get("Economy")?.PayTaxRate ?? 0) : 0).toString() + "%" } },
-                    {"chartId": "rtp_status", "type": "simple_pie", "data": { "value": (typeof conf !== 'undefined' && conf.get("RTP")?.EnabledModule) ? "Enabled" : "Disabled" } }
+            serverUUID:     this.serverUUID,
+            metricsVersion: "2",
+            playerAmount:   playerCount,
+            onlineMode:     this.readServerProperties(),
+            bukkitVersion:  mcVer,
+            javaVersion:    "N/A (Bedrock)",
+            osName:         finalOsName,
+            osArch:         finalOsArch,
+            osVersion:      finalOsVersion,
+            coreCount:      parseInt(finalCoreCount) || 8,
+            ramTotal:       finalRamTotal,
+            ramAvailable:   finalRamAvail,
+            ramUsage:       ramUsagePct,
+            service: {
+                id:            this.pluginId,
+                pluginVersion: this.pluginVersion,
+                customCharts: [
+                    { chartId: "lse_version",             type: "simple_pie", data: { value: pureLseVer } },
+                    { chartId: "economy_type",            type: "simple_pie", data: { value: (econConf && econConf.mode === "LLMoney") ? "LLMoney" : "Scoreboard" } },
+                    { chartId: "installed_modules_count", type: "simple_pie", data: { value: moduleCount.toString() } },
+                    { chartId: "AutoUpdate",              type: "simple_pie", data: { value: (updConf && updConf.EnableModule) ? "Enabled" : "Disabled" } },
+                    { chartId: "pay_tax_rate",            type: "simple_pie", data: { value: ((econConf && econConf.PayTaxRate != null) ? econConf.PayTaxRate : 0).toString() + "%" } },
+                    { chartId: "rtp_status",              type: "simple_pie", data: { value: (rtpConf && rtpConf.EnabledModule) ? "Enabled" : "Disabled" } }
                 ]
             }
         };
@@ -241,39 +285,31 @@ class BStatsImpl {
 
     submit() {
         if (!this.enabled) {
-            if (this.debugMode) randomGradientLog("遥测模块已禁用，跳过上报。");
+            if (this.debugMode)
+                randomGradientLog("[Bstats] 遥测模块已禁用，跳过上报。");
             return;
         }
+
         const payload = this.collectData();
+
         if (this.debugMode) {
-            randomGradientLog("准备上报数据包内容:");
+            randomGradientLog("[Bstats] 准备上报数据包：");
             randomGradientLog(JSON.stringify(payload, null, 2));
         }
-        try {
-            network.httpPost(this.baseUrl, JSON.stringify(payload ), "application/json", (status, result) => {
-                if (this.debugMode) {
-                    if (status === 200) {
-                        randomGradientLog("遥测数据上报成功。");
-                    } else {
-                        logger.warn(`上报失败，状态码: ${status}, 返回结果: ${result}`);
-                    }
-                }
-            });
-        } catch (e) {
-            if (this.debugMode) logger.error("网络请求异常: " + e.message);
-        }
+
+        postWithRetry(this.baseUrl, JSON.stringify(payload), BSTATS_MAX_RETRY);
     }
 
     start() {
-        // 延长到 30 秒，给异步命令足够的时间返回结果
-        setTimeout(() => this.submit(), 30 * 1000);
-        setInterval(() => this.submit(), 30 * 60 * 1000);
-        setTimeout(() => {
-        if (this.debugMode) randomGradientLog(`${this.pluginName}遥测模块已启动。首次数据将在 30 秒后发送。`);
-        },2000)
+        const self = this;
+        setTimeout(function () { self.submit(); }, 30 * 1000);
+        setInterval(function () { self.submit(); }, 30 * 60 * 1000);
+        setTimeout(function () {
+            randomGradientLog("遥测模块已启动。首次上报将在 30 秒后发送，失败最多重试 " + BSTATS_MAX_RETRY + " 次。");
+        }, 2000);
     }
 }
 
-// 启动 BStats
-const metrics = new BStatsImpl(29071); // 你的 Plugin ID
+// ─── 启动入口 ─────────────────────────────────────────────────────
+const metrics = new BStatsImpl(29071);
 metrics.start();
