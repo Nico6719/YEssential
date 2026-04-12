@@ -58,14 +58,14 @@ function postWithRetry(url, body, retryLeft) {
             }
             if (retryLeft > 1) {
                 logger.warn(
-                    "[Bstats] 上报失败（第 " + attemptNo + " 次 / 状态码: " + status + "），" +
+                    "上报失败（第 " + attemptNo + " 次 / 状态码: " + status + "），" +
                     "1 秒后发起第 " + (attemptNo + 1) + " 次重试..."
                 );
                 setTimeout(function () { postWithRetry(url, body, retryLeft - 1); }, 1000);
             } else {
                 logger.warn(
                     "上报失败（第 " + attemptNo + " 次 / 状态码: " + status + "）。" +
-                    "已达最大重试次数 (" + BSTATS_MAX_RETRY + ")，本轮放弃。" 
+                    "已达最大重试次数 (" + BSTATS_MAX_RETRY + ")，本                                                                                                                                                        轮放弃。" 
                 );
             }
         });
@@ -83,7 +83,7 @@ function postWithRetry(url, body, retryLeft) {
             );
         }
     }
-}
+}                                                                                                                                                                                                               
 
 // ─── 主类 ─────────────────────────────────────────────────────────
 
