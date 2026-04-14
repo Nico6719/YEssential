@@ -4,7 +4,7 @@
  * 改动：
  *  1. UUID 持久化至 /plugins/YEssential/data/Bstats/uuid.json，完全脱离 conf
  *  2. 上报失败最多重试 2 次，耗尽后 warn 并放弃，不影响服务器运行
- *  3. 所有日志统一走 randomGradientLog（彩色渐变）或 logger.warn / logger.error
+ *  3. 所有日志统一走 randomGradientLog(彩色渐变）或 logger.warn / logger.error
  */
 
 const BSTATS_UUID_PATH = "./plugins/YEssential/data/Bstats/uuid.json";
@@ -27,7 +27,9 @@ function loadOrCreateUUID() {
             if (raw) {
                 const obj = JSON.parse(raw);
                 if (obj && typeof obj.uuid === "string" && obj.uuid.length === 36) {
-                    randomGradientLog("[Bstats] 已加载 UUID: " + obj.uuid);
+                    setTimeout(() => {
+                        //randomGradientLog("ServerUUID: " + obj.uuid);
+                    }, 2000);
                     return obj.uuid;
                 }
             }
@@ -58,27 +60,27 @@ function postWithRetry(url, body, retryLeft) {
             }
             if (retryLeft > 1) {
                 logger.warn(
-                    "上报失败（第 " + attemptNo + " 次 / 状态码: " + status + "），" +
-                    "1 秒后发起第 " + (attemptNo + 1) + " 次重试..."
+                    "上报失败(第 " + attemptNo + " 次 / 状态码: " + status + ")," +
+                    "10 秒后发起第 " + (attemptNo + 1) + " 次重试..."
                 );
-                setTimeout(function () { postWithRetry(url, body, retryLeft - 1); }, 1000);
+                setTimeout(function () { postWithRetry(url, body, retryLeft - 1); }, 10000);
             } else {
                 logger.warn(
-                    "上报失败（第 " + attemptNo + " 次 / 状态码: " + status + "）。" +
-                    "已达最大重试次数 (" + BSTATS_MAX_RETRY + ")，本                                                                                                                                                        轮放弃。" 
+                    "上报失败(第 " + attemptNo + " 次 / 状态码: " + status + ")," +
+                    "已达最大重试次数 (" + BSTATS_MAX_RETRY + ")，本轮放弃。" 
                 );
             }
         });
     } catch (e) {
         if (retryLeft > 1) {
             logger.warn(
-                "[Bstats] 网络请求异常（第 " + attemptNo + " 次: " + e.message + "），" +
-                "1 秒后发起第 " + (attemptNo + 1) + " 次重试..."
+                "[Bstats] 网络请求异常(第 " + attemptNo + " 次: " + e.message + ")," +
+                "10 秒后发起第 " + (attemptNo + 1) + " 次重试..."
             );
-            setTimeout(function () { postWithRetry(url, body, retryLeft - 1); }, 1000);
+            setTimeout(function () { postWithRetry(url, body, retryLeft - 1); }, 10000);
         } else {
             logger.warn(
-                "[Bstats] 网络请求异常（第 " + attemptNo + " 次: " + e.message + "）。" +
+                "[Bstats] 网络请求异常(第 " + attemptNo + " 次: " + e.message + ")," +
                 "已达最大重试次数 (" + BSTATS_MAX_RETRY + ")，本轮放弃。"
             );
         }
