@@ -25,8 +25,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件 `;
-const version = "2.10.12";
-const regversion =[2,10,12];
+const version = "2.11.0";
+const regversion =[2,11,0];
 const info = "§l§6[-YEST-] §r";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
@@ -653,19 +653,16 @@ mc.listen("onLeft", (pl) => {
 });
 }
 // YEssential.js - servers 命令
+if (conf.get("CrossServerTransfer")?.EnabledModule) {
 let Sercmd = mc.newCommand("servers", "§l§a跨服传送", PermType.Any);
 Sercmd.overload([]);
 Sercmd.setCallback((cmd, ori, out, res) => {
     const pl = ori.player;
-    let config = conf.get("CrossServerTransfer");
-    if (!config || !config.EnabledModule) {
-        pl.tell(info + lang.get("module.no.Enabled"));
-        return;
-    }
     if (!pl || typeof pl.sendText !== "function") {
         logger.error(info+lang.get("player.isnull"));
         return;
     }
+    let config = conf.get("CrossServerTransfer");
     let serverList = [];
     try {
         serverList = config.servers || [];
@@ -707,13 +704,15 @@ Sercmd.setCallback((cmd, ori, out, res) => {
     });
 });
 Sercmd.setup();
+} // end if (conf.get("CrossServerTransfer")?.EnabledModule)
 //Hub
-mc.regPlayerCmd('hub', '打开回城菜单', (pl) => {
-    if (conf.get("Hub").EnabledModule == 0) {
-        pl.tell(info + lang.get("module.no.Enabled"));
-        return;
-    }
-    const Hub = conf.get("Hub")
+if (conf.get("Hub").EnabledModule) {
+const hubcmd = mc.newCommand("hub", "打开回城菜单", PermType.Any);
+hubcmd.overload([]);
+hubcmd.setCallback((cmd, ori, out, res) => {
+    const pl = ori.player;
+    if (!pl) return out.error(lang.get("warp.only.player"));
+    const Hub = conf.get("Hub");
     const form = mc.newSimpleForm();
     form.setTitle(lang.get("hub.tp.check"));
     form.setContent([
@@ -723,29 +722,32 @@ mc.regPlayerCmd('hub', '打开回城菜单', (pl) => {
         `§bZ: §f${Hub.z}`,
         `§b维度: §f${getDimensionName(Hub.dimid)}`
     ].join('\n'));
-    
     form.addButton(lang.get("hub.tp.now"), 'textures/ui/confirm');
     form.addButton(lang.get("hub.tp.notnow"), 'textures/ui/cancel');
-    
     pl.sendForm(form, (pl, id) => {
         if (id === 0) teleportPlayer(pl);
     });
 });
+hubcmd.setup();
+
 // 注册 /sethub 指令
-mc.regPlayerCmd('sethub', '设置回城点', (pl) => {
-    if (!pl || !pl.isOP()) {
-        pl.tell(info+lang.get("player.not.op"));
+const sethubcmd = mc.newCommand("sethub", "设置回城点", PermType.GameMasters);
+sethubcmd.overload([]);
+sethubcmd.setCallback((cmd, ori, out, res) => {
+    const pl = ori.player;
+    if (!pl) return out.error(lang.get("warp.only.player"));
+    if (!pl.isOP()) {
+        pl.tell(info + lang.get("player.not.op"));
         return;
     }
-    ///const pos = pl.pos;
     Hubdata = {
-        "x": pl.pos.x.toFixed(1) * 1, // toFixed(1) 转为字符串后通过 *1 转为数字
+        "x": pl.pos.x.toFixed(1) * 1,
         "y": pl.pos.y.toFixed(1) * 1,
         "z": pl.pos.z.toFixed(1) * 1,
-        "dimid": pl.pos.dimid,       // 直接使用原始值（已是数字）
+        "dimid": pl.pos.dimid,
         isSet: true
     };
-    conf.set("Hub",Hubdata)
+    conf.set("Hub", Hubdata);
     pl.tell([
         '§a回城点已设置为：',
         `§eX: §f${pl.pos.x.toFixed(1)}`,
@@ -754,6 +756,8 @@ mc.regPlayerCmd('sethub', '设置回城点', (pl) => {
         `§e维度: §f${getDimensionName(pl.pos.dimid)}`
     ].join('\n'));
 });
+sethubcmd.setup();
+} // end if (conf.get("Hub").EnabledModule)
 
 // 维度ID转名称
 function getDimensionName(id) {
@@ -775,15 +779,15 @@ function teleportPlayer(pl,player) {
             parseInt(Hub.dimension), // 维度转为整数
             { checkMatrix: true } // 选项参数
         );
-        pl.tell(lang.get("hub.tp.success"));       
+        pl.tell(info+lang.get("hub.tp.success"));       
     } catch (e) {
-        pl.tell(lang.get("hub.tp.fail")`${e.message}`);
+        pl.tell(info+lang.get("hub.tp.fail")`${e.message}`);
         logger.error(e.stack);
     }
 }
 // 金币信息显示函数
 function displayMoneyInfo(pl, target, isSelf = true) {
-    if (!pl || !target) return "信息获取失败";
+    if (!pl || !target) return lang.get("money.getinfo.fail");
     const prefix = isSelf ? "你的" : `玩家 ${target.realName} 的`;
     
     if (!economyCfg.isLLMoney) {
@@ -939,12 +943,8 @@ moneycmd.setCallback((cmd, ori, out, res) => {
             return out.error(`§c请指定数量！用法: /moneys ${res.option} <玩家> <数量>`);
         }
         Economy.execute(targetPl, economyMethod, amount);
-        
-        // --- 修改开始：统一格式并增加操作员信息 ---
         const operatorName = ori.player ? ori.player.realName : "控制台";
         history[timestamp] = `${coinName}${lang.get(actionKey)}${amount} (操作员: ${operatorName})`;
-        // --- 修改结束 ---
-
         MoneyHistory.set(targetPl.realName, history);
         out.success(info + lang.get(successKey)
             .replace("${player}", res.player)
@@ -1124,11 +1124,8 @@ function redpacketgui(plname) {
 function OPMoneyGui(plname){
     let pl = mc.getPlayer(plname)
     if(!pl) return
-
-    // [fix] 一次读取，后续复用
     const coinName  = economyCfg.coinName;
-    const rpEnabled = conf.get("RedPacket").EnabledModule == 1;
-
+    const rpEnabled  = conf.get("RedPacket").EnabledModule == 1;
     let fm = mc.newSimpleForm()
     fm.setTitle("(OP)"+coinName)
     fm.addButton((lang.get("money.op.add") || "增加玩家的") + coinName, "textures/ui/icon_best3")
@@ -1147,7 +1144,6 @@ function OPMoneyGui(plname){
         if(id == null) return pl.tell(info + lang.get("gui.exit"));
         
         let currentId = id;
-        // 如果红包未开启，且点击的是红包之后的按钮，需要手动修正索引
         if (!rpEnabled && currentId >= 7) {
             currentId += 1;
         }
@@ -1185,7 +1181,7 @@ function OPMoneyGui(plname){
 }
 
 // --- 1. 核心工具类 (封装底层逻辑) ---
-// --- 2.7.2 add 离线货币缓存管理 ---
+// --- v2.7.2 添加离线货币缓存管理 ---
 const OfflineMoneyCache = {
     // 读取离线缓存
     load: () => {
@@ -1802,7 +1798,7 @@ function MoneyTransferOfflineGui(plname) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// OPOfflineMoneyGui - OP版：对离线玩家执行金币增/减/设置
+// OPOfflineMoneyGui -对离线玩家执行金币增/减/设置
 // ══════════════════════════════════════════════════════════════
 function OPOfflineMoneyGui(plname) {
     const pl = mc.getPlayer(plname);
@@ -1964,9 +1960,9 @@ function OPWarpGui(plname) {
     
     const fm = mc.newSimpleForm();
     fm.setTitle(lang.get("warp.menu.public.op"));
-    fm.addButton(lang.get("warp.add"));
-    fm.addButton(lang.get("warp.del"));
-    fm.addButton(lang.get("warp.list"));
+    fm.addButton(lang.get("warp.add"), "textures/ui/Add-Ons_Nav_Icon36x36");
+    fm.addButton(lang.get("warp.del"), "textures/blocks/barrier");
+    fm.addButton(lang.get("warp.list"), "textures/ui/world_glyph_color_2x");
     
     pl.sendForm(fm, (pl, id) => {
         if (id == null) return pl.tell(info + lang.get("gui.exit"));
@@ -2270,10 +2266,12 @@ homegui.setCallback((cmd,ori,out,res)=>{
     if(!pl) return out.error(lang.get("warp.only.player"))        
     
     let fm = mc.newSimpleForm()
-    fm.setTitle(lang.get("home.tp.system"))
-    fm.addButton(lang.get("home.tp"))
-    fm.addButton(lang.get("home.add"))
-    fm.addButton(lang.get("home.del"))
+    fm.setTitle(info+lang.get("home.tp.system"))
+    fm.addButton(lang.get("home.tp"), "textures/items/ender_eye")
+    fm.addButton(lang.get("home.share"), "textures/items/compass_item");
+    fm.addButton(lang.get("home.add"), "textures/ui/Add-Ons_Nav_Icon36x36")
+    fm.addButton(lang.get("home.del"), "textures/blocks/barrier")
+    fm.addButton(lang.get("home.settings"), "textures/ui/settings_pause_menu_icon")
     
 
     pl.sendForm(fm,(pl,id)=>{
@@ -2284,12 +2282,17 @@ homegui.setCallback((cmd,ori,out,res)=>{
                 TpHome(pl.realName)
                 break
             case 1:
-                AddHome(pl.realName)
+                ShareHome(pl.realName)
                 break
             case 2:
+                AddHome(pl.realName)
+                break
+            case 3:
                 DelHome(pl.realName)
                 break
-    
+            case 4:
+                HomeSeetings(pl.realName)
+                break
         }
     })
 })
@@ -2314,7 +2317,7 @@ function TpHome(plname){
     pl.sendForm(fm,(pl,id)=>{
         if(id == null) return pl.tell(info + lang.get("gui.exit"));
         let fm = mc.newCustomForm()
-        fm.setTitle(lang.get("home.tp"))
+        fm.setTitle(info+lang.get("home.tp"))
         fm.addLabel("确认传送家 "+lst[id]+"？")
         fm.addLabel("您的" + coinName + "：" + String(Economy.get(pl)))
         fm.addLabel("传送家需要花费"+cost+coinName)
@@ -2330,7 +2333,135 @@ function TpHome(plname){
         })
     })
 }
+function ShareHome(plname){
+    let pl = mc.getPlayer(plname)
+    if(!pl) return
+    const homeConf = conf.get("Home");
+    const cost     = homeConf.tp;
+    const coinName = economyCfg.coinName;
 
+    // 收集所有玩家标记为公共的家
+    let allData;
+    try { allData = JSON.parse(homedata.read()); } catch(e) { allData = {}; }
+
+    let publicList = []; // [{owner, name, x, y, z, dimid}]
+    for(let owner in allData){
+        let homes = allData[owner];
+        for(let homeName in homes){
+            if(homes[homeName].isPublic){
+                publicList.push({
+                    owner,
+                    name: homeName,
+                    x:    homes[homeName].x,
+                    y:    homes[homeName].y,
+                    z:    homes[homeName].z,
+                    dimid: homes[homeName].dimid
+                });
+            }
+        }
+    }
+
+    let fm = mc.newSimpleForm();
+    fm.setTitle(lang.get("home.share"));
+
+    if(publicList.length === 0){
+        fm.setContent(lang.get("home.no.public.homes"));
+        pl.sendForm(fm, (pl, id) => {
+            if(id == null) return pl.runcmd("home");
+        });
+        return;
+    }
+
+    fm.setContent(lang.get("home.choose.public.home"));
+    publicList.forEach(h => {
+        fm.addButton(
+            h.name + "\n§7" + h.owner +
+            " · " + h.x + "," + h.y + "," + h.z +
+            " " + transdimid[h.dimid]
+        );
+    });
+
+    pl.sendForm(fm, (pl, id) => {
+        if(id == null) return pl.tell(info + lang.get("gui.exit"));
+        let h = publicList[id];
+        let fm2 = mc.newCustomForm();
+        fm2.setTitle(info+lang.get("home.share"));
+        fm2.addLabel("§l传送目标：§r" + h.name + " §7(" + h.owner + ")");
+        fm2.addLabel("坐标：" + h.x + "," + h.y + "," + h.z + " " + transdimid[h.dimid]);
+        fm2.addLabel("您的" + coinName + "：" + String(Economy.get(pl)));
+        fm2.addLabel("传送花费：" + cost + coinName);
+        pl.sendForm(fm2, (pl, data) => {
+            if(data == null) return pl.runcmd("home");
+            if(!EconomyManager.checkAndReduce(pl.realName, cost)) return showInsufficientMoneyGui(pl, cost, "home");
+            setTimeout(() => {
+                pl.teleport(parseFloat(h.x), parseFloat(h.y), parseFloat(h.z), parseInt(h.dimid));
+                pl.sendText(info + "传送至公共家 §e" + h.name + "§r (" + h.owner + ") 成功！");
+            }, 200);
+            mc.runcmdEx(`camera ${pl.realName} fade time 0.15 0.5 0.35 color 0 0 0`);
+        });
+    });
+}
+
+function HomeSeetings(plname){
+    let pl = mc.getPlayer(plname)
+    if(!pl) return
+
+    let pldata = homedata.get(pl.realName);
+    let lst = Object.keys(pldata);
+
+    if(lst.length === 0){
+        pl.tell(info + lang.get("home.no.homes"));
+        return pl.runcmd("home");
+    }
+
+    let fm = mc.newSimpleForm();
+    fm.setTitle(info+lang.get("home.settings"));
+    fm.setContent(lang.get("home.choose.home"));
+    lst.forEach(name => {
+        let h = pldata[name];
+        let pubTag = h.isPublic ? "§a[公开]§r" : "§L[私有]§r";
+        fm.addButton(
+            name + " " + pubTag +
+            "\n§l坐标：" + transdimid[h.dimid]+" " +h.x + "," + h.y + "," + h.z 
+
+        );
+    });
+
+    pl.sendForm(fm, (pl, id) => {
+        if(id == null) return pl.runcmd("home");
+        let homeName = lst[id];
+        let h = pldata[homeName];
+
+        let fm2 = mc.newCustomForm();
+        fm2.setTitle(info+lang.get("home.settings") + " - " + homeName);
+        fm2.addLabel("坐标：" + h.x + "," + h.y + "," + h.z + " " + transdimid[h.dimid]);
+        fm2.addSwitch(lang.get("home.set.public"), !!h.isPublic);  // data[1]
+        fm2.addInput(lang.get("home.rename"), homeName, "", lang.get("home.add.input.tip") || "");  // data[2]
+
+        pl.sendForm(fm2, (pl, data) => {
+            if(data == null) return HomeSeetings(pl.realName);
+            let pldata = homedata.get(pl.realName);
+            let newIsPublic = data[1];
+            let newName = (data[2] && data[2].trim()) ? data[2].trim() : null;
+
+            // 重命名处理
+            if(newName && newName !== homeName){
+                if(Object.keys(pldata).includes(newName)) return pl.tell(info + lang.get("home.name.repetitive"));
+                pldata[newName] = pldata[homeName];
+                delete pldata[homeName];
+                homeName = newName;
+            }
+
+            // 更新公开状态
+            pldata[homeName].isPublic = newIsPublic;
+            homedata.set(pl.realName, pldata);
+
+            let statusText = newIsPublic ? "§a公开" : "§7私有";
+            pl.sendText(info + "家 §e" + homeName + "§r 设置已更新！公开状态：" + statusText);
+            HomeSeetings(pl.realName);
+        });
+    });
+}
 function DelHome(plname){
     let pl = mc.getPlayer(plname)
     if(!pl) return
@@ -2382,7 +2513,8 @@ function AddHome(plname){
         fm.addLabel("当前坐标："+String(pl.pos))
         fm.addLabel("您的" + coinName + "：" + String(Economy.get(pl)))
         fm.addLabel("添加花费："+String(cost)+coinName)
-        fm.addInput((lang.get("home.add.input")), "home1", "home1", lang.get("home.add.input.tip") || "")
+        fm.addInput((lang.get("home.add.input")), "home1", "home1", lang.get("home.add.input.tip") || "")  // data[3]
+        fm.addSwitch("设置为公共家（其他玩家可传送至此）", false)  // data[4]
         pl.sendForm(fm,(pl,data)=>{
             if(data == null) return pl.runcmd("home")
             if(data[3] == "" || !data[3]) return pl.tell(info + lang.get("home.name.noinput"));
@@ -2393,10 +2525,12 @@ function AddHome(plname){
                 "x":JSON.parse(pl.pos.x).toFixed(1),
                 "y":JSON.parse(pl.pos.y).toFixed(1),
                 "z":JSON.parse(pl.pos.z).toFixed(1),
-                "dimid":JSON.parse(pl.pos.dimid)
+                "dimid":JSON.parse(pl.pos.dimid),
+                "isPublic": data[4]
             }
             homedata.set(pl.realName,pldata)
-            pl.sendText(info+"添加家："+data[3]+" 成功！")
+            let pubMsg = data[4] ? " §a(已设为公共家，其他玩家可传送)" : "";
+            pl.sendText(info+"添加家："+data[3]+" 成功！"+pubMsg)
 
         })
 
@@ -2404,19 +2538,22 @@ function AddHome(plname){
 
 
 // ======================
-// //拒绝指令
+// Tpa指令
 // ======================
-mc.regPlayerCmd("tpa","传送系统", (player, args) => {
+if (conf.get("tpa").EnabledModule) {
+const tpacmd = mc.newCommand("tpa", "传送系统", PermType.Any);
+tpacmd.overload([]);
+tpacmd.setCallback((cmd, ori, out, res) => {
+    const player = ori.player;
+    if (!player) return out.error(lang.get("warp.only.player"));
     showTpaMainMenu(player);
 });
+tpacmd.setup();
+} // end TPA command registration
 const pendingTpaRequests = {};
 
 // TPA 主菜单
 function showTpaMainMenu(player) {
-    if (!conf.get("tpa").EnabledModule) {
-        player.tell(info + lang.get("module.no.Enabled"));
-        return;
-    }
     const fm = mc.newSimpleForm();
     fm.setTitle("TPA 主菜单");
     fm.setContent("请选择您要进行的操作：");
@@ -2679,13 +2816,25 @@ function startTpaRequestCountdown(req, timeoutSec, bossbarMode) {
     req.timer = timerId;
 }
 
-mc.regPlayerCmd("tpayes", "§a同意传送请求", (pl) => {
+if (conf.get("tpa").EnabledModule) {
+const tpayescmd = mc.newCommand("tpayes", "同意传送请求", PermType.Any);
+tpayescmd.overload([]);
+tpayescmd.setCallback((cmd, ori, out, res) => {
+    const pl = ori.player;
+    if (!pl) return out.error(lang.get("warp.only.player"));
     acceptTpaRequest(pl.name);
 });
+tpayescmd.setup();
 
-mc.regPlayerCmd("tpano", "§c拒绝传送请求", (pl) => {
+const tpanocmd = mc.newCommand("tpano", "拒绝传送请求", PermType.Any);
+tpanocmd.overload([]);
+tpanocmd.setCallback((cmd, ori, out, res) => {
+    const pl = ori.player;
+    if (!pl) return out.error(lang.get("warp.only.player"));
     denyTpaRequest(pl.name);
 });
+tpanocmd.setup();
+} // end if (conf.get("tpa").EnabledModule) — tpayes/tpano
 // v2.10.5: /crash 命令已迁移至 modules/Crash.js
 
 function acceptTpaRequest(targetName) {
@@ -2872,6 +3021,7 @@ mc.listen("onLeft", (pl) => {
 // ======================
 // 冷却倒计时由 RadomTeleportSystem.js 内部管理
 ////rtp  remake
+if (conf.get("RTP").EnabledModule) {
 const rtpResetCmd = mc.newCommand("rtpreset", "重置传送冷却", PermType.GameMasters);
 rtpResetCmd.overload([]);
 rtpResetCmd.mandatory("player", ParamType.Player);
@@ -2887,11 +3037,6 @@ asyncRtpCmd.setCallback(async (cmd, ori, out, res) => {
     const pl = ori.player;
     if (!pl) return out.error(lang.get("warp.only.player"));
     
-    if (!conf.get("RTP").EnabledModule) {
-        pl.tell(info + lang.get("module.no.Enabled"));
-        return;
-    }
-    
     try {
         await RadomTeleportSystem.performRTPAsync(pl);
     } catch (error) {
@@ -2900,6 +3045,7 @@ asyncRtpCmd.setCallback(async (cmd, ori, out, res) => {
     }
 });
 asyncRtpCmd.setup();
+} // end if (conf.get("RTP").EnabledModule)
 //经济检查模块
 function smartMoneyCheck(plname, value) {
     const pl = mc.getPlayer(plname);
