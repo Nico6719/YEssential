@@ -1,12 +1,6 @@
 /**
  * YEssential - Crash 模块
  * 功能：OP 专用，强制使指定玩家客户端崩溃
- *
- * 依赖全局变量（由主文件提供）：
- *   conf, lang, info, mc, logger
- *
- * 配置项（config.json）：
- *   Crash.EnabledModule  {boolean}  是否启用本模块，默认 false
  */
 
 module.exports = {
@@ -29,7 +23,7 @@ function initCrashModule() {
 
     // ── 注册 /crash 命令（权限等级 1 = OP） ──────────────────
     mc.regPlayerCmd("crash", "§c使玩家客户端崩溃", (player) => {
-        // 双重校验：命令权限 + isOP()
+        // 命令权限 + isOP()
         if (!player || !player.isOP()) {
             player.tell(info + lang.get("player.not.op"));
             return;

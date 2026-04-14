@@ -85,7 +85,6 @@ class ConfigManager {
             },
             "Bstats": {
                 "EnableModule": true, // 模块总开关
-                "serverUUID": "",      // 服务器唯一标识，留空会自动生成
                 "logSentData": false   // 是否在控制台显示发送的数据内容
             },
             "CrossServerTransfer": {
