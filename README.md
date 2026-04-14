@@ -77,6 +77,7 @@
 ### 🆕 新增 / 修改过的功能  
 <details>
 <summary>点击这里展开/折叠</summary>
+ 
 - v2.10.0-v2.11.0
   - 修复 /tpa、/tpayes、/tpano、/hub、/sethub 使用假命令**（regPlayerCmd）**注册命令导致重载后命令无法正常使用的问题，现已改为真实 newCommand 命令注册方式 By @Nico6719
   - 修复/Hub指令头衔不统一的问题 By @Nico6719
