@@ -1,22 +1,11 @@
 /*--------------------------------
-
-    ██╗   ██╗███████╗███████╗███████╗███████╗███╗   ██╗████████╗██╗ █████╗ ██╗  
-    ╚██╗ ██╔╝██╔════╝██╔════╝██╔════╝██╔════╝████╗  ██║╚══██╔══╝██║██╔══██╗██║  
-    ╚ ████╔╝ █████╗  ███████╗███████╗█████╗  ██╔██╗ ██║   ██║   ██║███████║██║     
-     ╚ ██╔╝  ██╔══╝  ╚════██║╚════██║██╔══╝  ██║╚██╗██║   ██║   ██║██╔══██║██║     
-       ██║   ███████╗███████║███████║███████╗██║ ╚████║   ██║   ██║██║  ██║███████╗
-       ╚═╝   ╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚═╝  ╚═╝╚══════╝
-    
-                          Produced by Nico6719 and PHEyeji
-                 This plugin is distributed under the AGPLv3 License
-
+Produced by Nico6719 
+this plugin is distributed under the AGPLv3 License
 该插件由Nico6719,PHEyeji联合创作
 未经允许禁止擅自修改或者发售
-该插件仅在[github,MineBBS,KLPBBS]发布
-禁止二次发布插件
+该插件仅在[github,MineBBS,KLPBBS]发布，禁止二次发布插件
 语言文件路径（defaultLangContent 及 AsyncLanguageManager 已迁移至 modules/I18n.js）
 调用示例： pl.tell(info + lang.get("x.x"))
-i18n 默认内容已完整迁移至 modules/I18n.js
 ----------------------------------*/
 // LiteLoader-AIDS automatic generated
 /// <reference path="c:\Users\Admin/dts/helperlib/src/index.d.ts"/> 
@@ -25,9 +14,9 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件 `;
-const version = "2.11.0";
-const regversion =[2,11,0];
-const info = "§l§6[-YEST-] §r";
+const version = "2.11.1";
+const regversion =[2,11,1];
+const info = "§l§d[-YEST-] §r§l> ";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
 const langFilePath = YEST_LangDir + "zh_cn.json";
@@ -2375,9 +2364,8 @@ function ShareHome(plname){
     fm.setContent(lang.get("home.choose.public.home"));
     publicList.forEach(h => {
         fm.addButton(
-            h.name + "\n§7" + h.owner +
-            " · " + h.x + "," + h.y + "," + h.z +
-            " " + transdimid[h.dimid]
+            h.owner + " " + h.name + "\n§l" + transdimid[h.dimid]+" " + h.x + "," + h.y + "," + h.z +
+            " " 
         );
     });
 
@@ -2419,7 +2407,7 @@ function HomeSeetings(plname){
     fm.setContent(lang.get("home.choose.home"));
     lst.forEach(name => {
         let h = pldata[name];
-        let pubTag = h.isPublic ? "§a[公开]§r" : "§L[私有]§r";
+        let pubTag = h.isPublic ? "§b§l[公开]§r" : "§d§l[私有]§r";
         fm.addButton(
             name + " " + pubTag +
             "\n§l坐标：" + transdimid[h.dimid]+" " +h.x + "," + h.y + "," + h.z 
@@ -2456,7 +2444,7 @@ function HomeSeetings(plname){
             pldata[homeName].isPublic = newIsPublic;
             homedata.set(pl.realName, pldata);
 
-            let statusText = newIsPublic ? "§a公开" : "§7私有";
+            let statusText = newIsPublic ? "§b公开" : "§d私有";
             pl.sendText(info + "家 §e" + homeName + "§r 设置已更新！公开状态：" + statusText);
             HomeSeetings(pl.realName);
         });
