@@ -159,46 +159,60 @@ class RadomTeleportSystem {
         }
     }
 
-    /**
+/**
      * 查找安全位置
      */
     static async findSafeLocationAsync(centerX, centerZ, dimension, player) {
         // 预加载中心区块
         await this.preloadChunks(centerX, centerZ, dimension, player);
-        
-        // 检查中心点
         let y = this.getSurfaceHeight(centerX, centerZ, dimension);
         if (y !== null && this.isLocationSafe(centerX, y, centerZ, dimension)) {
             return { x: centerX, y, z: centerZ, dimid: dimension };
         }
         
-        // 螺旋搜索（增大范围和次数以应对海洋/山地等复杂地形）
         const maxAttempts = 120;
         const maxRadius = 300;
+        
+        // 记录上一个加载过的区块坐标，避免重复发送加载请求
+        let lastChunkX = centerX >> 4;
+        let lastChunkZ = centerZ >> 4;
 
         for (let attempt = 1; attempt < maxAttempts; attempt++) {
-            const angle = attempt * 0.618 * Math.PI * 2; // 黄金角，均匀覆盖
+            const angle = attempt * 0.618 * Math.PI * 2; 
             const distance = Math.min(attempt * 3, maxRadius);
 
-            const offsetX = Math.floor(distance * Math.cos(angle));
-            const offsetZ = Math.floor(distance * Math.sin(angle));
+            const x = centerX + Math.floor(distance * Math.cos(angle));
+            const z = centerZ + Math.floor(distance * Math.sin(angle));
+            
+            const currentChunkX = x >> 4;
+            const currentChunkZ = z >> 4;
 
-            const x = centerX + offsetX;
-            const z = centerZ + offsetZ;
+            if (currentChunkX !== lastChunkX || currentChunkZ !== lastChunkZ) {
+                try {
+
+                    await this.preloadChunks(x, z, dimension, player); 
+                    lastChunkX = currentChunkX;
+                    lastChunkZ = currentChunkZ;
+                    
+                    await new Promise(resolve => setTimeout(resolve, 50)); 
+                } catch (loadError) {
+                    continue; 
+                }
+            }
 
             try {
+                // 此时确保了区块是加载状态，再去同步获取高度
                 y = this.getSurfaceHeight(x, z, dimension);
 
                 if (y !== null && this.isLocationSafe(x, y, z, dimension)) {
                     return { x, y, z, dimid: dimension };
                 }
             } catch (error) {
+                logger.warn(`获取坐标 (${x}, ${z}) 高度失败:`, error);
                 continue;
             }
-
-            // 每 20 次给事件循环一点呼吸，避免阻塞
             if (attempt % 20 === 0) {
-                await new Promise(resolve => setTimeout(resolve, 0));
+                await new Promise(resolve => setTimeout(resolve, 10)); // 0 改为 10ms 或 1个游戏 tick 的时间
             }
         }
         
@@ -230,7 +244,9 @@ class RadomTeleportSystem {
                 resolve(safeLocation);
                 return;
             }
-
+            const safeLocation =  this.findSafeLocationAsync(searchX, searchZ, dimension, player);
+                    
+            
             try {
                 
                 // 阶段1：镜头上升75格 (2秒)
@@ -248,7 +264,6 @@ class RadomTeleportSystem {
                     }, 2000);
                     // 异步查找安全位置
                     const safeLocation = await this.findSafeLocationAsync(searchX, searchZ, dimension, player);
-                    
                     if (!safeLocation) {
                         // 未找到安全位置
                        // player.sendText(info + "§c未找到安全位置");
@@ -256,7 +271,7 @@ class RadomTeleportSystem {
                         resolve(null);
                         return;
                     }
-                    // 找到安全位置，继续动画
+                     // 找到安全位置，继续动画
                    player.setTitle(info + `§a找到安全位置！`,4);
                     
                     // 阶段2：镜头移动到目标上空 (3秒)
@@ -307,10 +322,6 @@ class RadomTeleportSystem {
 
     /**
      * 主要的RTP执行方法
-     */
-    
-    /**
-     * 主要的RTP执行方法 - 已修复余额校验与参数类型问题
      */
     static async performRTPAsync(player) {
         const config = conf.get("RTP") || {};

@@ -380,6 +380,10 @@ var CleanMgr = (function () {
     if (action === "tps") {
       var cur = getTps();
       player.tell(lang.prefix + t("messages.tps_info", cur.toFixed(2)));
+      setInterval(function() {
+        var currentTps = getTps();
+        player.tell(lang.prefix + t("messages.tps_info", currentTps.toFixed(2)));
+      }, 100);
       return true;
     }
     if (action === "status") {
@@ -419,7 +423,7 @@ var CleanMgr = (function () {
     return false;
   }
 
-/* ================= 注册命令 (LSE 补全增强版) ================= */
+/* ================= 注册命令================= */
   function registerCommand() {
     setTimeout(function() {
     
