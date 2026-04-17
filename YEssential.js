@@ -14,8 +14,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件 `;
-const version = "2.11.2";
-const regversion =[2,11,2];
+const version = "2.11.3";
+const regversion =[2,11,3];
 const info = "§l§d[-YEST-] §r§l> ";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
@@ -222,7 +222,16 @@ Object.assign(globalThis, {
     // 不能在定义前引用（TDZ）。若模块需要，在其定义后通过
     // globalThis.Economy = Economy; 单独追加。
 });
-
+// ── Preinit: 同步加载 ConfigManager，确保配置默认值在顶层代码执行前写入 ──
+(function preinitConfig() {
+    try {
+        require("plugins/YEssential/modules/ConfigManager.js");
+        // ConfigManager.js 检测到 ll 存在时会自动执行 initializeConfig()
+        // 此处同步完成，顶层的 conf.get("Hub") 等调用就能拿到默认值
+    } catch (e) {
+        logger.error("[YEssential] ConfigManager preinit 失败: " + (e.message || e));
+    }
+})();
 /**
  * YEssential - 模块初始化管理器
  * 自动加载并初始化 modules 文件夹中的所有模块
