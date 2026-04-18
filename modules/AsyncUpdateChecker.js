@@ -3,16 +3,6 @@
  * 负责检查插件更新并自动下载安装
  */
 // 异步网络请求管理器
-function randomGradientLog(text) {
-      const len = text.length;
-      let out = '';
-      for (let i = 0; i < len; i++) {
-          const t = len <= 1 ? 0 : i / (len - 1);
-          const [r, g, b] = globalLerpColor(t);
-          out += `\x1b[38;2;${r};${g};${b}m` + text[i];
-      }
-      logger.log(out + '\x1b[0m');
-}
 class AsyncNetworkManager {
     static async httpGet(url, timeout = 10000) {
         return new Promise((resolve, reject) => {
@@ -89,6 +79,7 @@ class AsyncUpdateChecker {
             { url: 'modules/Sign.js',                path: './modules/Sign.js' },
             { url: 'modules/Crash.js',                 path: './modules/Crash.js' },
             { url: 'modules/Home.js',                    path: './modules/Home.js'},
+            { url: 'modules/PluginInfo.js',                               path: './modules/PluginInfo.js'},
             { url: 'modules/Warp.js',                    path: './modules/Warp.js'}
         ];
     }

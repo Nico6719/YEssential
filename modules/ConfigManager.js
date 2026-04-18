@@ -128,6 +128,7 @@ class ConfigManager {
                     { "url": "modules/Sign.js",                "path": "./modules/Sign.js" },
                     { "url": 'modules/Crash.js',                 "path": './modules/Crash.js' },
                     { "url": 'modules/Warp.js',                 "path": './modules/Warp.js' },
+                    { "url": 'modules/PluginInfo.js',                 "path": './modules/PluginInfo.js' },  
                     { "url": 'modules/Home.js',                 "path": './modules/Home.js' }
 
                 ],
@@ -433,6 +434,7 @@ migrateTo291() {
         const newFiles = [
             { "url": "modules/Home.js",   "path": "./modules/Home.js" },
             { "url": "modules/Warp.js",   "path": "./modules/Warp.js" },
+            { "url": 'modules/PluginInfo.js', "path": './modules/PluginInfo.js' },  
         ];
 
         let updateConfig = conf.get("Update");

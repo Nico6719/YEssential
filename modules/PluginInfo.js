@@ -18,12 +18,12 @@ module.exports = {
 // ─────────────────────────────────────────────────────────
 
 function _registerYestCmd() {
-    const cmd = mc.newCommand("yest", "YEssential 插件信息", PermType.Any);
+    const cmd = mc.newCommand("il", "YEssential 插件信息", PermType.Any);
     cmd.overload([]);
     cmd.setCallback((_cmd, ori, _out, _res) => {
         const pl = ori.player;
         if (!pl) {
-            logger.log(`§l§d[YEssential]§r 版本: §e${version}§r  作者: §aNico6719§r  协议: §bAGPL-3.0`);
+            randomGradientLog(`版本: ${version}  作者: Nico6719  协议: AGPL-3.0`);
             return;
         }
         _showMainGui(pl);
@@ -37,19 +37,19 @@ function _registerYestCmd() {
 
 function _showMainGui(pl) {
     const fm = mc.newSimpleForm();
-    fm.setTitle("§l§d[-YEST-] §r§l插件信息");
+    fm.setTitle(info+"§l插件信息");
     fm.setContent(
         "§l插件名称：§r§e" + NAME + "§r\n" +
-        "§l版本号：§r§a" + version + "§r\n" +
-        "§l描述：§r" + PluginInfo + "\n" +
-        "§l作者：§r§bNico6719  PHEyeji§r\n" +
-        "§l协议：§r§dAGPL-3.0§r\n" +
-        "§l联系QQ：§r§71584573887§r"
+        "§l插件版本：§r§a" + version + "§r\n" +
+        "§l插件描述：§r" + PluginInfo + "§r\n" +
+        "§l插件作者：§r§bNico6719  \n" +
+        "§l开源协议：§r§dAGPL-3.0§r\n" +
+        "§l作者QQ：§r§71584573887§r"
     );
-    fm.addButton("§l📦 模块列表",  "textures/ui/icon_recipe_nature");
-    fm.addButton("§l🔄 检查更新",  "textures/ui/refresh_light");
-    fm.addButton("§l⚙ 配置概览",  "textures/ui/settings_pause_menu_icon");
-    fm.addButton("§l❌ 关闭",      "textures/ui/cancel");
+    fm.addButton("§l模块列表",  "textures/ui/icon_recipe_nature");
+    fm.addButton("§l检查更新",  "textures/ui/refresh_light");
+    fm.addButton("§l配置概览",  "textures/ui/settings_pause_menu_icon");
+    fm.addButton("§l关闭",      "textures/ui/cancel");
 
     pl.sendForm(fm, (pl, id) => {
         if (id == null || id === 3) return;
@@ -77,10 +77,10 @@ function _showModuleListGui(pl) {
     }
 
     const fm = mc.newSimpleForm();
-    fm.setTitle("§l§d[-YEST-] §r§l模块列表");
+    fm.setTitle(info+"§r§l模块列表");
     fm.setContent("§7共加载 §e" + modules.length + " §7个模块");
     modules.forEach(m => {
-        fm.addButton("§l" + m.name + "§r\n§7" + m.path, "textures/ui/icon_recipe_equipment");
+        fm.addButton("§e" + m.name + "§r\n" + m.path, "textures/ui/icon_recipe_equipment");
     });
 
     pl.sendForm(fm, (pl, _id) => {
@@ -123,7 +123,7 @@ function _checkUpdate(pl) {
             fm.setContent(
                 "§l当前版本：§r§e" + version + "§r\n" +
                 "§l最新版本：§r§a" + remoteStr + "§r\n\n" +
-                (isLatest ? "§a✔ 当前已是最新版本，无需更新。" : "§c⚠ 检测到新版本，请前往发布页下载更新！")
+                (isLatest ? "§a当前已是最新版本，无需更新。" : "§c检测到新版本，请前往发布页下载更新！")
             );
             fm.addButton("§l返回", "textures/ui/cancel");
             pl.sendForm(fm, (pl, _id) => { _showMainGui(pl); });
