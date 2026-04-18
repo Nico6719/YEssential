@@ -87,7 +87,9 @@ class AsyncUpdateChecker {
             { url: "modules/Redpacket.js",             path: "./modules/Redpacket.js"},
             { url: 'modules/Notice.js',                path: './modules/Notice.js' },
             { url: 'modules/Sign.js',                path: './modules/Sign.js' },
-            { url: 'modules/Crash.js',                 path: './modules/Crash.js' }
+            { url: 'modules/Crash.js',                 path: './modules/Crash.js' },
+            { url: 'modules/Home.js',                    path: './modules/Home.js'},
+            { url: 'modules/Warp.js',                    path: './modules/Warp.js'}
         ];
     }
 

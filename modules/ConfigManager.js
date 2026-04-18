@@ -126,7 +126,10 @@ class ConfigManager {
                     { "url": "modules/Fcam.js",                  "path": "./modules/Fcam.js" },
                     { "url": "modules/Notice.js",                "path": "./modules/Notice.js" },
                     { "url": "modules/Sign.js",                "path": "./modules/Sign.js" },
-                    { "url": 'modules/Crash.js',                 "path": './modules/Crash.js' }
+                    { "url": 'modules/Crash.js',                 "path": './modules/Crash.js' },
+                    { "url": 'modules/Warp.js',                 "path": './modules/Warp.js' },
+                    { "url": 'modules/Home.js',                 "path": './modules/Home.js' }
+
                 ],
                 "reloadDelay": 1000,
                 "timeout": 30000,
@@ -387,7 +390,7 @@ class ConfigManager {
         this.backupConfig(oldVersion);
         
         const migrations = [
-            { version: 291, handler: () => this.migrateTo291() }
+            { version: 292, handler: () => this.migrateTo291() }
         ];
 
         migrations.forEach(migration => {
@@ -425,10 +428,11 @@ class ConfigManager {
 
     // ========== 版本特定迁移方法 ==========
 migrateTo291() {
-        randomGradientLog("更新配置版本到291");
+        randomGradientLog("更新配置版本到292");
         // 新增模块: I18n, PVP, Fcam, Notice
         const newFiles = [
-            { "url": "modules/Sign.js",   "path": "./modules/Sign.js" },
+            { "url": "modules/Home.js",   "path": "./modules/Home.js" },
+            { "url": "modules/Warp.js",   "path": "./modules/Warp.js" },
         ];
 
         let updateConfig = conf.get("Update");
@@ -436,7 +440,6 @@ migrateTo291() {
         if (!this.isValidObject(updateConfig)) {
             // Update 块完全不存在，使用默认值（含新模块）
             conf.set("Update", this.configDefaults.Update);
-            randomGradientLog("Update 配置不存在，已写入默认配置（含 PVP / Fcam / Notice）");
             return;
         }
 

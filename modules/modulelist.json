@@ -51,6 +51,18 @@
         {
             "path": "Sign.js",
             "name": "Sign"
+        },
+        {
+            "path": "PluginInfo.js",
+            "name": "PluginInfo"
+        },
+        {
+            "path": "Home.js",
+            "name": "Home"
+        },
+        {
+            "path": "Warp.js",
+            "name": "Warp"
         }
     ]
 }
