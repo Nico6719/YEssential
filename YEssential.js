@@ -14,8 +14,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件 `;
-const version = "2.11.3";
-const regversion =[2,11,3];
+const version = "2.11.4";
+const regversion =[2,11,4];
 const info = "§l§d[-YEST-] §r§l> ";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
@@ -38,7 +38,11 @@ let motdTimerId = null;
 
 // lang 在此处以空文件初始化（JsonConfigFile 若文件已存在则从磁盘读取）
 
-// modules/I18n.js 加载后会用完整 defaultLangContent 重新赋值并同步到 globalThis.lang
+let transdimid = {
+    0:"主世界",
+    1:"下界",
+    2:"末地"
+}
 
 let lang = new JsonConfigFile(langFilePath, JSON.stringify({}));
 
@@ -218,6 +222,7 @@ Object.assign(globalThis, {
     // 其他 GUI/工具函数（function 声明，提升后可用）
     showInsufficientMoneyGui, openPlayerSelectionGui,
     displayMoneyInfo, ranking,
+    transdimid,
     // 注意：Economy / EconomyManager / OfflineMoneyCache / Logger 均为 const，
     // 不能在定义前引用（TDZ）。若模块需要，在其定义后通过
     // globalThis.Economy = Economy; 单独追加。
@@ -603,11 +608,7 @@ function ranking(plname) {
         });
     }
 }
-let transdimid = {
-    0:"主世界",
-    1:"下界",
-    2:"末地"
-}
+
 /////////////////////////////////////////////////////////////////////////////////////////////
 // 金币排行榜更新优化 - 使用内存缓存减少文件I/O
 // [fix] moneyCache 改为普通 Object，避免与 for...in / Object.keys 等 API 混用
@@ -1942,128 +1943,6 @@ function MoneyAddGui(plname) {
     });
 }
 
-const warpgui = mc.newCommand("warp", "公共传送点", PermType.Any);
-warpgui.overload([]);
-warpgui.setCallback((cmd, ori, out, res) => {
-    const pl = ori.player;
-    if (!pl) return out.error(lang.get("warp.only.player"));
-    
-    pl.isOP() ? OPWarpGui(pl.realName) : WarpGui(pl.realName);
-});
-warpgui.setup();
-
-function OPWarpGui(plname) {
-    const pl = mc.getPlayer(plname);
-    if (!pl) return;
-    
-    const fm = mc.newSimpleForm();
-    fm.setTitle(lang.get("warp.menu.public.op"));
-    fm.addButton(lang.get("warp.add"), "textures/ui/Add-Ons_Nav_Icon36x36");
-    fm.addButton(lang.get("warp.del"), "textures/blocks/barrier");
-    fm.addButton(lang.get("warp.list"), "textures/ui/world_glyph_color_2x");
-    
-    pl.sendForm(fm, (pl, id) => {
-        if (id == null) return pl.tell(info + lang.get("gui.exit"));
-        
-        const actions = [
-            () => WarpAddGui(pl.realName),
-            () => WarpDelGui(pl.realName),
-            () => WarpGui(pl.realName)
-        ];
-        actions[id]?.();
-    });
-}
-
-function WarpGui(plname) {
-    const pl = mc.getPlayer(plname);
-    if (!pl) return;
-    
-    const warpList = Object.keys(JSON.parse(warpdata.read()));
-    
-    const fm = mc.newSimpleForm();
-    fm.setTitle(lang.get("warp.menu.public"));
-    warpList.forEach(name => fm.addButton(name));
-    
-    pl.sendForm(fm, (pl, id) => {
-        if (id == null) return pl.tell(info + lang.get("gui.exit"));
-        
-        const warpName = warpList[id];
-        const warpInfo = warpdata.get(warpName);
-        // [fix] 一次读取，回调内复用
-        const cost     = conf.get("Warp");
-        const coinName = economyCfg.coinName;
-        
-        const confirmFm = mc.newCustomForm();
-        confirmFm.setTitle(lang.get("warp.go.to"));
-        confirmFm.addLabel(lang.get("warp.teleport.name") + warpName);
-        confirmFm.addLabel(lang.get("warp.teleport.coord") + `${warpInfo.x},${warpInfo.y},${warpInfo.z} ${transdimid[warpInfo.dimid]}`);
-        confirmFm.addLabel(lang.get("warp.teleport.cost") + cost);
-        confirmFm.addLabel("您的" + coinName + "为：" + String(Economy.get(pl)));
-        
-        pl.sendForm(confirmFm, (pl, data) => {
-            if (data == null) return pl.tell(info + lang.get("gui.exit"));
-            
-            if (!EconomyManager.checkAndReduce(pl.realName, cost)) return showInsufficientMoneyGui(pl, cost, "warp");
-            setTimeout(() => {
-            pl.teleport(
-                parseFloat(warpInfo.x),
-                parseFloat(warpInfo.y),
-                parseFloat(warpInfo.z),
-                parseInt(warpInfo.dimid)
-            );
-            pl.sendText(info +lang.get("warp.teleported").replace("${name}", warpName));
-            },200)
-            mc.runcmdEx(`camera ${pl.realName} fade time 0.15 0.5 0.35 color 0 0 0`);
-        });
-    });
-}
-
-function WarpDelGui(plname) {
-    const pl = mc.getPlayer(plname);
-    if (!pl) return;
-    
-    const warpList = Object.keys(JSON.parse(warpdata.read()));
-    
-    const fm = mc.newSimpleForm();
-    fm.setTitle(lang.get("warp.del.point"));
-    warpList.forEach(name => fm.addButton(name));
-    
-    pl.sendForm(fm, (pl, id) => {
-        if (id == null) return pl.runcmd("warp");
-        
-        const warpName = warpList[id];
-        warpdata.delete(warpName);
-        pl.sendText(info +lang.get("warp.del.success").replace("${name}", warpName));
-    });
-}
-
-function WarpAddGui(plname) {
-    const pl = mc.getPlayer(plname);
-    if (!pl) return;
-    
-    const pos = pl.pos;
-    const fm = mc.newCustomForm();
-    fm.setTitle(lang.get("warp.add.point"));
-    fm.addLabel(lang.get("warp.add.point.xyz"));
-    fm.addLabel(lang.get("warp.teleport.coord") + `${pos.x.toFixed(1)},${pos.y.toFixed(1)},${pos.z.toFixed(1)} ${transdimid[pos.dimid]}`);
-    fm.addInput(lang.get("warp.input.name"), lang.get("warp.name"), "myWarp", lang.get("warp.input.name.tip") || "");
-    
-    pl.sendForm(fm, (pl, data) => {
-        if (data == null) return pl.runcmd("warp");
-        
-        const warpName = data[2];
-        if (!warpName) return pl.tell(info + lang.get("warp.noinput.name"));
-        if (warpdata.get(warpName)) return pl.tell(info + lang.get("warp.name.repetitive"));
-        
-        warpdata.set(warpName, {
-            x: pos.x.toFixed(1),
-            y: pos.y.toFixed(1),
-            z: pos.z.toFixed(1),
-            dimid: pos.dimid
-        });
-        pl.sendText(info +lang.get("warp.add.success").replace("${name}", warpName));
-    });
-}
 
 
 if (__YEST_FIRST_LOAD__) {
@@ -2256,282 +2135,6 @@ function clearDeathPoints(playerName) {
 function getPlayerDeathPoints(playerName) {
     return deathPoints[playerName] || [];
 }
-let homegui = mc.newCommand("home","家园系统",PermType.Any)
-homegui.overload([])
-homegui.setCallback((cmd,ori,out,res)=>{
-    let pl = ori.player
-
-    if(!pl) return out.error(lang.get("warp.only.player"))        
-    
-    let fm = mc.newSimpleForm()
-    fm.setTitle(info+lang.get("home.tp.system"))
-    fm.addButton(lang.get("home.tp"), "textures/items/ender_eye")
-    fm.addButton(lang.get("home.share"), "textures/items/compass_item");
-    fm.addButton(lang.get("home.add"), "textures/ui/Add-Ons_Nav_Icon36x36")
-    fm.addButton(lang.get("home.del"), "textures/blocks/barrier")
-    fm.addButton(lang.get("home.settings"), "textures/ui/settings_pause_menu_icon")
-    
-
-    pl.sendForm(fm,(pl,id)=>{
-        if(id == null) return pl.tell(info + lang.get("gui.exit"));
-        
-        switch(id){
-            case 0:
-                TpHome(pl.realName)
-                break
-            case 1:
-                ShareHome(pl.realName)
-                break
-            case 2:
-                AddHome(pl.realName)
-                break
-            case 3:
-                DelHome(pl.realName)
-                break
-            case 4:
-                HomeSeetings(pl.realName)
-                break
-        }
-    })
-})
-homegui.setup()
-
-function TpHome(plname){
-    let pl = mc.getPlayer(plname)
-    if(!pl) return
-    // [fix] 一次读取 Home 和 coinName，避免回调内重复读配置
-    const homeConf = conf.get("Home");
-    const cost     = homeConf.tp;
-    const coinName = economyCfg.coinName;
-    let fm = mc.newSimpleForm()
-    fm.setTitle(lang.get("home.tp"))
-    fm.setContent(lang.get("home.tp.choose"))
-    let lst = []
-    let pldata = homedata.get(pl.realName)
-    for(let i in pldata){
-        lst.push(i)
-        fm.addButton(i+"\n坐标："+pldata[i].x+","+pldata[i].y+","+pldata[i].z+" "+transdimid[pldata[i].dimid])
-    }
-    pl.sendForm(fm,(pl,id)=>{
-        if(id == null) return pl.tell(info + lang.get("gui.exit"));
-        let fm = mc.newCustomForm()
-        fm.setTitle(info+lang.get("home.tp"))
-        fm.addLabel("确认传送家 "+lst[id]+"？")
-        fm.addLabel("您的" + coinName + "：" + String(Economy.get(pl)))
-        fm.addLabel("传送家需要花费"+cost+coinName)
-        fm.addLabel("坐标："+pldata[lst[id]].x+","+pldata[lst[id]].y+","+pldata[lst[id]].z+" "+transdimid[pldata[lst[id]].dimid])
-        pl.sendForm(fm,(pl,data)=>{
-            if(data == null) return pl.runcmd("home")
-            if (!EconomyManager.checkAndReduce(pl.realName, cost)) return showInsufficientMoneyGui(pl, cost, "home");
-            setTimeout(() => {
-            pl.teleport(parseFloat(pldata[lst[id]].x),parseFloat(pldata[lst[id]].y),parseFloat(pldata[lst[id]].z),parseInt(pldata[lst[id]].dimid))
-            pl.sendText(info+"传送家 "+lst[id]+" 成功！")
-            },200)
-            mc.runcmdEx(`camera ${pl.realName} fade time 0.15 0.5 0.35 color 0 0 0`);
-        })
-    })
-}
-function ShareHome(plname){
-    let pl = mc.getPlayer(plname)
-    if(!pl) return
-    const homeConf = conf.get("Home");
-    const cost     = homeConf.tp;
-    const coinName = economyCfg.coinName;
-
-    // 收集所有玩家标记为公共的家
-    let allData;
-    try { allData = JSON.parse(homedata.read()); } catch(e) { allData = {}; }
-
-    let publicList = []; // [{owner, name, x, y, z, dimid}]
-    for(let owner in allData){
-        let homes = allData[owner];
-        for(let homeName in homes){
-            if(homes[homeName].isPublic){
-                publicList.push({
-                    owner,
-                    name: homeName,
-                    x:    homes[homeName].x,
-                    y:    homes[homeName].y,
-                    z:    homes[homeName].z,
-                    dimid: homes[homeName].dimid
-                });
-            }
-        }
-    }
-
-    let fm = mc.newSimpleForm();
-    fm.setTitle(lang.get("home.share"));
-
-    if(publicList.length === 0){
-        fm.setContent(lang.get("home.no.public.homes"));
-        pl.sendForm(fm, (pl, id) => {
-            if(id == null) return pl.runcmd("home");
-        });
-        return;
-    }
-
-    fm.setContent(lang.get("home.choose.public.home"));
-    publicList.forEach(h => {
-        fm.addButton(
-            h.owner + " " + h.name + "\n§l" + transdimid[h.dimid]+" " + h.x + "," + h.y + "," + h.z +
-            " " 
-        );
-    });
-
-    pl.sendForm(fm, (pl, id) => {
-        if(id == null) return pl.tell(info + lang.get("gui.exit"));
-        let h = publicList[id];
-        let fm2 = mc.newCustomForm();
-        fm2.setTitle(info+lang.get("home.share"));
-        fm2.addLabel("§l传送目标：§r" + h.name + " §7(" + h.owner + ")");
-        fm2.addLabel("坐标：" + h.x + "," + h.y + "," + h.z + " " + transdimid[h.dimid]);
-        fm2.addLabel("您的" + coinName + "：" + String(Economy.get(pl)));
-        fm2.addLabel("传送花费：" + cost + coinName);
-        pl.sendForm(fm2, (pl, data) => {
-            if(data == null) return pl.runcmd("home");
-            if(!EconomyManager.checkAndReduce(pl.realName, cost)) return showInsufficientMoneyGui(pl, cost, "home");
-            setTimeout(() => {
-                pl.teleport(parseFloat(h.x), parseFloat(h.y), parseFloat(h.z), parseInt(h.dimid));
-                pl.sendText(info + "传送至公共家 §e" + h.name + "§r (" + h.owner + ") 成功！");
-            }, 200);
-            mc.runcmdEx(`camera ${pl.realName} fade time 0.15 0.5 0.35 color 0 0 0`);
-        });
-    });
-}
-
-function HomeSeetings(plname){
-    let pl = mc.getPlayer(plname)
-    if(!pl) return
-
-    let pldata = homedata.get(pl.realName);
-    let lst = Object.keys(pldata);
-
-    if(lst.length === 0){
-        pl.tell(info + lang.get("home.no.homes"));
-        return pl.runcmd("home");
-    }
-
-    let fm = mc.newSimpleForm();
-    fm.setTitle(info+lang.get("home.settings"));
-    fm.setContent(lang.get("home.choose.home"));
-    lst.forEach(name => {
-        let h = pldata[name];
-        let pubTag = h.isPublic ? "§b§l[公开]§r" : "§d§l[私有]§r";
-        fm.addButton(
-            name + " " + pubTag +
-            "\n§l坐标：" + transdimid[h.dimid]+" " +h.x + "," + h.y + "," + h.z 
-
-        );
-    });
-
-    pl.sendForm(fm, (pl, id) => {
-        if(id == null) return pl.runcmd("home");
-        let homeName = lst[id];
-        let h = pldata[homeName];
-
-        let fm2 = mc.newCustomForm();
-        fm2.setTitle(info+lang.get("home.settings") + " - " + homeName);
-        fm2.addLabel("坐标：" + h.x + "," + h.y + "," + h.z + " " + transdimid[h.dimid]);
-        fm2.addSwitch(lang.get("home.set.public"), !!h.isPublic);  // data[1]
-        fm2.addInput(lang.get("home.rename"), homeName, "", lang.get("home.add.input.tip") || "");  // data[2]
-
-        pl.sendForm(fm2, (pl, data) => {
-            if(data == null) return HomeSeetings(pl.realName);
-            let pldata = homedata.get(pl.realName);
-            let newIsPublic = data[1];
-            let newName = (data[2] && data[2].trim()) ? data[2].trim() : null;
-
-            // 重命名处理
-            if(newName && newName !== homeName){
-                if(Object.keys(pldata).includes(newName)) return pl.tell(info + lang.get("home.name.repetitive"));
-                pldata[newName] = pldata[homeName];
-                delete pldata[homeName];
-                homeName = newName;
-            }
-
-            // 更新公开状态
-            pldata[homeName].isPublic = newIsPublic;
-            homedata.set(pl.realName, pldata);
-
-            let statusText = newIsPublic ? "§b公开" : "§d私有";
-            pl.sendText(info + "家 §e" + homeName + "§r 设置已更新！公开状态：" + statusText);
-            HomeSeetings(pl.realName);
-        });
-    });
-}
-function DelHome(plname){
-    let pl = mc.getPlayer(plname)
-    if(!pl) return
-    // [fix] 一次读取
-    const homeConf = conf.get("Home");
-    const cost     = homeConf.del;
-    const coinName = economyCfg.coinName;
-    let fm = mc.newSimpleForm()
-    fm.setTitle(lang.get("home.del"))
-    fm.setContent(lang.get("home.del.choose"))
-    let lst = []
-    let pldata = homedata.get(pl.realName)
-    for(let i in pldata){
-        lst.push(i)
-        fm.addButton(i+"\n坐标："+pldata[i].x+","+pldata[i].y+","+pldata[i].z+" "+transdimid[pldata[i].dimid])
-    }
-    pl.sendForm(fm,(pl,id)=>{
-        if(id == null) return pl.runcmd("home")
-        let fm = mc.newCustomForm()
-        fm.setTitle(lang.get("home.del"))
-        fm.addLabel("§c§l请问您确认要删除家 "+lst[id]+"？此操作不可撤销！！！")
-        fm.addLabel("您的" + coinName + "：" + String(Economy.get(pl)))
-        fm.addLabel("删除家需要花费"+cost+coinName)
-        fm.addLabel("坐标："+pldata[lst[id]].x+","+pldata[lst[id]].y+","+pldata[lst[id]].z+" "+transdimid[pldata[lst[id]].dimid])
-        pl.sendForm(fm,(pl,data)=>{
-            if(data == null) return pl.tell(info + lang.get("gui.exit"));
-            if (!EconomyManager.checkAndReduce(pl.realName, cost)) return showInsufficientMoneyGui(pl, cost, "home");
-            delete pldata[lst[id]]
-            homedata.set(pl.realName,pldata)
-            pl.sendText(info+"删除家 "+lst[id]+" 成功！")
-            
-    })
-    })
-}
-
-function AddHome(plname){
-    let pl = mc.getPlayer(plname)
-    if(!pl) return
-    // [fix] 一次读取
-    const homeConf = conf.get("Home");
-    const cost      = homeConf.add;
-    const HomeCount = homeConf.MaxHome;
-    const coinName  = economyCfg.coinName;
-
-    let pldata = homedata.get(pl.realName)
-    if(Object.keys(pldata).length >= HomeCount) return pl.sendText(info+"您的家数量已达到上限值:"+HomeCount+"!")
-        let fm = mc.newCustomForm()
-        fm.setTitle(lang.get("home.add"))
-        fm.addLabel("当前坐标："+String(pl.pos))
-        fm.addLabel("您的" + coinName + "：" + String(Economy.get(pl)))
-        fm.addLabel("添加花费："+String(cost)+coinName)
-        fm.addInput((lang.get("home.add.input")), "home1", "home1", lang.get("home.add.input.tip") || "")  // data[3]
-        fm.addSwitch("设置为公共家（其他玩家可传送至此）", false)  // data[4]
-        pl.sendForm(fm,(pl,data)=>{
-            if(data == null) return pl.runcmd("home")
-            if(data[3] == "" || !data[3]) return pl.tell(info + lang.get("home.name.noinput"));
-            let pldata = homedata.get(pl.realName)
-            if(Object.keys(pldata).includes(data[3])) return pl.tell(info + lang.get("home.name.repetitive"));
-            if (!EconomyManager.checkAndReduce(pl.realName, cost)) return showInsufficientMoneyGui(pl, cost, "home");
-            pldata[data[3]] = {
-                "x":JSON.parse(pl.pos.x).toFixed(1),
-                "y":JSON.parse(pl.pos.y).toFixed(1),
-                "z":JSON.parse(pl.pos.z).toFixed(1),
-                "dimid":JSON.parse(pl.pos.dimid),
-                "isPublic": data[4]
-            }
-            homedata.set(pl.realName,pldata)
-            let pubMsg = data[4] ? " §a(已设为公共家，其他玩家可传送)" : "";
-            pl.sendText(info+"添加家："+data[3]+" 成功！"+pubMsg)
-
-        })
-
-    }
 
 
 // ======================
