@@ -14,8 +14,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件 `;
-const version = "2.11.4";
-const regversion =[2,11,4];
+const version = "2.11.5";
+const regversion =[2,11,5];
 const info = "§l§d[-YEST-] §r§l> ";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
@@ -467,7 +467,8 @@ function initializePlugin() {
             p.simulateDisconnect();
         }
     });
-    
+    if(conf.get("Update").EnableModule==0) {return;}
+     else{
     // 第七步：异步初始化更新检查器并检查更新
     setTimeout(() => {
         (async () => {
@@ -500,7 +501,7 @@ function initializePlugin() {
             }
         })();
     }, 3000);
-}
+}};
 // AsyncLanguageManager 已迁移至 modules/I18n.js
 function ranking(plname) {
     let pl = mc.getPlayer(plname);
