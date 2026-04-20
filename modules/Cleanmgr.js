@@ -28,8 +28,8 @@ var CleanMgr = (function () {
 
   /* ================= 默认语言 ================= */
   var DEFAULT_LANG = {
-    prefix: "§l§6[-YEST-] §l§e[清理系统] §r",
-    toast_title: "§l§6[-YEST-] §l§e[清理系统] §r",
+    prefix: "§l§d[-YEST-] §r§l> §l§e[清理系统] §r",
+    toast_title: "§l§d[-YEST-] §r§l> §l§e[清理系统] §r",
     messages: {
       system_starting: "§a清理系统正在启动...",
       config_loaded: "§a配置文件加载完成",
@@ -281,7 +281,7 @@ var CleanMgr = (function () {
     state.phase = "cleaning";
     var removed = 0, kept = 0, total = 0;
     
-    mc.broadcast(lang.prefix + t("messages.cleanup_start"));
+    mc.broadcast(info + t("messages.cleanup_start"));
     var all = mc.getAllEntities();
     total = all.length;
     
@@ -294,8 +294,8 @@ var CleanMgr = (function () {
       }
     }
     
-    mc.broadcast(lang.prefix + t("messages.cleanup_complete", removed));
-    sendToastToAll(t("toast_title"), t("messages.cleanup_complete", removed));
+    mc.broadcast(info+ t("messages.cleanup_complete", removed));
+    sendToastToAll(info, t("messages.cleanup_complete", removed));
 
     if (state.isLowTpsTrigger) {
       setTimeout(function() {
@@ -313,7 +313,7 @@ var CleanMgr = (function () {
           
           if (state.lowTpsCleanCount >= config.LowTpsClean.maxConsecutiveCleans) {
             var coolMin = Math.round(config.LowTpsClean.longCooldown / 60);
-            mc.broadcast(lang.prefix + t("messages.low_tps_ineffective", coolMin));
+            mc.broadcast(info + t("messages.low_tps_ineffective", coolMin));
             
             state.lowTpsRetryTime = Date.now() + (config.LowTpsClean.longCooldown * 1000);
             state.lowTpsCleanCount = 0; 
@@ -336,11 +336,11 @@ var CleanMgr = (function () {
       var last = state.lastPlayerClean[playerName] || 0;
       if ((now - last) / 1000 < config.playerCooldown) {
         var p = mc.getPlayer(playerName);
-        if(p) p.tell(lang.prefix + t("messages.cooldown_warning"));
+        if(p) p.tell(info + t("messages.cooldown_warning"));
         return;
       }
       state.lastPlayerClean[playerName] = now;
-      mc.broadcast(lang.prefix + t("messages.manual_trigger"));
+      mc.broadcast(info + t("messages.manual_trigger"));
     }
 
     state.phase = "scheduled";
@@ -350,18 +350,18 @@ var CleanMgr = (function () {
     var n2 = config.notice.notice2;
     var n3 = config.notice.notice3;
 
-    mc.broadcast(lang.prefix + t("messages.cleanup_notice", n1));
+    mc.broadcast(info + t("messages.cleanup_notice", n1));
     sendToastToAll(t("toast_title"), t("messages.cleanup_notice", n1));
 
     if (n2 > 0 && n2 < n1) {
       state.scheduledTimeouts.push(setTimeout(function () {
-        mc.broadcast(lang.prefix + t("messages.cleanup_notice2", n2));
+        mc.broadcast(info + t("messages.cleanup_notice2", n2));
         sendToastToAll(t("toast_title"), t("messages.cleanup_notice2", n2));
       }, (n1 - n2) * 1000));
     }
     if (n3 > 0 && n3 < n2) {
       state.scheduledTimeouts.push(setTimeout(function () {
-        mc.broadcast(lang.prefix + t("messages.cleanup_notice3", n3));
+        mc.broadcast(info + t("messages.cleanup_notice3", n3));
         sendToastToAll(t("toast_title"), t("messages.cleanup_notice3", n3));
       }, (n1 - n3) * 1000));  // 修复：延迟基准为n1，而非n2
     }
@@ -374,20 +374,20 @@ var CleanMgr = (function () {
     var xuid = player.xuid; 
 
     if (!action || action === "help") {
-      player.tell(lang.prefix + t("messages.help_message"));
+      player.tell(info + t("messages.help_message"));
       return true;
     }
     if (action === "tps") {
       var cur = getTps();
-      player.tell(lang.prefix + t("messages.tps_info", cur.toFixed(2)));
+      player.tell(info + t("messages.tps_info", cur.toFixed(2)));
       setInterval(function() {
         var currentTps = getTps();
-        player.tell(lang.prefix + t("messages.tps_info", currentTps.toFixed(2)));
+        player.tell(info + t("messages.tps_info", currentTps.toFixed(2)));
       }, 100);
       return true;
     }
     if (action === "status") {
-      player.tell(lang.prefix + "状态: " + state.phase + (state.lowTpsRetryTime > Date.now() ? " (TPS清理长冷却中)" : ""));
+      player.tell(info + "状态: " + state.phase + (state.lowTpsRetryTime > Date.now() ? " (TPS清理长冷却中)" : ""));
       return true;
     }
     if (action === "cancel") {
@@ -395,9 +395,9 @@ var CleanMgr = (function () {
         state.scheduledTimeouts.forEach(clearTimeout);
         state.scheduledTimeouts = [];
         state.phase = "idle";
-        mc.broadcast(lang.prefix + t("messages.cancel_success"));
+        mc.broadcast(info + t("messages.cancel_success"));
       } else {
-        player.tell(lang.prefix + t("messages.no_scheduled_clean"));
+        player.tell(info + t("messages.no_scheduled_clean"));
       }
       return true;
     }
@@ -413,10 +413,10 @@ var CleanMgr = (function () {
       savePlayerSettings();
       
       if (playerSettings[xuid]) {
-        player.tell(lang.prefix + t("messages.toast_enabled"));
+        player.tell(info + t("messages.toast_enabled"));
         player.sendToast(t("toast_title"), "测试弹窗：开启成功");
       } else {
-        player.tell(lang.prefix + t("messages.toast_disabled"));
+        player.tell(info + t("messages.toast_disabled"));
       }
       return true;
     }
@@ -451,7 +451,7 @@ var CleanMgr = (function () {
                     state.scheduledTimeouts.forEach(clearTimeout);
                     state.scheduledTimeouts = [];
                     state.phase = "idle";
-                    mc.broadcast(lang.prefix + t("messages.cancel_success"));
+                    mc.broadcast(info + t("messages.cancel_success"));
                     logger.info(t("messages.cancel_success"));
                 } else {
                     logger.info(t("messages.no_scheduled_clean"));
@@ -487,7 +487,7 @@ var CleanMgr = (function () {
       if (currentTps <= config.LowTpsClean.minimum) {
         if (state.phase === "idle") {
           state.tpsBeforeClean = currentTps; 
-          mc.broadcast(lang.prefix + t("messages.low_tps_clean", currentTps.toFixed(2)));
+          mc.broadcast(info + t("messages.low_tps_clean", currentTps.toFixed(2)));
           scheduleClean(false, null, true); 
         }
       }

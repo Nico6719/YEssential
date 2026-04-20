@@ -26,6 +26,7 @@ function _registerYestCmd() {
             randomGradientLog(`版本: ${version}  作者: Nico6719  协议: AGPL-3.0`);
             return;
         }
+
         _showMainGui(pl);
     });
     cmd.setup();
@@ -36,6 +37,10 @@ function _registerYestCmd() {
 // ─────────────────────────────────────────────────────────
 
 function _showMainGui(pl) {
+    if (!pl.isOP()) {
+        pl.tell(info + "§c仅管理员可查看插件配置。");
+        return;
+    }
     const fm = mc.newSimpleForm();
     fm.setTitle(info+"§l插件信息");
     fm.setContent(
@@ -50,7 +55,7 @@ function _showMainGui(pl) {
     fm.addButton("§l检查更新",  "textures/ui/refresh_light");
     fm.addButton("§l配置概览",  "textures/ui/settings_pause_menu_icon");
     fm.addButton("§l关闭",      "textures/ui/cancel");
-
+    
     pl.sendForm(fm, (pl, id) => {
         if (id == null || id === 3) return;
         switch (id) {

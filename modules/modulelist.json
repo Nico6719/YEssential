@@ -29,12 +29,20 @@
             "name": "Fcam"
         },
         {
+            "path": "Home.js",
+            "name": "Home"
+        },
+        {
             "path": "I18n.js",
             "name": "I18n"
         },
         {
             "path": "Notice.js",
             "name": "Notice"
+        },
+        {
+            "path": "PluginInfo.js",
+            "name": "PluginInfo"
         },
         {
             "path": "PVP.js",
@@ -51,14 +59,6 @@
         {
             "path": "Sign.js",
             "name": "Sign"
-        },
-        {
-            "path": "PluginInfo.js",
-            "name": "PluginInfo"
-        },
-        {
-            "path": "Home.js",
-            "name": "Home"
         },
         {
             "path": "Warp.js",

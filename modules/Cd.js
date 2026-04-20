@@ -230,7 +230,7 @@ class MenuPlayerHandler {
         }
 
         var form = mc.newSimpleForm();
-        form.setTitle(info + menuData.title);
+        form.setTitle(menuData.title);
         form.setContent(menuData.content);
         menuData.buttons.forEach(function(button) {
             form.addButton(button.text, button.images ? button.image : "");
