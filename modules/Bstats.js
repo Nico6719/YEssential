@@ -55,7 +55,10 @@ function postWithRetry(url, body, retryLeft) {
     try {
         network.httpPost(url, body, "application/json", function (status, result) {
             if (status === 200) {
+                if (this.debugMode)
+                {
                 randomGradientLog("遥测数据上报成功 ");
+                }
                 return;
             }
             if (retryLeft > 1) {
