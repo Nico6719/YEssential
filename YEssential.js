@@ -5,7 +5,7 @@ this plugin is distributed under the AGPLv3 License
 未经允许禁止擅自修改或者发售
 该插件仅在[github,MineBBS,KLPBBS]发布，禁止二次发布插件
 语言文件路径（defaultLangContent 及 AsyncLanguageManager 已迁移至 modules/I18n.js）
-调用示例： pl.tell(info + lang.get("x.x"))
+调用示例： pl.tell(info + CachePool.lang("x.x"))
 ----------------------------------*/
 // LiteLoader-AIDS automatic generated
 /// <reference path="c:\Users\Admin/dts/helperlib/src/index.d.ts"/> 
@@ -14,15 +14,49 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件 `;
-const version = "2.11.6";
-const regversion =[2,11,6];
+const version = "2.12.0";
+const regversion =[2,12,0];
 const info = "§l§d[-YEST-] §r§l> ";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
 const langFilePath = YEST_LangDir + "zh_cn.json";
 
+// ── 核心配置文件初始化 ──
+// 必须在 Preinit 之前定义，因为 ConfigManager.js 和 Store 实例会用到它们
+let lang = new JsonConfigFile(langFilePath, JSON.stringify({}));
+let conf = new JsonConfigFile(pluginpath +"/Config/config.json",JSON.stringify({}));
+let homedata = new JsonConfigFile(datapath +"homedata.json",JSON.stringify({}));
+let warpdata = new JsonConfigFile(datapath +"warpdata.json",JSON.stringify({}));
+
+// ── Preinit: 同步加载核心模块 ──
+// 必须在所有 conf.get/lang.get 替换项执行前就绪
+(function preinit() {
+    try {
+        // 暴露基础变量给 require 沙箱
+        Object.assign(globalThis, {
+            pluginpath, datapath, conf, lang, info, version, NAME, homedata, warpdata,langFilePath,YEST_LangDir,
+        });
+        
+        // ConfigManager 最先跑，确保 conf 文件在 CachePool 读取前已初始化完毕
+        // ConfigManager 内部调用 randomGradientLog，提前注入占位函数
+        if (!globalThis.randomGradientLog) {
+            globalThis.randomGradientLog = (text) => logger.info(text);
+        }
+        require("plugins/YEssential/modules/ConfigManager.js");
+        require("plugins/YEssential/modules/I18n.js");
+        require("plugins/YEssential/modules/CachePool.js");
+        require("plugins/YEssential/modules/WriteBackStore.js");
+        
+        if (globalThis.WriteBackStore) {
+            globalThis.homeStore = globalThis.WriteBackStore.create(homedata, "home");
+            globalThis.warpStore = globalThis.WriteBackStore.create(warpdata, "warp");
+        }
+    } catch (e) {
+        logger.error("[YEssential] Preinit 失败: " + (e.message || e));
+    }
+})();
+
 // ── Reload Guard ──────────────────────────────────────────────
-// LLSE reload 时不会清除旧的 mc.listen，重复注册会导致事件累积、栈溢出崩溃
 // 用全局变量保证所有 mc.listen 只注册一次
 const __YEST_FIRST_LOAD__ = !globalThis.__YEST_listeners_registered__;
 
@@ -44,79 +78,7 @@ let transdimid = {
     2:"末地"
 }
 
-let lang = new JsonConfigFile(langFilePath, JSON.stringify({}));
-
-let conf = new JsonConfigFile(pluginpath +"/Config/config.json",JSON.stringify({}));
-
-// ── Economy 统一读取层（兼容旧config和新Economy块）─────────
-// v2.10.5: 改为缓存模式，避免每次 getter 都重读配置文件
-// 调用 economyCfg.refresh() 可在 reload 后刷新缓存
-const economyCfg = (() => {
-    let _cache = null;
-    function _load() {
-        const e = conf.get("Economy");
-        return {
-            mode:       e ? (e.mode || "scoreboard") : (conf.get("LLMoney") == 1 ? "llmoney" : "scoreboard"),
-            scoreboard: (e ? e.Scoreboard : conf.get("Scoreboard")) || "money",
-            coinName:   (e ? e.CoinName   : conf.get("CoinName"))   || lang.get("CoinName") || "金币",
-        };
-    }
-    return {
-        refresh()        { _cache = _load(); },
-        get mode()       { return (_cache || (_cache = _load())).mode; },
-        get isLLMoney()  { return this.mode === "llmoney"; },
-        get scoreboard() { return (_cache || (_cache = _load())).scoreboard; },
-        get coinName()   { return (_cache || (_cache = _load())).coinName; },
-    };
-})();
-
-let modulelist = new JsonConfigFile(pluginpath +"/modules/modulelist.json",JSON.stringify({
-  "modules": [
-    {
-      "path": "ConfigManager.js",
-      "name": "ConfigManager"
-    },
-    {
-      "path": "AsyncUpdateChecker.js",
-      "name": "AsyncUpdateChecker"
-    }
-  ]
-}));
-
-let homedata = new JsonConfigFile(datapath +"homedata.json",JSON.stringify({}));
-  
-let rtpdata = new JsonConfigFile(datapath +"/RTPData/Rtpdata.json",JSON.stringify({}));
-
-let warpdata = new JsonConfigFile(datapath +"warpdata.json",JSON.stringify({}));
-  
-let noticeconf = new JsonConfigFile(datapath + "/NoticeSettingsData/playersettingdata.json",JSON.stringify({}));
-
-let pvpConfig = new JsonConfigFile(datapath +"/PVPSettingsData/pvp_data.json",JSON.stringify({}));
-
-let MdataPath = datapath +"/Money/Moneyranking.json";
-
-let offlineMoney = new JsonConfigFile(offlineMoneyPath, "{}");
-
-let MoneyHistory = new JsonConfigFile(datapath +"/Money/MoneyHistory.json",JSON.stringify({}));
-
-let moneyranking = new JsonConfigFile(MdataPath, "{}");
-
-const defaultServerConfig = JSON.stringify({
-    servers: [
-      { server_name: "生存服", server_ip: "127.0.0.1", server_port: 19132 }
-    ]
-});
-
-let servertp = new JsonConfigFile(datapath +"/TrSeverData/server.json", defaultServerConfig);
-
-let tpacfg = new JsonConfigFile(datapath +"/TpaSettingsData/tpaAutoRejectConfig.json",JSON.stringify({}));
-
-// isSending 防重复锁已移至 modules/Redpacket.js
-
-// 红包数据及红包系统逻辑已迁移至 modules/Redpacket.js
-    
 // 文件操作工具类
-// v2.10.5: 移除了在 QuickJS 单线程环境下无实际异步效果的 Promise 包装，改为直接同步调用
 class AsyncFileManager {
     static readFile(path, defaultContent = '{}') {
         try {
@@ -143,6 +105,81 @@ class AsyncFileManager {
         }
     }
 }
+
+
+// ── Economy 统一读取层（兼容旧config和新Economy块）─────────
+// v2.10.5: 改为缓存模式，避免每次 getter 都重读配置文件
+// 调用 economyCfg.refresh() 可在 reload 后刷新缓存
+const economyCfg = (() => {
+    let _cache = null;
+    function _load() {
+        const e = CachePool.conf("Economy");
+        return {
+            mode:       e ? (e.mode || "scoreboard") : (CachePool.conf("LLMoney") == 1 ? "llmoney" : "scoreboard"),
+            scoreboard: (e ? e.Scoreboard : CachePool.conf("Scoreboard")) || "money",
+            coinName:   (e ? e.CoinName   : CachePool.conf("CoinName"))   || CachePool.lang("CoinName") || "金币",
+        };
+    }
+    return {
+        refresh()        { _cache = _load(); },
+        get mode()       { return (_cache || (_cache = _load())).mode; },
+        get isLLMoney()  { return this.mode === "llmoney"; },
+        get scoreboard() { return (_cache || (_cache = _load())).scoreboard; },
+        get coinName()   { return (_cache || (_cache = _load())).coinName; },
+    };
+})();
+
+let modulelist = new JsonConfigFile(pluginpath +"/modules/modulelist.json",JSON.stringify({
+  "modules": [
+    {
+      "path": "ConfigManager.js",
+      "name": "ConfigManager"
+    },
+    {
+      "path": "AsyncUpdateChecker.js",
+      "name": "AsyncUpdateChecker"
+    }
+  ]
+}));
+
+let rtpdata = new JsonConfigFile(datapath +"/RTPData/Rtpdata.json",JSON.stringify({}));
+  
+let _noticeconfJcf = new JsonConfigFile(datapath + "/NoticeSettingsData/playersettingdata.json",JSON.stringify({}));
+let noticeconf = _noticeconfJcf;
+
+let _pvpConfigJcf = new JsonConfigFile(datapath +"/PVPSettingsData/pvp_data.json",JSON.stringify({}));
+let pvpConfig = _pvpConfigJcf;
+
+let MdataPath = datapath +"/Money/Moneyranking.json";
+
+let offlineMoney = new JsonConfigFile(offlineMoneyPath, "{}");
+
+let _moneyHistoryJcf = new JsonConfigFile(datapath +"/Money/MoneyHistory.json",JSON.stringify({}));
+let MoneyHistory = _moneyHistoryJcf;
+
+let moneyranking = new JsonConfigFile(MdataPath, "{}");
+
+// 所有 JCF 声明完毕，统一创建 Store（顺序必须在最后一个 JCF 之后）
+if (globalThis.WriteBackStore) {
+    globalThis.noticeStore       = globalThis.WriteBackStore.create(_noticeconfJcf,   "noticeconf");
+    globalThis.pvpStore          = globalThis.WriteBackStore.create(_pvpConfigJcf,    "pvpConfig");
+    globalThis.moneyHistoryStore = globalThis.WriteBackStore.create(_moneyHistoryJcf, "moneyHistory");
+    globalThis.moneyRankingStore = globalThis.WriteBackStore.create(moneyranking,     "moneyRanking");
+    noticeconf   = globalThis.noticeStore;
+    pvpConfig    = globalThis.pvpStore;
+    MoneyHistory = globalThis.moneyHistoryStore;
+}
+
+const defaultServerConfig = JSON.stringify({
+    servers: [
+      { server_name: "生存服", server_ip: "127.0.0.1", server_port: 19132 }
+    ]
+});
+
+let servertp = new JsonConfigFile(datapath +"/TrSeverData/server.json", defaultServerConfig);
+
+let tpacfg = new JsonConfigFile(datapath +"/TpaSettingsData/tpaAutoRejectConfig.json",JSON.stringify({}));
+
 // ── 全局随机颜色对（Logo、Tip、logInfo 共用）────────────────
 function randomVividColor() {
     // 排除绿色(90°~150°)和深紫色(260°~300°)
@@ -194,9 +231,7 @@ function randomGradientLog(text) {
       }
       logger.log(out + '\x1b[0m');
 }
-// ─────────────────────────────────────────────────────────
 // ── 模块全局依赖注入 ────────────────────────────────────────
-// LiteLoader 的 require() 沙箱无法继承主脚本词法作用域的 let/const 变量，
 // 通过 globalThis 显式暴露供所有模块访问（包括 PVP、Fcam、Notice 等）
 var stats = false; // 维护状态，避免 IIFE 内 "stats is not defined"
 Object.assign(globalThis, {
@@ -227,16 +262,7 @@ Object.assign(globalThis, {
     // 不能在定义前引用（TDZ）。若模块需要，在其定义后通过
     // globalThis.Economy = Economy; 单独追加。
 });
-// ── Preinit: 同步加载 ConfigManager，确保配置默认值在顶层代码执行前写入 ──
-(function preinitConfig() {
-    try {
-        require("plugins/YEssential/modules/ConfigManager.js");
-        // ConfigManager.js 检测到 ll 存在时会自动执行 initializeConfig()
-        // 此处同步完成，顶层的 conf.get("Hub") 等调用就能拿到默认值
-    } catch (e) {
-        logger.error("[YEssential] ConfigManager preinit 失败: " + (e.message || e));
-    }
-})();
+
 /**
  * YEssential - 模块初始化管理器
  * 自动加载并初始化 modules 文件夹中的所有模块
@@ -296,11 +322,11 @@ Object.assign(globalThis, {
 
     function loadNextModule() {
       if (currentIndex >= modules.length) {
-        let whConfig = conf.get("wh") || { EnableModule: true, status: 0 };
+        let whConfig = CachePool.conf("wh") || { EnableModule: true, status: 0 };
         stats = whConfig.status === 1;
 
         if (whConfig.EnableModule && whConfig.status === 1) {
-            mc.setMotd(conf.get("wh").motd || "服务器维护中，请勿进入！");
+            mc.setMotd(CachePool.conf("wh").motd || "服务器维护中，请勿进入！");
         } else {
             Motd();
         }
@@ -313,7 +339,7 @@ Object.assign(globalThis, {
                 logWarn((_lf.get("init.fail")) || "部分模块加载失败，请检查日志");
             } else {
                 setTimeout(() => {
-                if (conf.get("SimpleLogOutPut")== false) {
+                if (CachePool.conf("SimpleLogOutPut")== false) {
                 const _l = globalThis.lang || lang;
                 logInfo((_l.get("init.success")) || "所有模块加载成功！");
                 logInfo("-".repeat(50));
@@ -335,7 +361,7 @@ Object.assign(globalThis, {
       currentIndex++;
 
       try {
-        if (conf.get("SimpleLogOutPut")== false) {
+        if (CachePool.conf("SimpleLogOutPut")== false) {
         logInfo("正在加载模块: " + moduleInfo.name + " (" + moduleInfo.path + ")");
         }
         var module = require(moduleInfo.path);
@@ -447,27 +473,27 @@ function initializePlugin() {
     // 第三步：提示维护功能是否开启
     if (Maintenance.isActive) {
         setTimeout(() => {
-            randomGradientLog(lang.get("wh.warn"));
+            randomGradientLog(CachePool.lang("wh.warn"));
         }, 1000);
     }
     
     // 第四步：启用死亡不掉落
-    if (conf.get("KeepInventory")) {
+    if (CachePool.conf("KeepInventory")) {
         mc.runcmdEx("gamerule KeepInventory true");
-        randomGradientLog(lang.get("gamerule.KeepInventory.true"));
+        randomGradientLog(CachePool.lang("gamerule.KeepInventory.true"));
     }
     
     // 第五步（公告更新检测）已移至 Notice.js 模块
 
     // 第六步：清理残留的灵魂出窍模拟玩家
-    const allPlayers = mc.getOnlinePlayers();
+    const allPlayers = CachePool.getOnlinePlayers();
     allPlayers.forEach(p => {
         // FCAM 创建的模拟玩家通常以 _sp 结尾
         if (p.isSimulatedPlayer() && p.name.endsWith("_sp")) {
             p.simulateDisconnect();
         }
     });
-    if(conf.get("Update").EnableModule==0) {return;}
+    if(CachePool.conf("Update")?.EnableModule==0) {return;}
      else{
     // 第七步：异步初始化更新检查器并检查更新
     setTimeout(() => {
@@ -477,7 +503,7 @@ function initializePlugin() {
                 await AsyncUpdateChecker.init();
                 
                 // 获取更新配置
-                const updateConfig = conf.get("Update");
+                const updateConfig = CachePool.conf("Update");
                 
                 // 检查是否启用更新模块
                 if (updateConfig && updateConfig.EnableModule) {
@@ -507,9 +533,10 @@ function ranking(plname) {
     let pl = mc.getPlayer(plname);
     if (!pl) return;
 
-    // 1. 读取硬盘上的基础数据
-    let rawFile = moneyranking.read();
-    let datas = rawFile ? JSON.parse(rawFile) : {};
+    // ✅ 优先用 WriteBackStore.getAll()（内存直取），回退裸文件读
+    let datas = globalThis.moneyRankingStore
+        ? globalThis.moneyRankingStore.getAll()
+        : (moneyranking.read() ? JSON.parse(moneyranking.read()) : {});
 
     // 2. [关键修复] 合并内存缓存中的其他玩家数据
     for (let name in moneyCache) {
@@ -541,7 +568,7 @@ function ranking(plname) {
     }));
 
     if (lst.length === 0) {
-        pl.tell(info + lang.get("no.ranking.data"));
+        pl.tell(info + CachePool.lang("no.ranking.data"));
         return;
     }
 
@@ -551,7 +578,7 @@ function ranking(plname) {
     // 截取前50名
     const rankingData = lst.slice(0, 50);
     // === 模式 1: 详细 UI ===
-    if (conf.get("Economy").RankingModel == "New" ) {
+    if (CachePool.conf("Economy").RankingModel == "New" ) {
         const total = rankingData.reduce((sum, curr) => sum + curr.money, 0);
 
         let form = mc.newSimpleForm()
@@ -578,7 +605,7 @@ function ranking(plname) {
         });
 
         pl.sendForm(form, (pl, id) => {
-            if (id !== null) pl.tell(info + lang.get("money.callback.menu"));
+            if (id !== null) pl.tell(info + CachePool.lang("money.callback.menu"));
             pl.runcmd("moneygui");
         });
 
@@ -597,12 +624,16 @@ function ranking(plname) {
     } 
     // === 模式 0: 简单文本列表 ===
     else {
+        // 在重载前强制刷盘所有数据，防止内存数据丢失
+        if (globalThis.WriteBackStore) {
+            globalThis.WriteBackStore.flushAll();
+        }
         let form = mc.newSimpleForm();
         let str = '';
         rankingData.forEach((v) => {
             str += `${v.name}: ${v.money}\n`;
         });
-        form.setTitle(lang.get("ranking.list"));
+        form.setTitle(CachePool.lang("ranking.list"));
         form.setContent(str);
         pl.sendForm(form, (pl, id) => {
             if (id == null) pl.runcmd("moneygui");
@@ -630,14 +661,15 @@ function updateSinglePlayerCache(pl) {
 }
 
 setInterval(() => {
-    mc.getOnlinePlayers().forEach(pl => updateSinglePlayerCache(pl));
+    CachePool.getOnlinePlayers().forEach(pl => updateSinglePlayerCache(pl));
 }, 30000);
 
 // 每60秒批量写入文件（仅在有变化时）
 setInterval(() => {
     if (moneyDirty) {
+        const store = globalThis.moneyRankingStore;
         Object.keys(moneyCache).forEach(name => {
-            moneyranking.set(name, moneyCache[name]);
+            store ? store.set(name, moneyCache[name]) : moneyranking.set(name, moneyCache[name]);
         });
         moneyDirty = false;
     }
@@ -646,41 +678,43 @@ setInterval(() => {
 // 玩家退出时立即保存其数据
 if (__YEST_FIRST_LOAD__) {
 mc.listen("onLeft", (pl) => {
+    CachePool.invalidatePlayerList();
     if (moneyCache[pl.realName] !== undefined) {
-        moneyranking.set(pl.realName, moneyCache[pl.realName]);
+        const store = globalThis.moneyRankingStore;
+        store ? store.set(pl.realName, moneyCache[pl.realName]) : moneyranking.set(pl.realName, moneyCache[pl.realName]);
         delete moneyCache[pl.realName];
     }
 });
 }
 // YEssential.js - servers 命令
-if (conf.get("CrossServerTransfer")?.EnabledModule) {
+if (CachePool.conf("CrossServerTransfer")?.EnabledModule) {
 let Sercmd = mc.newCommand("servers", "§l§a跨服传送", PermType.Any);
 Sercmd.overload([]);
 Sercmd.setCallback((cmd, ori, out, res) => {
     const pl = ori.player;
     if (!pl || typeof pl.sendText !== "function") {
-        logger.error(info+lang.get("player.isnull"));
+        logger.error(info+CachePool.lang("player.isnull"));
         return;
     }
-    let config = conf.get("CrossServerTransfer");
+    let config = CachePool.conf("CrossServerTransfer");
     let serverList = [];
     try {
         serverList = config.servers || [];
     } catch (e) {
-        logger.error(lang.get("server.config.loaderror"), e);
-        pl.tell(info + lang.get("server.load.error"));
+        logger.error(CachePool.lang("server.config.loaderror"), e);
+        pl.tell(info + CachePool.lang("server.load.error"));
         return;
     }
 
     if (serverList.length === 0) {
-        logger.error(lang.get("no.server.cantpto"));
-        pl.tell(info + lang.get("no.server.can.tp"));
+        logger.error(CachePool.lang("no.server.cantpto"));
+        pl.tell(info + CachePool.lang("no.server.can.tp"));
         return;
     }
 
     let form = mc.newSimpleForm();
-    form.setContent(lang.get("choose.a.server"))
-    form.setTitle(lang.get("server.from.title"));
+    form.setContent(CachePool.lang("choose.a.server"))
+    form.setTitle(CachePool.lang("server.from.title"));
     serverList.forEach((server) => {
         form.addButton(`§l§b${server.server_name}\n§7IP: ${server.server_ip}:${server.server_port}`);
     });
@@ -690,7 +724,7 @@ Sercmd.setCallback((cmd, ori, out, res) => {
 
         const targetServer = serverList[id];
         if (!targetServer) {
-            pl.tell(info + lang.get("server.no.select"));
+            pl.tell(info + CachePool.lang("server.no.select"));
             return;
         }
 
@@ -698,23 +732,23 @@ Sercmd.setCallback((cmd, ori, out, res) => {
             pl.transServer(targetServer.server_ip, targetServer.server_port);
             mc.broadcast(info+`§a${pl.realName} 前往了 ${targetServer.server_name}`);
         } catch (e) {
-            logger.error(lang.get("tpa.fail"), e);
-            pl.tell(info + lang.get("server.tp.fail"));
+            logger.error(CachePool.lang("tpa.fail"), e);
+            pl.tell(info + CachePool.lang("server.tp.fail"));
         }
     });
 });
 Sercmd.setup();
-} // end if (conf.get("CrossServerTransfer")?.EnabledModule)
+} // end if (CachePool.conf("CrossServerTransfer")?.EnabledModule)
 //Hub
-if (conf.get("Hub").EnabledModule) {
+if (CachePool.conf("Hub")?.EnabledModule) {
 const hubcmd = mc.newCommand("hub", "打开回城菜单", PermType.Any);
 hubcmd.overload([]);
 hubcmd.setCallback((cmd, ori, out, res) => {
     const pl = ori.player;
-    if (!pl) return out.error(lang.get("warp.only.player"));
-    const Hub = conf.get("Hub");
+    if (!pl) return out.error(CachePool.lang("warp.only.player"));
+    const Hub = CachePool.conf("Hub");
     const form = mc.newSimpleForm();
-    form.setTitle(lang.get("hub.tp.check"));
+    form.setTitle(CachePool.lang("hub.tp.check"));
     form.setContent([
         '§e目标位置：',
         `§bX: §f${Hub.x}`,
@@ -722,8 +756,8 @@ hubcmd.setCallback((cmd, ori, out, res) => {
         `§bZ: §f${Hub.z}`,
         `§b维度: §f${getDimensionName(Hub.dimid)}`
     ].join('\n'));
-    form.addButton(lang.get("hub.tp.now"), 'textures/ui/confirm');
-    form.addButton(lang.get("hub.tp.notnow"), 'textures/ui/cancel');
+    form.addButton(CachePool.lang("hub.tp.now"), 'textures/ui/confirm');
+    form.addButton(CachePool.lang("hub.tp.notnow"), 'textures/ui/cancel');
     pl.sendForm(form, (pl, id) => {
         if (id === 0) teleportPlayer(pl);
     });
@@ -735,9 +769,9 @@ const sethubcmd = mc.newCommand("sethub", "设置回城点", PermType.GameMaster
 sethubcmd.overload([]);
 sethubcmd.setCallback((cmd, ori, out, res) => {
     const pl = ori.player;
-    if (!pl) return out.error(lang.get("warp.only.player"));
+    if (!pl) return out.error(CachePool.lang("warp.only.player"));
     if (!pl.isOP()) {
-        pl.tell(info + lang.get("player.not.op"));
+        pl.tell(info + CachePool.lang("player.not.op"));
         return;
     }
     Hubdata = {
@@ -747,7 +781,7 @@ sethubcmd.setCallback((cmd, ori, out, res) => {
         "dimid": pl.pos.dimid,
         isSet: true
     };
-    conf.set("Hub", Hubdata);
+    CachePool.setConf("Hub", Hubdata);
     pl.tell([
         '§a回城点已设置为：',
         `§eX: §f${pl.pos.x.toFixed(1)}`,
@@ -757,7 +791,7 @@ sethubcmd.setCallback((cmd, ori, out, res) => {
     ].join('\n'));
 });
 sethubcmd.setup();
-} // end if (conf.get("Hub").EnabledModule)
+} // end if (CachePool.conf("Hub")?.EnabledModule)
 
 // 维度ID转名称
 function getDimensionName(id) {
@@ -771,7 +805,7 @@ function getDimensionName(id) {
 // 传送功能
 function teleportPlayer(pl,player) {
     try {
-        const Hub =conf.get("Hub")
+        const Hub =CachePool.conf("Hub")
         pl.teleport(
             parseFloat(Hub.x),
             parseFloat(Hub.y),
@@ -779,33 +813,33 @@ function teleportPlayer(pl,player) {
             parseInt(Hub.dimension), // 维度转为整数
             { checkMatrix: true } // 选项参数
         );
-        pl.tell(info+lang.get("hub.tp.success"));       
+        pl.tell(info+CachePool.lang("hub.tp.success"));       
     } catch (e) {
-        pl.tell(info+lang.get("hub.tp.fail")`${e.message}`);
+        pl.tell(info+CachePool.lang("hub.tp.fail")`${e.message}`);
         logger.error(e.stack);
     }
 }
 // 金币信息显示函数
 function displayMoneyInfo(pl, target, isSelf = true) {
-    if (!pl || !target) return lang.get("money.getinfo.fail");
+    if (!pl || !target) return CachePool.lang("money.getinfo.fail");
     const prefix = isSelf ? "你的" : `玩家 ${target.realName} 的`;
     
     if (!economyCfg.isLLMoney) {
         const money = target.getScore(economyCfg.scoreboard);
         pl.sendText(info + `${prefix}当前金币为：${money}`);
-        return `${prefix}${conf.get("Economy").CoinName}为: ${money}`;
+        return `${prefix}${CachePool.conf("Economy").CoinName}为: ${money}`;
     } else {
         const money = target.getMoney();
         pl.sendText(info + `${prefix}当前LLMoney金币为：${money}`);
-        return `${prefix}${conf.get("Economy").CoinName}为: ${money}`;
+        return `${prefix}${CachePool.conf("Economy").CoinName}为: ${money}`;
     }
 }
 
 if (__YEST_FIRST_LOAD__) {
 mc.listen("onConsoleCmd",(cmd)=>{
-    if(cmd.toLowerCase() != "stop" || lang.get("stop.msg") == 0 ) return
-    let msg = lang.get("stop.msg")
-    mc.getOnlinePlayers().forEach((pl)=>{
+    if(cmd.toLowerCase() != "stop" || CachePool.lang("stop.msg") == 0 ) return
+    let msg = CachePool.lang("stop.msg")
+    CachePool.getOnlinePlayers().forEach((pl)=>{
         pl.disconnect(msg)
     })
     mc.runcmdEx("stop")  //再次尝试
@@ -818,11 +852,11 @@ suicidecmd.overload([])
 suicidecmd.setCallback((cmd,ori,out,res)=>{
     let pl = ori.player
     if(!economyCfg.isLLMoney){
-            if(!smartMoneyCheck(pl.realName,conf.get("suicide"))) return pl.tell(info + lang.get("money.no.enough"));
+            if(!smartMoneyCheck(pl.realName,CachePool.conf("suicide"))) return pl.tell(info + CachePool.lang("money.no.enough"));
     }else{
-            if(!smartMoneyCheck(pl.realName,conf.get("suicide"))) return pl.tell(info + lang.get("money.no.enough"));
+            if(!smartMoneyCheck(pl.realName,CachePool.conf("suicide"))) return pl.tell(info + CachePool.lang("money.no.enough"));
     }
-    pl.tell(info + lang.get("suicide.kill.ok"));
+    pl.tell(info + CachePool.lang("suicide.kill.ok"));
     pl.kill()
 
 })
@@ -830,16 +864,16 @@ suicidecmd.setup()
 
 function Motd(){
     // 清理旧的定时器，防止内存泄漏
-    if (conf.get("Motd").EnabledModule == 0 ) return;
+    if (CachePool.conf("Motd")?.EnabledModule == 0 ) return;
 
     if (motdTimerId !== null) {
         clearInterval(motdTimerId);
         motdTimerId = null;
     }
     
-    let motds = conf.get("Motd").message;
+    let motds = CachePool.conf("Motd").message;
     if (!motds || motds.length === 0) {
-        logger.warn(lang.get("Motd.config.isemp"));
+        logger.warn(CachePool.lang("Motd.config.isemp"));
         return;
     }
     
@@ -855,12 +889,12 @@ function Motd(){
 // 初始化维护状态变量，从配置读取
 
 const Maintenance = {
-    get config() { return conf.get("wh") || { EnableModule: true, status: 0 }; },
+    get config() { return CachePool.conf("wh") || { EnableModule: true, status: 0 }; },
     get isActive() { return this.config.status === 1; },
     setStatus: function(status) {
         let c = this.config;
         c.status = status ? 1 : 0;
-        conf.set("wh", c);
+        CachePool.setConf("wh", c);
         return status;
     }
 };
@@ -870,7 +904,7 @@ whcmd.overload([])
 
 whcmd.setCallback((cmd, ori, out, res) => {
     let pl = ori.player;
-    if (!Maintenance.config.EnableModule) return out.error(lang.get("module.no.Enabled"));
+    if (!Maintenance.config.EnableModule) return out.error(CachePool.lang("module.no.Enabled"));
     const newState = Maintenance.setStatus(!Maintenance.isActive);
     if (!pl) {
     randomGradientLog(`维护模式已${newState ? "开启" : "关闭"}`);
@@ -883,9 +917,9 @@ whcmd.setCallback((cmd, ori, out, res) => {
             clearInterval(motdTimerId);
             motdTimerId = null;
         }
-        const whConfig = conf.get("wh");
+        const whConfig = CachePool.conf("wh");
         mc.setMotd(whConfig.whmotdmsg);
-        mc.getOnlinePlayers().forEach((player) => {
+        CachePool.getOnlinePlayers().forEach((player) => {
             if (!player.isSimulatedPlayer() && !player.isOP()) {
                 player.kick(whConfig.whmotdmsg);
             }
@@ -900,7 +934,7 @@ whcmd.setup()
 if (__YEST_FIRST_LOAD__) {
 mc.listen("onPreJoin", (pl) => {
     // 检查模块是否启用
-    let currentConfig = conf.get("wh") || { EnableModule: true, status: 0 , whmotdmsg: "服务器维护中，请勿进入！", whgamemsg: "服务器正在维护中，请您稍后再来!"};
+    let currentConfig = CachePool.conf("wh") || { EnableModule: true, status: 0 , whmotdmsg: "服务器维护中，请勿进入！", whgamemsg: "服务器正在维护中，请您稍后再来!"};
     if (!currentConfig.EnableModule) return;
     if (pl.isSimulatedPlayer()) return;
     if (pl.isOP()) return;
@@ -928,14 +962,14 @@ moneycmd.optional("amount", ParamType.Int);
 moneycmd.overload(["option", "player", "amount"]);
 moneycmd.setCallback((cmd, ori, out, res) => {
     if (typeof res.player !== "string" || res.player.trim() === "") {
-        return out.error(info + lang.get("moneys.command.error"));
+        return out.error(info + CachePool.lang("moneys.command.error"));
     }
 
     const targetPl = mc.getPlayer(res.player);
-    if (!targetPl) return out.error(info + lang.get("money.tr.noonline"));
+    if (!targetPl) return out.error(info + CachePool.lang("money.tr.noonline"));
 
     const coinName = economyCfg.coinName;
-    const history = MoneyHistory.get(targetPl.realName);
+    const history = MoneyHistory.get(targetPl.realName) || {};
     const timestamp = getUniqueTimestamp();
 
     const logAndNotify = (actionKey, successKey, economyMethod, amount) => {
@@ -944,9 +978,9 @@ moneycmd.setCallback((cmd, ori, out, res) => {
         }
         Economy.execute(targetPl, economyMethod, amount);
         const operatorName = ori.player ? ori.player.realName : "控制台";
-        history[timestamp] = `${coinName}${lang.get(actionKey)}${amount} (操作员: ${operatorName})`;
+        history[timestamp] = `${coinName}${CachePool.lang(actionKey)}${amount} (操作员: ${operatorName})`;
         MoneyHistory.set(targetPl.realName, history);
-        out.success(info + lang.get(successKey)
+        out.success(info + CachePool.lang(successKey)
             .replace("${player}", res.player)
             .replace("${coin}", coinName)
             .replace("${amount}", amount));
@@ -957,7 +991,7 @@ moneycmd.setCallback((cmd, ori, out, res) => {
         add:     () => logAndNotify("money.op.add",    "moneys.add.success", "add",    res.amount),
         del:     () => logAndNotify("money.op.remove", "moneys.del.success", "reduce", res.amount),
         get:     () => {
-            out.success(info + lang.get("moneys.get.result")
+            out.success(info + CachePool.lang("moneys.get.result")
                 .replace("${player}", res.player)
                 .replace("${coin}", coinName)
                 .replace("${amount}", Economy.get(targetPl)));
@@ -971,14 +1005,14 @@ moneycmd.setCallback((cmd, ori, out, res) => {
 
     const handler = handlers[res.option];
     if (handler) handler();
-    else out.error(info + lang.get("moneys.command.error"));
+    else out.error(info + CachePool.lang("moneys.command.error"));
 });
 moneycmd.setup();
 let moneygui = mc.newCommand("moneygui","金币", PermType.Any)
 moneygui.overload([])
 moneygui.setCallback((cmd,ori,out,res)=>{
     let pl = ori.player
-    if(!pl) return out.error(lang.get("warp.only.player"))
+    if(!pl) return out.error(CachePool.lang("warp.only.player"))
     if(pl.isOP()){
         OPMoneyGui(pl.realName)
     }else{
@@ -993,22 +1027,22 @@ function MoneyGui(plname){
     if(!pl) return
 
     // [fix] 一次读取，后续复用，避免每次 addButton 都重新读配置文件
-    const econConf  = conf.get("Economy");
+    const econConf  = CachePool.conf("Economy");
     const coinName  = econConf.CoinName;
-    const rpEnabled = conf.get("RedPacket").EnabledModule == 1;
+    const rpEnabled = CachePool.conf("RedPacket")?.EnabledModule == 1;
 
     let fm = mc.newSimpleForm()
     fm.setTitle(coinName)
-    fm.addButton((lang.get("money.query") || "查询") + coinName, "textures/ui/MCoin")
-    fm.addButton((lang.get("money.transfer") || "转账") + coinName, "textures/ui/trade_icon")
-    fm.addButton(lang.get("money.offline.transfer.btn") || "转账给离线玩家", "textures/ui/FriendsDiversity")
-    fm.addButton((lang.get("money.view") || "查看") + coinName + (lang.get("money.history") || "历史记录"), "textures/ui/book_addtextpage_default")
-    fm.addButton(coinName + (lang.get("money.player.list") || "排行榜"), "textures/ui/icon_book_writable")
+    fm.addButton((CachePool.lang("money.query") || "查询") + coinName, "textures/ui/MCoin")
+    fm.addButton((CachePool.lang("money.transfer") || "转账") + coinName, "textures/ui/trade_icon")
+    fm.addButton(CachePool.lang("money.offline.transfer.btn") || "转账给离线玩家", "textures/ui/FriendsDiversity")
+    fm.addButton((CachePool.lang("money.view") || "查看") + coinName + (CachePool.lang("money.history") || "历史记录"), "textures/ui/book_addtextpage_default")
+    fm.addButton(coinName + (CachePool.lang("money.player.list") || "排行榜"), "textures/ui/icon_book_writable")
     if (rpEnabled){
-        fm.addButton(lang.get("rp.menu.1") || "红包", "textures/ui/gift_square")
+        fm.addButton(CachePool.lang("rp.menu.1") || "红包", "textures/ui/gift_square")
     }
     pl.sendForm(fm,(pl,id)=>{
-        if(id == null) return pl.tell(info + lang.get("gui.exit"));
+        if(id == null) return pl.tell(info + CachePool.lang("gui.exit"));
         
         let currentId = id;
         if (!rpEnabled && currentId >= 5) {
@@ -1018,7 +1052,7 @@ function MoneyGui(plname){
         switch(currentId){
            case 0:
                 let fm = mc.newSimpleForm()
-                fm.setTitle(lang.get("money.query") + coinName)
+                fm.setTitle(CachePool.lang("money.query") + coinName)
                 const content = displayMoneyInfo(pl, pl);
                 fm.setContent(content);
                 pl.sendForm(fm, (pl, id) => {
@@ -1048,23 +1082,23 @@ function redpacketgui(plname) {
     if (!pl) return;
 
     const fm = mc.newSimpleForm();
-    fm.setTitle(lang.get("rp.menu.1"));
-    fm.addButton(lang.get("rp.send.packet"), "textures/ui/trade_icon");
-    fm.addButton(lang.get("rp.open.packet"), "textures/ui/MCoin");
-    fm.addButton(lang.get("rp.all.help"), "textures/ui/book_addtextpage_default");
+    fm.setTitle(CachePool.lang("rp.menu.1"));
+    fm.addButton(CachePool.lang("rp.send.packet"), "textures/ui/trade_icon");
+    fm.addButton(CachePool.lang("rp.open.packet"), "textures/ui/MCoin");
+    fm.addButton(CachePool.lang("rp.all.help"), "textures/ui/book_addtextpage_default");
 
     pl.sendForm(fm, (pl, id) => {
-        if (id === null) return pl.tell(info + lang.get("gui.exit"));
+        if (id === null) return pl.tell(info + CachePool.lang("gui.exit"));
 
         switch (id) {
             case 0: // 发红包界面
-                const sendFm = mc.newCustomForm().setTitle(lang.get("rp.send.packet"));
-                sendFm.addDropdown(lang.get("redpacket.type"), [
-                    lang.get("rp.random.packet"), 
-                    lang.get("rp.average.packet")
+                const sendFm = mc.newCustomForm().setTitle(CachePool.lang("rp.send.packet"));
+                sendFm.addDropdown(CachePool.lang("redpacket.type"), [
+                    CachePool.lang("rp.random.packet"), 
+                    CachePool.lang("rp.average.packet")
                 ]);
-                sendFm.addInput(lang.get("rp.send.amount"), "请输入总金额", "1", lang.get("rp.send.amount.tip") || "");
-                sendFm.addInput(lang.get("rp.send.count"), "请输入红包个数", "1", lang.get("rp.send.count.tip") || "");
+                sendFm.addInput(CachePool.lang("rp.send.amount"), "请输入总金额", "1", CachePool.lang("rp.send.amount.tip") || "");
+                sendFm.addInput(CachePool.lang("rp.send.count"), "请输入红包个数", "1", CachePool.lang("rp.send.count.tip") || "");
 
                 pl.sendForm(sendFm, (pl, data) => {
                     if (data === null || data === undefined) return pl.runcmd("moneygui");
@@ -1077,7 +1111,7 @@ function redpacketgui(plname) {
                     let countStr = data[2];
 
                     // 1. 金额验证
-                    if (!amountStr) return pl.tell(info + lang.get("money.tr.noinput"));
+                    if (!amountStr) return pl.tell(info + CachePool.lang("money.tr.noinput"));
                     
                     let amount;
                     if (amountStr.toLowerCase() === "all") {
@@ -1085,22 +1119,22 @@ function redpacketgui(plname) {
                     } else if (/^\d+$/.test(amountStr)) {
                         amount = parseInt(amountStr);
                     } else {
-                        return pl.tell(info + lang.get("key.not.number"));
+                        return pl.tell(info + CachePool.lang("key.not.number"));
                     }
 
-                    if (amount <= 0) return pl.tell(info + lang.get("money.must.bigger0"));
+                    if (amount <= 0) return pl.tell(info + CachePool.lang("money.must.bigger0"));
 
                     // 2. 个数验证
-                    if (!countStr) return pl.tell(info + lang.get("money.tr.noinput"));
-                    if (!/^\d+$/.test(countStr)) return pl.tell(info + lang.get("key.not.number"));
+                    if (!countStr) return pl.tell(info + CachePool.lang("money.tr.noinput"));
+                    if (!/^\d+$/.test(countStr)) return pl.tell(info + CachePool.lang("key.not.number"));
                     
                     const count = parseInt(countStr);
-                    if (count <= 0) return pl.tell(info + lang.get("money.must.bigger0"));
+                    if (count <= 0) return pl.tell(info + CachePool.lang("money.must.bigger0"));
 
                     // 3. 余额校验
                     const myMoney = Economy.get(pl);
                     if (amount > myMoney) {
-                        return pl.sendText(info + lang.get("rp.count.bigger.yourmoney") + conf.get("Economy").CoinName);
+                        return pl.sendText(info + CachePool.lang("rp.count.bigger.yourmoney") + CachePool.conf("Economy").CoinName);
                     }
 
                     // 4. 执行命令
@@ -1125,23 +1159,23 @@ function OPMoneyGui(plname){
     let pl = mc.getPlayer(plname)
     if(!pl) return
     const coinName  = economyCfg.coinName;
-    const rpEnabled  = conf.get("RedPacket").EnabledModule == 1;
+    const rpEnabled  = CachePool.conf("RedPacket")?.EnabledModule == 1;
     let fm = mc.newSimpleForm()
     fm.setTitle("(OP)"+coinName)
-    fm.addButton((lang.get("money.op.add") || "增加玩家的") + coinName, "textures/ui/icon_best3")
-    fm.addButton((lang.get("money.op.remove") || "减少玩家的") + coinName, "textures/ui/redX1")
-    fm.addButton((lang.get("money.op.set") || "设置玩家的") + coinName, "textures/ui/gear")
-    fm.addButton(lang.get("money.op.offline.btn") || "对离线玩家进行金币操作", "textures/ui/FriendsDiversity")
-    fm.addButton((lang.get("money.op.look") || "查看玩家的") + coinName, "textures/ui/MCoin")
+    fm.addButton((CachePool.lang("money.op.add") || "增加玩家的") + coinName, "textures/ui/icon_best3")
+    fm.addButton((CachePool.lang("money.op.remove") || "减少玩家的") + coinName, "textures/ui/redX1")
+    fm.addButton((CachePool.lang("money.op.set") || "设置玩家的") + coinName, "textures/ui/gear")
+    fm.addButton(CachePool.lang("money.op.offline.btn") || "对离线玩家进行金币操作", "textures/ui/FriendsDiversity")
+    fm.addButton((CachePool.lang("money.op.look") || "查看玩家的") + coinName, "textures/ui/MCoin")
     fm.addButton("查看玩家的" + coinName + "历史记录", "textures/ui/book_addtextpage_default")
     fm.addButton("全服" + coinName + "排行榜", "textures/ui/icon_book_writable")
     if (rpEnabled){
-        fm.addButton(lang.get("rp.menu.1") || "红包", "textures/ui/gift_square")
+        fm.addButton(CachePool.lang("rp.menu.1") || "红包", "textures/ui/gift_square")
     }
-    fm.addButton(lang.get("money.gui.useplayer") || "使用玩家的金钱菜单", "textures/ui/icon_multiplayer")
+    fm.addButton(CachePool.lang("money.gui.useplayer") || "使用玩家的金钱菜单", "textures/ui/icon_multiplayer")
     
     pl.sendForm(fm,(pl,id)=>{
-        if(id == null) return pl.tell(info + lang.get("gui.exit"));
+        if(id == null) return pl.tell(info + CachePool.lang("gui.exit"));
         
         let currentId = id;
         if (!rpEnabled && currentId >= 7) {
@@ -1418,6 +1452,7 @@ globalThis.EconomyNotify = EconomyNotify;
 // --- 玩家加入事件监听（v2.10.5：三处分散注册合并为一处）---
 if (__YEST_FIRST_LOAD__) {
 mc.listen("onJoin", (pl) => {
+    CachePool.invalidatePlayerList();
     try {
         // ── 1. 排行榜货币缓存 ──
         updateSinglePlayerCache(pl);
@@ -1425,7 +1460,10 @@ mc.listen("onJoin", (pl) => {
         // ── 2. 初始化玩家数据 ──
         homedata.init(pl.realName, {});
         rtpdata.init(pl.realName, {});
-        MoneyHistory.init(pl.realName, {});
+        // WriteBackStore 没有 .init()，等价替换：key 不存在时才写入默认值
+        if (MoneyHistory.get(pl.realName) === null || MoneyHistory.get(pl.realName) === undefined) {
+            MoneyHistory.set(pl.realName, {});
+        }
 
         // 初始化金币
         if (economyCfg.isLLMoney) {
@@ -1482,19 +1520,19 @@ globalThis.Logger           = Logger;
  * @param {Function} callback 回调函数 (targetPlayer) => {}
  */
 function openPlayerSelectionGui(pl, title, callback) {
-    const onlinePlayers = mc.getOnlinePlayers();
+    const onlinePlayers = CachePool.getOnlinePlayers();
     const playerNames = onlinePlayers.map(p => p.realName);
     
     const fm = mc.newCustomForm();
     fm.setTitle(title);
-    fm.addDropdown(lang.get("choose") + lang.get("player"), playerNames);
+    fm.addDropdown(CachePool.lang("choose") + CachePool.lang("player"), playerNames);
     
     pl.sendForm(fm, (player, data) => {
         if (data == null) return player.runcmd("moneygui");
         
         const target = mc.getPlayer(playerNames[data[0]]);
         if (!target) {
-            return player.tell(info + lang.get("money.tr.noonline"));
+            return player.tell(info + CachePool.lang("money.tr.noonline"));
         }
         
         // 找到玩家后，执行回调逻辑
@@ -1539,13 +1577,13 @@ function showUnifiedHistory(viewer, targetName) {
     fm.setTitle(`§l${targetName}§r 的 ${coinName} 历史`);
     
     // 4. 构造正文，使用提取出的真实年份 displayYear
-    let mainContent = lang.get("money.history")+`\n${"=".repeat(14)}${displayYear}${"=".repeat(14)}`;
+    let mainContent = CachePool.lang("money.history")+`\n${"=".repeat(14)}${displayYear}${"=".repeat(14)}`;
     mainContent += `\n${listContent}`;
     fm.setContent(mainContent);
     
     // ... 后续按钮逻辑不变
-    fm.addButton(lang.get("money.callback.lastgui"), "textures/ui/back_button_default");
-    fm.addButton(lang.get("rp.list.close"), "textures/ui/close_X_button");
+    fm.addButton(CachePool.lang("money.callback.lastgui"), "textures/ui/back_button_default");
+    fm.addButton(CachePool.lang("rp.list.close"), "textures/ui/close_X_button");
     viewer.sendForm(fm, (p, id) => {
         if (id === 0) {
             if (isOP && p.realName !== targetName) {
@@ -1562,19 +1600,19 @@ function showUnifiedHistory(viewer, targetName) {
  */
 function handleAdminOp(pl, target, opType, actionText, inputLabel) {
     const fm = mc.newCustomForm();
-    fm.setTitle(`${actionText} ${target.realName} 的 ${conf.get("Economy").CoinName}`);
-    fm.addInput(inputLabel, lang.get("key.not.number"), "0", lang.get("key.not.number.tip") || "");
+    fm.setTitle(`${actionText} ${target.realName} 的 ${CachePool.conf("Economy").CoinName}`);
+    fm.addInput(inputLabel, CachePool.lang("key.not.number"), "0", CachePool.lang("key.not.number.tip") || "");
     
     pl.sendForm(fm, (admin, data) => {
         if (data == null) return;
         
         const inputVal = data[0];
         if (!inputVal || inputVal.trim() === "") {
-            return admin.tell(info + lang.get("money.setting.number")); // 使用原本的提示key
+            return admin.tell(info + CachePool.lang("money.setting.number")); // 使用原本的提示key
         }
         
         const amount = parseInt(inputVal, 10);
-        if (isNaN(amount) || amount <= 0) return admin.tell(info + lang.get("key.not.number"));
+        if (isNaN(amount) || amount <= 0) return admin.tell(info + CachePool.lang("key.not.number"));
 
         const coinName = economyCfg.coinName;
         
@@ -1592,7 +1630,7 @@ function handleAdminOp(pl, target, opType, actionText, inputLabel) {
         );
 
         // 发送反馈给操作员
-        admin.sendText(`${info}${lang.get("success")}${lang.get("to")}${lang.get("player")}${target.realName}的${conf.get("Economy").CoinName}${actionText}${amount}`);
+        admin.sendText(`${info}${CachePool.lang("success")}${CachePool.lang("to")}${CachePool.lang("player")}${target.realName}的${CachePool.conf("Economy").CoinName}${actionText}${amount}`);
         admin.sendText(`${info}玩家当前金币为：${Economy.get(target)}`);
     });
 }
@@ -1604,8 +1642,8 @@ function MoneyHistoryGui(plname) {
     const pl = mc.getPlayer(plname);
     if (!pl) return;
 
-    openPlayerSelectionGui(pl, `查看玩家${conf.get("Economy").CoinName}历史`, (target) => {
-        pl.sendText(info + `玩家 ${target.realName} 的 ${conf.get("Economy").CoinName} 历史记录`);
+    openPlayerSelectionGui(pl, `查看玩家${CachePool.conf("Economy").CoinName}历史`, (target) => {
+        pl.sendText(info + `玩家 ${target.realName} 的 ${CachePool.conf("Economy").CoinName} 历史记录`);
         // 统一调用
         showUnifiedHistory(pl, target.realName);
     });
@@ -1618,19 +1656,19 @@ function MoneyHistoryGui(plname) {
 function MoneyTransferGui(plname) {
     const pl = mc.getPlayer(plname);
     if (!pl) return;
-    const playerNames = mc.getOnlinePlayers().map(p => p.realName);
+    const playerNames = CachePool.getOnlinePlayers().map(p => p.realName);
     const myBalance = Economy.get(pl);
-    const taxRate = conf.get("Economy").PayTaxRate;
+    const taxRate = CachePool.conf("Economy").PayTaxRate;
     const coinName = economyCfg.coinName;
     const fm = mc.newCustomForm();
-    fm.setTitle(lang.get("money.transfer.title") + coinName);
-    fm.addLabel(lang.get("money.transfer.balance")
+    fm.setTitle(CachePool.lang("money.transfer.title") + coinName);
+    fm.addLabel(CachePool.lang("money.transfer.balance")
         .replace("${balance}", myBalance)
         .replace("${coin}", coinName) + "\n" + 
-        lang.get("money.transfer.tax").replace("${rate}", taxRate));
-    fm.addDropdown(lang.get("choose") + lang.get("one") + lang.get("player"), playerNames);
-    fm.addInput(lang.get("money.tr.amount"), lang.get("money.transfer.input.amount"), "0", lang.get("money.tr.amount.tip") || "");
-    fm.addInput(lang.get("money.tr.beizhu"), lang.get("money.tr.beizhu"), "无", lang.get("money.tr.beizhu.tip") || "");
+        CachePool.lang("money.transfer.tax").replace("${rate}", taxRate));
+    fm.addDropdown(CachePool.lang("choose") + CachePool.lang("one") + CachePool.lang("player"), playerNames);
+    fm.addInput(CachePool.lang("money.tr.amount"), CachePool.lang("money.transfer.input.amount"), "0", CachePool.lang("money.tr.amount.tip") || "");
+    fm.addInput(CachePool.lang("money.tr.beizhu"), CachePool.lang("money.tr.beizhu"), "无", CachePool.lang("money.tr.beizhu.tip") || "");
 
     pl.sendForm(fm, (player, data) => {
         if (data == null) return player.runcmd("moneygui");
@@ -1640,8 +1678,8 @@ function MoneyTransferGui(plname) {
 
         if (!target?.isSimulatedPlayer?.() === false || player.realName === target.realName) {
             return player.tell(info + (player.realName === target.realName 
-                ? lang.get("money.tr.error2") 
-                : lang.get("money.tr.error1")));
+                ? CachePool.lang("money.tr.error2") 
+                : CachePool.lang("money.tr.error1")));
         }
 
         const amountStr = inputAmount.trim().toLowerCase();
@@ -1651,8 +1689,8 @@ function MoneyTransferGui(plname) {
 
         if (finalAmount <= 0) {
             return player.tell(info + (finalAmount === -1 
-                ? lang.get("key.not.number") 
-                : lang.get("money.must.bigger0")));
+                ? CachePool.lang("key.not.number") 
+                : CachePool.lang("money.must.bigger0")));
         }
 
         const tax = Math.floor(finalAmount * (taxRate / 100));
@@ -1660,26 +1698,26 @@ function MoneyTransferGui(plname) {
 
         if (actualReceived <= 0 || Economy.get(player) < finalAmount) {
             return player.tell(info + (actualReceived <= 0 
-                ? lang.get("money.transfer.tax.notenough") 
-                : lang.get("money.no.enough")));
+                ? CachePool.lang("money.transfer.tax.notenough") 
+                : CachePool.lang("money.no.enough")));
         }
 
         Economy.execute(player, 'reduce', finalAmount);
         Economy.execute(target, 'add', actualReceived);
 
         const timeStr = system.getTimeStr();
-        const noteMsg = note ? ` ${lang.get("money.tr.beizhu")}: ${note}` : "";
+        const noteMsg = note ? ` ${CachePool.lang("money.tr.beizhu")}: ${note}` : "";
         const coinName = economyCfg.coinName;
         
         Logger.add(player.realName, 
-            `${timeStr} ${lang.get("money.transfer.log.send")
+            `${timeStr} ${CachePool.lang("money.transfer.log.send")
                 .replace("${target}", target.realName)
                 .replace("${amount}", finalAmount)
                 .replace("${received}", actualReceived)
                 .replace("${tax}", tax)}${noteMsg}`
         );
         Logger.add(target.realName, 
-            `${timeStr} ${lang.get("money.transfer.log.receive")
+            `${timeStr} ${CachePool.lang("money.transfer.log.receive")
                 .replace("${sender}", player.realName)
                 .replace("${amount}", finalAmount)
                 .replace("${received}", actualReceived)
@@ -1702,21 +1740,21 @@ function MoneyTransferOfflineGui(plname) {
     const pl = mc.getPlayer(plname);
     if (!pl) return;
 
-    const coinName  = conf.get("Economy").CoinName;
-    const taxRate = conf.get("Economy").PayTaxRate;
+    const coinName  = CachePool.conf("Economy").CoinName;
+    const taxRate = CachePool.conf("Economy").PayTaxRate;
     const myBalance = Economy.get(pl);
 
     const fm = mc.newCustomForm();
-    fm.setTitle(lang.get("money.offline.transfer.title"));
+    fm.setTitle(CachePool.lang("money.offline.transfer.title"));
     fm.addLabel(
-        lang.get("money.offline.transfer.label")
+        CachePool.lang("money.offline.transfer.label")
             .replace("${balance}", myBalance)
             .replace("${coin}", coinName)
             .replace("${rate}", taxRate)
     );
-    fm.addInput(lang.get("money.offline.transfer.input.target"), lang.get("money.offline.transfer.input.target.hint"), "Steve", lang.get("money.offline.transfer.input.target.tip") || "");
-    fm.addInput(lang.get("money.offline.transfer.input.amount"), lang.get("money.offline.transfer.input.amount.hint"), "0", lang.get("money.offline.transfer.input.amount.tip") || "");
-    fm.addInput(lang.get("money.offline.transfer.input.note"),   lang.get("money.offline.transfer.input.note.hint"), "无", lang.get("money.offline.transfer.input.note.tip") || "");
+    fm.addInput(CachePool.lang("money.offline.transfer.input.target"), CachePool.lang("money.offline.transfer.input.target.hint"), "Steve", CachePool.lang("money.offline.transfer.input.target.tip") || "");
+    fm.addInput(CachePool.lang("money.offline.transfer.input.amount"), CachePool.lang("money.offline.transfer.input.amount.hint"), "0", CachePool.lang("money.offline.transfer.input.amount.tip") || "");
+    fm.addInput(CachePool.lang("money.offline.transfer.input.note"),   CachePool.lang("money.offline.transfer.input.note.hint"), "无", CachePool.lang("money.offline.transfer.input.note.tip") || "");
 
     pl.sendForm(fm, (player, data) => {
         if (data == null) return player.runcmd("moneygui");
@@ -1724,11 +1762,11 @@ function MoneyTransferOfflineGui(plname) {
         const [, rawTarget, rawAmount, note] = data;
         const targetName = (rawTarget || "").trim();
 
-        if (!targetName) return player.tell(info + lang.get("money.offline.transfer.no.target"));
-        if (targetName === player.realName) return player.tell(info + lang.get("money.offline.transfer.self"));
+        if (!targetName) return player.tell(info + CachePool.lang("money.offline.transfer.no.target"));
+        if (targetName === player.realName) return player.tell(info + CachePool.lang("money.offline.transfer.self"));
 
         if (mc.getPlayer(targetName)) {
-            return player.tell(info + lang.get("money.offline.transfer.target.online"));
+            return player.tell(info + CachePool.lang("money.offline.transfer.target.online"));
         }
 
         const amountStr = (rawAmount || "").trim().toLowerCase();
@@ -1739,46 +1777,46 @@ function MoneyTransferOfflineGui(plname) {
         } else if (/^\d+$/.test(amountStr)) {
             finalAmount = parseInt(amountStr, 10);
         } else {
-            return player.tell(info + lang.get("key.not.number"));
+            return player.tell(info + CachePool.lang("key.not.number"));
         }
 
-        if (finalAmount <= 0) return player.tell(info + lang.get("money.must.bigger0"));
+        if (finalAmount <= 0) return player.tell(info + CachePool.lang("money.must.bigger0"));
 
         const tax            = Math.floor(finalAmount * (taxRate / 100));
         const actualReceived = finalAmount - tax;
 
-        if (actualReceived <= 0) return player.tell(info + lang.get("money.transfer.tax.notenough"));
-        if (myBal < finalAmount)  return player.tell(info + lang.get("money.no.enough"));
+        if (actualReceived <= 0) return player.tell(info + CachePool.lang("money.transfer.tax.notenough"));
+        if (myBal < finalAmount)  return player.tell(info + CachePool.lang("money.no.enough"));
 
         // ── 确认表单 ──────────────────────────────────────────
         const confirmFm = mc.newSimpleForm();
-        confirmFm.setTitle(lang.get("money.offline.transfer.confirm.title"));
+        confirmFm.setTitle(CachePool.lang("money.offline.transfer.confirm.title"));
         confirmFm.setContent(
-            lang.get("money.offline.transfer.confirm.content")
+            CachePool.lang("money.offline.transfer.confirm.content")
                 .replace("${target}",   targetName)
                 .replace("${amount}",   finalAmount)
                 .replace("${coin}",     coinName)
                 .replace("${tax}",      tax)
                 .replace("${rate}",     taxRate)
                 .replace("${received}", actualReceived) +
-            (note ? "\n" + lang.get("notify.transfer.note").replace("${note}", note) : "") +
-            "\n\n" + lang.get("money.offline.transfer.confirm.warn")
+            (note ? "\n" + CachePool.lang("notify.transfer.note").replace("${note}", note) : "") +
+            "\n\n" + CachePool.lang("money.offline.transfer.confirm.warn")
         );
-        confirmFm.addButton(lang.get("money.offline.transfer.btn.confirm"), "textures/ui/realms_green_check");
-        confirmFm.addButton(lang.get("money.offline.transfer.btn.cancel"),  "textures/ui/cancel");
+        confirmFm.addButton(CachePool.lang("money.offline.transfer.btn.confirm"), "textures/ui/realms_green_check");
+        confirmFm.addButton(CachePool.lang("money.offline.transfer.btn.cancel"),  "textures/ui/cancel");
 
         player.sendForm(confirmFm, (pl2, btnId) => {
-            if (btnId == null || btnId === 1) return pl2.tell(info + lang.get("money.offline.transfer.cancelled"));
+            if (btnId == null || btnId === 1) return pl2.tell(info + CachePool.lang("money.offline.transfer.cancelled"));
 
-            if (Economy.get(pl2) < finalAmount) return pl2.tell(info + lang.get("money.no.enough"));
+            if (Economy.get(pl2) < finalAmount) return pl2.tell(info + CachePool.lang("money.no.enough"));
 
             Economy.execute(pl2, 'reduce', finalAmount);
             OfflineMoneyCache.add(targetName, 'add', actualReceived);
 
             const timeStr = system.getTimeStr();
-            const noteMsg = note ? lang.get("money.offline.transfer.note.suffix").replace("${note}", note) : "";
+            const noteMsg = note ? CachePool.lang("money.offline.transfer.note.suffix").replace("${note}", note) : "";
             Logger.add(pl2.realName,
-                timeStr + " " + lang.get("money.offline.transfer.log")
+                timeStr + " " + CachePool.lang("money.offline.transfer.log")
                     .replace("${target}",   targetName)
                     .replace("${amount}",   finalAmount)
                     .replace("${tax}",      tax)
@@ -1787,7 +1825,7 @@ function MoneyTransferOfflineGui(plname) {
 
             pl2.sendText(
                 EconomyNotify.fmt.transferSend(targetName, finalAmount, tax, actualReceived, coinName, note) +
-                "\n§7§o" + lang.get("money.offline.transfer.sender.offline.tip") || ""
+                "\n§7§o" + CachePool.lang("money.offline.transfer.sender.offline.tip") || ""
             );
             EconomyNotify.send(
                 targetName,
@@ -1807,16 +1845,16 @@ function OPOfflineMoneyGui(plname) {
     const coinName = economyCfg.coinName;
 
     const fm = mc.newCustomForm();
-    fm.setTitle(lang.get("money.op.offline.title"));
-    fm.addLabel(lang.get("money.op.offline.label"));
-    fm.addInput(lang.get("money.op.offline.input.target"), lang.get("money.op.offline.input.target.hint"), "Steve", lang.get("money.op.offline.input.target.tip") || "");
-    fm.addDropdown(lang.get("money.op.offline.dropdown"), [
-        lang.get("money.op.offline.type.add"),
-        lang.get("money.op.offline.type.reduce"),
-        lang.get("money.op.offline.type.set")
+    fm.setTitle(CachePool.lang("money.op.offline.title"));
+    fm.addLabel(CachePool.lang("money.op.offline.label"));
+    fm.addInput(CachePool.lang("money.op.offline.input.target"), CachePool.lang("money.op.offline.input.target.hint"), "Steve", CachePool.lang("money.op.offline.input.target.tip") || "");
+    fm.addDropdown(CachePool.lang("money.op.offline.dropdown"), [
+        CachePool.lang("money.op.offline.type.add"),
+        CachePool.lang("money.op.offline.type.reduce"),
+        CachePool.lang("money.op.offline.type.set")
     ]);
-    fm.addInput(lang.get("money.op.offline.input.amount"), lang.get("money.op.offline.input.amount.hint"), "0", lang.get("money.op.offline.input.amount.tip") || "");
-    fm.addInput(lang.get("money.op.offline.input.note"), lang.get("money.offline.transfer.input.note.hint"), "无", lang.get("money.op.offline.input.note.tip") || "");
+    fm.addInput(CachePool.lang("money.op.offline.input.amount"), CachePool.lang("money.op.offline.input.amount.hint"), "0", CachePool.lang("money.op.offline.input.amount.tip") || "");
+    fm.addInput(CachePool.lang("money.op.offline.input.note"), CachePool.lang("money.offline.transfer.input.note.hint"), "无", CachePool.lang("money.op.offline.input.note.tip") || "");
 
     pl.sendForm(fm, (admin, data) => {
         if (data == null) return admin.runcmd("moneygui");
@@ -1824,51 +1862,51 @@ function OPOfflineMoneyGui(plname) {
         const [, rawTarget, opIdx, rawAmount, note] = data;
         const targetName = (rawTarget || "").trim();
 
-        if (!targetName) return admin.tell(info + lang.get("money.offline.transfer.no.target"));
+        if (!targetName) return admin.tell(info + CachePool.lang("money.offline.transfer.no.target"));
 
         const opTypeMap = ['add', 'reduce', 'set'];
         const opWordMap = [
-            lang.get("money.op.offline.type.add"),
-            lang.get("money.op.offline.type.reduce"),
-            lang.get("money.op.offline.type.set")
+            CachePool.lang("money.op.offline.type.add"),
+            CachePool.lang("money.op.offline.type.reduce"),
+            CachePool.lang("money.op.offline.type.set")
         ];
         const opType = opTypeMap[opIdx];
         const opWord = opWordMap[opIdx];
 
         const amountStr = (rawAmount || "").trim();
-        if (!/^\d+$/.test(amountStr)) return admin.tell(info + lang.get("key.not.number"));
+        if (!/^\d+$/.test(amountStr)) return admin.tell(info + CachePool.lang("key.not.number"));
         const amount = parseInt(amountStr, 10);
-        if (opType !== "set" && amount <= 0) return admin.tell(info + lang.get("money.must.bigger0"));
-        if (opType === "set" && amount < 0) return admin.tell(info + lang.get("money.must.bigger0"));
+        if (opType !== "set" && amount <= 0) return admin.tell(info + CachePool.lang("money.must.bigger0"));
+        if (opType === "set" && amount < 0) return admin.tell(info + CachePool.lang("money.must.bigger0"));
 
         if (mc.getPlayer(targetName)) {
-            return admin.tell(info + lang.get("money.op.offline.target.online"));
+            return admin.tell(info + CachePool.lang("money.op.offline.target.online"));
         }
 
         // ── 确认表单 ──────────────────────────────────────────
         const confirmFm = mc.newSimpleForm();
-        confirmFm.setTitle(lang.get("money.op.offline.confirm.title"));
+        confirmFm.setTitle(CachePool.lang("money.op.offline.confirm.title"));
         confirmFm.setContent(
-            lang.get("money.op.offline.confirm.content")
+            CachePool.lang("money.op.offline.confirm.content")
                 .replace("${target}", targetName)
                 .replace("${opWord}", opWord)
                 .replace("${amount}", amount)
                 .replace("${coin}",   coinName) +
-            (note ? "\n" + lang.get("notify.transfer.note").replace("${note}", note) : "") +
-            "\n\n" + lang.get("money.op.offline.confirm.tip") || ""
+            (note ? "\n" + CachePool.lang("notify.transfer.note").replace("${note}", note) : "") +
+            "\n\n" + CachePool.lang("money.op.offline.confirm.tip") || ""
         );
-        confirmFm.addButton(lang.get("money.offline.transfer.btn.confirm"), "textures/ui/realms_green_check");
-        confirmFm.addButton(lang.get("money.offline.transfer.btn.cancel"),  "textures/ui/cancel");
+        confirmFm.addButton(CachePool.lang("money.offline.transfer.btn.confirm"), "textures/ui/realms_green_check");
+        confirmFm.addButton(CachePool.lang("money.offline.transfer.btn.cancel"),  "textures/ui/cancel");
 
         admin.sendForm(confirmFm, (adm, btnId) => {
-            if (btnId == null || btnId === 1) return adm.tell(info + lang.get("money.op.offline.cancelled"));
+            if (btnId == null || btnId === 1) return adm.tell(info + CachePool.lang("money.op.offline.cancelled"));
 
             OfflineMoneyCache.add(targetName, opType, amount);
 
             const timeStr = system.getTimeStr();
-            const noteMsg = note ? lang.get("money.offline.transfer.note.suffix").replace("${note}", note) : "";
+            const noteMsg = note ? CachePool.lang("money.offline.transfer.note.suffix").replace("${note}", note) : "";
             Logger.add(targetName,
-                timeStr + " " + lang.get("money.op.offline.log")
+                timeStr + " " + CachePool.lang("money.op.offline.log")
                     .replace("${opWord}", opWord)
                     .replace("${amount}", amount)
                     .replace("${coin}",   coinName)
@@ -1881,7 +1919,7 @@ function OPOfflineMoneyGui(plname) {
             );
 
             adm.sendText(
-                info + lang.get("money.op.offline.success")
+                info + CachePool.lang("money.op.offline.success")
                     .replace("${target}", targetName)
                     .replace("${opWord}", opWord)
                     .replace("${amount}", amount)
@@ -1896,7 +1934,7 @@ function MoneyGetGui(plname) {
     const pl = mc.getPlayer(plname);
     if (!pl) return;
 
-    openPlayerSelectionGui(pl, lang.get("money.op.look") + conf.get("Economy").CoinName, (target) => {
+    openPlayerSelectionGui(pl, CachePool.lang("money.op.look") + CachePool.conf("Economy").CoinName, (target) => {
         displayMoneyInfo(pl, target, false); 
     });
 }
@@ -1906,11 +1944,11 @@ function MoneySetGui(plname) {
     const pl = mc.getPlayer(plname);
     if (!pl) return;
 
-    openPlayerSelectionGui(pl, lang.get("money.op.set") + conf.get("Economy").CoinName, (target) => {
+    openPlayerSelectionGui(pl, CachePool.lang("money.op.set") + CachePool.conf("Economy").CoinName, (target) => {
         handleAdminOp(
             pl, target, 'set', 
             "设置", 
-            lang.get("money.set.number") + conf.get("Economy").CoinName
+            CachePool.lang("money.set.number") + CachePool.conf("Economy").CoinName
         );
     });
 }
@@ -1921,11 +1959,11 @@ function MoneyReduceGui(plname) {
     if (!pl) return;
 
     // 修复了原代码第一行 const amount = Number(data[1]) 导致的崩溃
-    openPlayerSelectionGui(pl, lang.get("money.op.remove") + conf.get("Economy").CoinName, (target) => {
+    openPlayerSelectionGui(pl, CachePool.lang("money.op.remove") + CachePool.conf("Economy").CoinName, (target) => {
         handleAdminOp(
             pl, target, 'reduce', 
             "减少", 
-            lang.get("money.decrease.number") + conf.get("Economy").CoinName
+            CachePool.lang("money.decrease.number") + CachePool.conf("Economy").CoinName
         );
     });
 }
@@ -1935,11 +1973,11 @@ function MoneyAddGui(plname) {
     const pl = mc.getPlayer(plname);
     if (!pl) return;
 
-    openPlayerSelectionGui(pl, lang.get("money.op.add") + conf.get("Economy").CoinName, (target) => {
+    openPlayerSelectionGui(pl, CachePool.lang("money.op.add") + CachePool.conf("Economy").CoinName, (target) => {
         handleAdminOp(
             pl, target, 'add', 
             "增加", 
-            lang.get("money.add.number") + conf.get("Economy").CoinName
+            CachePool.lang("money.add.number") + CachePool.conf("Economy").CoinName
         );
     });
 }
@@ -1948,7 +1986,7 @@ function MoneyAddGui(plname) {
 
 if (__YEST_FIRST_LOAD__) {
 mc.listen("onRespawn",(pl)=>{
-    if(conf.get("BackTipAfterDeath")) {
+    if(CachePool.conf("BackTipAfterDeath")) {
          setTimeout(() => {
             BackGUI(pl.realName)
             }, 100);
@@ -1992,7 +2030,7 @@ mc.listen("onPlayerDie", function(pl, src) {
         deathPoints[playerName] = deathPoints[playerName].slice(0, 3);
     }
     
-    pl.tell(info + lang.get("back.helpinfo"));
+    pl.tell(info + CachePool.lang("back.helpinfo"));
 });
 }
 
@@ -2000,7 +2038,7 @@ let backcmd = mc.newCommand("back", "返回死亡点", PermType.Any)
 backcmd.overload([])
 backcmd.setCallback((cmd, ori, out, res) => {
     let pl = ori.player
-    if (!pl) return out.error(lang.get("warp.only.player"))
+    if (!pl) return out.error(CachePool.lang("warp.only.player"))
     BackGUI(pl.realName)
 })
 backcmd.setup()
@@ -2011,15 +2049,15 @@ function BackGUI(plname) {
     
     let playerDeathPoints = deathPoints[pl.realName];
     if (!playerDeathPoints || playerDeathPoints.length === 0) {
-        return pl.tell(info + lang.get("back.list.Empty"));
+        return pl.tell(info + CachePool.lang("back.list.Empty"));
     }
     
     // [fix] 一次读取 cost 和 coinName，避免回调内重复读配置
-    let cost     = conf.get("Back");
+    let cost     = CachePool.conf("Back");
     let coinName = economyCfg.coinName;
     let fm = mc.newCustomForm()
-    fm.setTitle(lang.get("back.to.point"))
-    fm.addLabel(lang.get("back.choose"))
+    fm.setTitle(CachePool.lang("back.to.point"))
+    fm.addLabel(CachePool.lang("back.choose"))
     
     // 显示所有死亡点信息
     playerDeathPoints.forEach((point, index) => {
@@ -2042,7 +2080,7 @@ function BackGUI(plname) {
     pl.sendForm(fm, (pl, data) => {
         // 修复：检查数据是否有效
         if (data === null || data === undefined) {
-            return pl.tell(info + lang.get("gui.exit"));
+            return pl.tell(info + CachePool.lang("gui.exit"));
         }
         
         // 重新获取死亡点数据，确保数据最新
@@ -2057,26 +2095,26 @@ function BackGUI(plname) {
         
         // 修复：检查selectedIndex是否有效
         if (selectedIndex === undefined || selectedIndex === null) {
-            return pl.tell(info + lang.get("gui.exit"));
+            return pl.tell(info + CachePool.lang("gui.exit"));
         }
         
         // 修复：确保索引在有效范围内
         if (selectedIndex < 0 || selectedIndex >= currentDeathPoints.length) {
-            return pl.tell(info + lang.get("back.choose.null"));
+            return pl.tell(info + CachePool.lang("back.choose.null"));
         }
         
         let selectedPoint = currentDeathPoints[selectedIndex];
         
         // 修复：检查选择的死亡点数据是否完整
         if (!selectedPoint || !selectedPoint.pos) {
-            return pl.tell(info + lang.get("back.deathlog.error"));
+            return pl.tell(info + CachePool.lang("back.deathlog.error"));
         }
         
         // 检查金钱
         if (!economyCfg.isLLMoney) {
-            if (!smartMoneyCheck(pl.realName, conf.get("Back"))) return pl.tell(info + lang.get("money.no.enough"));
+            if (!smartMoneyCheck(pl.realName, CachePool.conf("Back"))) return pl.tell(info + CachePool.lang("money.no.enough"));
         } else {
-            if (!smartMoneyCheck(pl.realName, conf.get("Back"))) return pl.tell(info + lang.get("money.no.enough"));
+            if (!smartMoneyCheck(pl.realName, CachePool.conf("Back"))) return pl.tell(info + CachePool.lang("money.no.enough"));
         }
         
         // 传送到选择的死亡点
@@ -2094,7 +2132,7 @@ function BackGUI(plname) {
             
             pl.tell(info + `§a已传送至死亡点${selectedIndex + 1}！`);
         } catch (e) {
-            pl.tell(info + lang.get("back.fail"));
+            pl.tell(info + CachePool.lang("back.fail"));
             logger.error("Back System Error: " + e);
         }
     })
@@ -2107,11 +2145,11 @@ let deathlistcmd = mc.newCommand("deathlog", "查看死亡历史记录", PermTyp
 deathlistcmd.overload([])
 deathlistcmd.setCallback((cmd, ori, out, res) => {
     let pl = ori.player
-    if (!pl) return out.error(lang.get("warp.only.player"))
+    if (!pl) return out.error(CachePool.lang("warp.only.player"))
     
     let playerDeathPoints = deathPoints[pl.realName];
     if (!playerDeathPoints || playerDeathPoints.length === 0) {
-        return pl.tell(info + lang.get("back.list.Empty"));
+        return pl.tell(info + CachePool.lang("back.list.Empty"));
     }
     
     pl.tell("§6=== 您的死亡点列表 ===");
@@ -2141,12 +2179,12 @@ function getPlayerDeathPoints(playerName) {
 // ======================
 // Tpa指令
 // ======================
-if (conf.get("tpa").EnabledModule) {
+if (CachePool.conf("tpa")?.EnabledModule) {
 const tpacmd = mc.newCommand("tpa", "传送系统", PermType.Any);
 tpacmd.overload([]);
 tpacmd.setCallback((cmd, ori, out, res) => {
     const player = ori.player;
-    if (!player) return out.error(lang.get("warp.only.player"));
+    if (!player) return out.error(CachePool.lang("warp.only.player"));
     showTpaMainMenu(player);
 });
 tpacmd.setup();
@@ -2170,19 +2208,19 @@ function showTpaMainMenu(player) {
 }
 
 function showTpaMenu(player, fixedDirection) {
-    let cost = conf.get("tpa").cost;
+    let cost = CachePool.conf("tpa").cost;
     let Scoreboard = economyCfg.scoreboard;
-    let onlinePlayers = mc.getOnlinePlayers().filter(p => p.name !== player.name);
+    let onlinePlayers = CachePool.getOnlinePlayers().filter(p => p.name !== player.name);
     if (onlinePlayers.length === 0) {
-        player.tell(info + lang.get("tpa.noplayer.online"));
+        player.tell(info + CachePool.lang("tpa.noplayer.online"));
         return;
     }
     let form = mc.newCustomForm();
     form.setTitle(fixedDirection === "to" ? "传送到玩家" : "把玩家传过来");
     let nameList = onlinePlayers.map(p => p.name);
-    form.addDropdown(lang.get("tpa.choose.player"), nameList);
-    form.addLabel(lang.get("tpa.cost").replace("${cost}", cost).replace("${Scoreboard}", Scoreboard));
-    const tpaConfig = conf.get("tpa") || {};
+    form.addDropdown(CachePool.lang("tpa.choose.player"), nameList);
+    form.addLabel(CachePool.lang("tpa.cost").replace("${cost}", cost).replace("${Scoreboard}", Scoreboard));
+    const tpaConfig = CachePool.conf("tpa") || {};
     let isDelayEnabled = tpaConfig.isDelayEnabled !== false;
     let maxD = Number(tpaConfig.maxDelay) || 20;
     
@@ -2194,12 +2232,12 @@ function showTpaMenu(player, fixedDirection) {
     
     let isOp = player.isOP();
     if (isOp) {
-        form.addSwitch(lang.get("tpa.op.msg"), false);
+        form.addSwitch(CachePool.lang("tpa.op.msg"), false);
     }
     
     player.sendForm(form, (pl, data) => {
         if (!data) {
-            pl.tell(info + lang.get("tpa.exit"));
+            pl.tell(info + CachePool.lang("tpa.exit"));
             return;
         }
         let idx = 0;
@@ -2225,7 +2263,7 @@ function showTpaMenu(player, fixedDirection) {
 // 玩家个人 TPA 偏好设置
 function showTpaPrefsGui(player) {
     const prefs = tpacfg.get(player.realName) || {};
-    const tpaConfig = conf.get("tpa") || {};
+    const tpaConfig = CachePool.conf("tpa") || {};
     
     const fm = mc.newCustomForm();
     fm.setTitle("tpa设置");
@@ -2233,7 +2271,7 @@ function showTpaPrefsGui(player) {
     fm.addSwitch("tpa开关", prefs.acceptTpaRequests !== false);
     fm.addDropdown("接收到tpa请求时", ["弹窗提醒", "文字提醒"],
         (prefs.promptType === "text" ? 1 : 0));
-    fm.addInput("tpa请求有效时间/秒", "秒", String(prefs.requestTimeout || tpaConfig.requestTimeout || 60), lang.get("tpa.timeout.tip") || "");
+    fm.addInput("tpa请求有效时间/秒", "秒", String(prefs.requestTimeout || tpaConfig.requestTimeout || 60), CachePool.lang("tpa.timeout.tip") || "");
     
     player.sendForm(fm, (pl, data) => {
         if (!data) return;
@@ -2246,24 +2284,24 @@ function showTpaPrefsGui(player) {
             requestTimeout: isNaN(timeout) || timeout <= 0 ? (tpaConfig.requestTimeout || 60) : timeout
         };
         tpacfg.set(pl.realName, newPrefs);
-        pl.tell(info + lang.get("tpa.save.conf.ok"));
+        pl.tell(info + CachePool.lang("tpa.save.conf.ok"));
     });
 }
 
 function showTpaManageForm(player) {
     // 修复：从配置文件获取 tpa 配置节
-    const tpaConfig = conf.get("tpa") || {}; // <-- 添加这行
+    const tpaConfig = CachePool.conf("tpa") || {}; // <-- 添加这行
     let form = mc.newCustomForm();
-    form.setTitle(lang.get("tpa.op.menu"));
-    form.addInput(lang.get("tpa.send.time"),lang.get("number"), "" + tpaConfig.requestTimeout, lang.get("tpa.send.time.tip") || "");
-    form.addDropdown(lang.get("tpa.send.way"), [lang.get("tpa.send.form"), lang.get("tpa.send.bossbar")], (tpaConfig.promptType === "bossbar" ? 1 : 0));
+    form.setTitle(CachePool.lang("tpa.op.menu"));
+    form.addInput(CachePool.lang("tpa.send.time"),CachePool.lang("number"), "" + tpaConfig.requestTimeout, CachePool.lang("tpa.send.time.tip") || "");
+    form.addDropdown(CachePool.lang("tpa.send.way"), [CachePool.lang("tpa.send.form"), CachePool.lang("tpa.send.bossbar")], (tpaConfig.promptType === "bossbar" ? 1 : 0));
     let isDelayOn = (tpaConfig.isDelayEnabled !== false);
-    form.addSwitch(lang.get("tpa.Enabled.lag"), isDelayOn);
-    form.addInput(lang.get("tpa.max.lagnumber"), lang.get("number"), "" + (tpaConfig.maxDelay || 20), lang.get("tpa.max.lagnumber.tip") || "");
+    form.addSwitch(CachePool.lang("tpa.Enabled.lag"), isDelayOn);
+    form.addInput(CachePool.lang("tpa.max.lagnumber"), CachePool.lang("number"), "" + (tpaConfig.maxDelay || 20), CachePool.lang("tpa.max.lagnumber.tip") || "");
     
     player.sendForm(form, (pl, data) => {
         if (!data) {
-            pl.tell(lang.get("tpa.exit"));
+            pl.tell(CachePool.lang("tpa.exit"));
             return;
         }
         
@@ -2273,12 +2311,12 @@ function showTpaManageForm(player) {
         let newMaxDelay = parseInt(data[3]);
         
         if (isNaN(newTimeout) || newTimeout <= 0) {
-            pl.tell(info +lang.get("tpa.input.must.number"));
+            pl.tell(info +CachePool.lang("tpa.input.must.number"));
             return;
         }
         
         if (isNaN(newMaxDelay) || newMaxDelay < 0) {
-            pl.tell(info +lang.get("tpa.must.biggerzero"));
+            pl.tell(info +CachePool.lang("tpa.must.biggerzero"));
             return;
         }
         
@@ -2290,9 +2328,9 @@ function showTpaManageForm(player) {
             isDelayEnabled: enableDelay,
             maxDelay: newMaxDelay
         };
-        conf.set("tpa", updatedTpaConfig); // 这行会自动保存
+        CachePool.setConf("tpa", updatedTpaConfig); // 这行会自动保存
         
-        pl.tell(info +lang.get("tpa.save.conf.ok"));
+        pl.tell(info +CachePool.lang("tpa.save.conf.ok"));
     });
 }
 
@@ -2304,13 +2342,13 @@ function sendTpaRequest(fromPlayer, toPlayerName, direction, delaySec) {
     
     let toPlayer = mc.getPlayer(toPlayerName);
     if (!toPlayer) {
-        fromPlayer.tell(info + lang.get("tpa.send.fail"));
+        fromPlayer.tell(info + CachePool.lang("tpa.send.fail"));
         return;
     }
     // 检查目标玩家是否接受传送请求
     const acceptTpaRequests = tpacfg.get(toPlayerName)?.acceptTpaRequests;
     if (acceptTpaRequests === false) {
-        fromPlayer.tell(info + lang.get("tpa.send.noway"));
+        fromPlayer.tell(info + CachePool.lang("tpa.send.noway"));
         return;
     }
     
@@ -2326,14 +2364,14 @@ function sendTpaRequest(fromPlayer, toPlayerName, direction, delaySec) {
         startTime: Date.now()
     };
     pendingTpaRequests[toPlayerName] = req;
-    const tpaConfig = conf.get("tpa") || {};
+    const tpaConfig = CachePool.conf("tpa") || {};
     const toPrefs = tpacfg.get(toPlayerName) || {};
     // 优先用目标玩家的个人偏好，没设置则用全局config
     let pType = toPrefs.promptType || tpaConfig.promptType || "form";
     let timeoutSec = toPrefs.requestTimeout || tpaConfig.requestTimeout || 60;
-    toPlayer.tell(`${info}§e收到传送请求(${req.fromName}想${direction === "to" ? lang.get("tpa.to.here"):lang.get("tpa.to.he.she")})\n` +
+    toPlayer.tell(`${info}§e收到传送请求(${req.fromName}想${direction === "to" ? CachePool.lang("tpa.to.here"):CachePool.lang("tpa.to.he.she")})\n` +
                  (delaySec > 0 ? `§6并设置了延迟: ${delaySec}秒\n` : "") +
-                 `${lang.get("tpa.a.and.d")}\n` +
+                 `${CachePool.lang("tpa.a.and.d")}\n` +
                  `§c请求最多等待${timeoutSec}秒`);
  //1816   
     fromPlayer.tell(`${info}§a已向 ${toPlayerName} 发送请求(延迟=${delaySec}), 等待对方同意(最多${timeoutSec}s)`);
@@ -2348,17 +2386,17 @@ function sendTpaRequest(fromPlayer, toPlayerName, direction, delaySec) {
 function showTpaConfirmForm(req, timeoutSec) {
     let toPlayer = req.to;
     let fromName = req.fromName;
-    let dirText = (req.direction === "to" ? lang.get("tpa.to.here"): lang.get("tpa.to.here"));
+    let dirText = (req.direction === "to" ? CachePool.lang("tpa.to.here"): CachePool.lang("tpa.to.here"));
     let delayStr = (req.delay > 0 ? `(延迟${req.delay}秒)\n` : "");
     
     let form = mc.newSimpleForm();
-    form.setTitle(lang.get("tpa.request"));
+    form.setTitle(CachePool.lang("tpa.request"));
     form.setContent(`${info}§b[${fromName}] 请求${dirText}\n` +
                    `${delayStr}` +
-                   `${lang.get("tpa.a.and.d")}n` +
+                   `${CachePool.lang("tpa.a.and.d")}n` +
                    `§e剩余时间: ${timeoutSec}s`);
-    form.addButton(lang.get("tpa.a"));
-    form.addButton(lang.get("tpa.d"));
+    form.addButton(CachePool.lang("tpa.a"));
+    form.addButton(CachePool.lang("tpa.d"));
     
     toPlayer.sendForm(form, (pl, id) => {
         if (id == null) return; 
@@ -2372,7 +2410,7 @@ function showTpaConfirmForm(req, timeoutSec) {
 function showTpaBossbarPrompt(req, timeoutSec) {
     let toPlayer = req.to;
     let fromName = req.fromName;
-    let dirText = (req.direction === "to" ? lang.get("tpa.to.here"): lang.get("tpa.to.he.she"));
+    let dirText = (req.direction === "to" ? CachePool.lang("tpa.to.here"): CachePool.lang("tpa.to.he.she"));
     let delayStr = (req.delay > 0 ? `(延迟${req.delay}秒)` : "");
     let barId = req.bossbarId;
     
@@ -2386,43 +2424,55 @@ function showTpaBossbarPrompt(req, timeoutSec) {
 
 function startTpaRequestCountdown(req, timeoutSec, bossbarMode) {
     let remain = timeoutSec;
-    let to = req.to;
-    let from = req.from;
-    let barId = req.bossbarId;
-    
+    // ✅ 提前捕获名字字符串，玩家下线后对象失效但字符串仍可用
+    let toName   = req.to.name;
+    let fromName = req.from.name;
+    let barId    = req.bossbarId;
+
     let timerId = setInterval(() => {
-        remain--;
-        
-        if (!mc.getPlayer(to.name) || !mc.getPlayer(from.name)) {
+        try {
+            remain--;
+
+            // 用字符串查玩家，避免持有失效对象导致 "Wrong type of argument"
+            const toPlayer   = mc.getPlayer(toName);
+            const fromPlayer = mc.getPlayer(fromName);
+
+            if (!toPlayer || !fromPlayer) {
+                clearInterval(timerId);
+                cancelTpaRequest(toName, CachePool.lang("tpa.player.offline"));
+                return;
+            }
+
+            if (bossbarMode) {
+                let percent = Math.floor((remain / timeoutSec) * 100);
+                let dirText = (req.direction === "to" ? CachePool.lang("tpa.to.here") : CachePool.lang("tpa.to.he.she"));
+                let delayStr = (req.delay > 0 ? `(延迟${req.delay}秒)` : "");
+                toPlayer.setBossBar(barId,
+                    `§a${fromName}请求${dirText}§f${delayStr}§s(/tpy同意 /tpn拒绝),剩余${remain}s`,
+                    percent, 3
+                );
+            }
+
+            if (remain <= 0) {
+                clearInterval(timerId);
+                cancelTpaRequest(toName, info + CachePool.lang("tpa.request.timeout"));
+            }
+        } catch (e) {
+            // 任何异常都清掉 interval，防止死循环刷错误
             clearInterval(timerId);
-            cancelTpaRequest(to.name,lang.get("tpa.player.offline") );
-            return;
-        }
-        
-        if (bossbarMode) {
-            let percent = Math.floor((remain / timeoutSec) * 100);
-            let dirText = (req.direction === "to" ? lang.get("tpa.to.here"): lang.get("tpa.to.he.she"));
-            let delayStr = (req.delay > 0 ? `(延迟${req.delay}秒)` : "");
-            to.setBossBar(barId,
-                `§a${from.name}请求${dirText}§f${delayStr}§s(/tpy同意 /tpn拒绝),剩余${remain}s`,
-                percent, 3
-            );
-        }
-        if (remain <= 0) {
-            clearInterval(timerId);
-            cancelTpaRequest(to.name, info+lang.get("tpa.request.timeout"));
+            logger.warn(`[TPA] 倒计时异常已清理 (${fromName} → ${toName}): ${e}`);
         }
     }, 1000);
-    
+
     req.timer = timerId;
 }
 
-if (conf.get("tpa").EnabledModule) {
+if (CachePool.conf("tpa")?.EnabledModule) {
 const tpayescmd = mc.newCommand("tpayes", "同意传送请求", PermType.Any);
 tpayescmd.overload([]);
 tpayescmd.setCallback((cmd, ori, out, res) => {
     const pl = ori.player;
-    if (!pl) return out.error(lang.get("warp.only.player"));
+    if (!pl) return out.error(CachePool.lang("warp.only.player"));
     acceptTpaRequest(pl.name);
 });
 tpayescmd.setup();
@@ -2431,19 +2481,19 @@ const tpanocmd = mc.newCommand("tpano", "拒绝传送请求", PermType.Any);
 tpanocmd.overload([]);
 tpanocmd.setCallback((cmd, ori, out, res) => {
     const pl = ori.player;
-    if (!pl) return out.error(lang.get("warp.only.player"));
+    if (!pl) return out.error(CachePool.lang("warp.only.player"));
     denyTpaRequest(pl.name);
 });
 tpanocmd.setup();
-} // end if (conf.get("tpa").EnabledModule) — tpayes/tpano
+} // end if (CachePool.conf("tpa")?.EnabledModule) — tpayes/tpano
 // v2.10.5: /crash 命令已迁移至 modules/Crash.js
 
 function acceptTpaRequest(targetName) {
-    let cost = conf.get("tpa").cost;
+    let cost = CachePool.conf("tpa").cost;
     let req = pendingTpaRequests[targetName];
     if (!req) {
         let p = mc.getPlayer(targetName);
-        if (p) p.tell(info +lang.get("tpa.no.request"));
+        if (p) p.tell(info +CachePool.lang("tpa.no.request"));
         return;
     }
     
@@ -2453,80 +2503,91 @@ function acceptTpaRequest(targetName) {
     let delay = req.delay;
     let dir = req.direction;
     
-    to.tell(info +lang.get("tpa.accpet.request"));
+    to.tell(info +CachePool.lang("tpa.accpet.request"));
     from.tell(`${info}§a对方已同意请求，` + (delay > 0 ? `将在${delay}秒后传送...` : "正在传送..."));
         if (cost > 0) {
         if (!EconomyManager.checkAndReduce(from.realName, cost)) {
             showInsufficientMoneyGui(from, cost);
             return false;
         }
-        from.sendText(info + `§e传送花费 ${cost}${conf.get("Economy").CoinName}`);
+        from.sendText(info + `§e传送花费 ${cost}${CachePool.conf("Economy").CoinName}`);
     }
     if (delay > 0) {
         let secondBarId = Math.floor(Math.random() * 1e9);
         let remain = delay;
         
+    let fromName2 = from.name;
+    let toName2   = to.name;
+
         let secondTid = setInterval(() => {
-            remain--;
-            
-            if (!mc.getPlayer(from.name) || !mc.getPlayer(to.name)) {
-                clearInterval(secondTid);
-                from.removeBossBar(secondBarId);
-                to.removeBossBar(secondBarId);
-                from.tell(info +lang.get("tpa.request.cut"));
-                return;
-            }
-            
-            let percent = Math.floor((remain / delay) * 100);
-            from.setBossBar(secondBarId, `§d传送倒计时: ${remain}s`, percent, 1);
-            to.setBossBar(secondBarId, `§d传送倒计时: ${remain}s`, percent, 1);
-            
-            if (remain <= 0) {
-                clearInterval(secondTid);
-                from.removeBossBar(secondBarId);
-                to.removeBossBar(secondBarId);
+            try {
+                remain--;
+
+                const fromPlayer2 = mc.getPlayer(fromName2);
+                const toPlayer2   = mc.getPlayer(toName2);
+
+                if (!fromPlayer2 || !toPlayer2) {
+                    clearInterval(secondTid);
+                    try { from.removeBossBar(secondBarId); } catch(_) {}
+                    try { to.removeBossBar(secondBarId); } catch(_) {}
+                    try { from.tell(info + CachePool.lang("tpa.request.cut")); } catch(_) {}
+                    return;
+                }
+
+                let percent = Math.floor((remain / delay) * 100);
+                fromPlayer2.setBossBar(secondBarId, `§d传送倒计时: ${remain}s`, percent, 1);
+                toPlayer2.setBossBar(secondBarId, `§d传送倒计时: ${remain}s`, percent, 1);
+
+                if (remain <= 0) {
+                    clearInterval(secondTid);
+                    fromPlayer2.removeBossBar(secondBarId);
+                    toPlayer2.removeBossBar(secondBarId);
                 
                 if (dir === "to") {
                     let targetPlayer = mc.getPlayer(to.name);
                     if (!targetPlayer) {
-                        from.tell(info +lang.get("tpa.tp.fail.noonline"));
+                        fromPlayer2.tell(info + CachePool.lang("tpa.tp.fail.noonline"));
                         return;
                     }
                     let footPos = new FloatPos(
                         targetPlayer.pos.x,
-                        targetPlayer.pos.y - 1.62, 
+                        targetPlayer.pos.y - 1.62,
                         targetPlayer.pos.z,
                         targetPlayer.pos.dimid
                     );
-                    from.teleport(footPos);
+                    fromPlayer2.teleport(footPos);
                 } else {
-                    let targetPlayer = mc.getPlayer(from.name);
+                    let targetPlayer = mc.getPlayer(fromName2);
                     if (!targetPlayer) {
-                        to.tell(info +lang.get("tpa.tp.fail.noonline"));
+                        toPlayer2.tell(info + CachePool.lang("tpa.tp.fail.noonline"));
                         return;
                     }
                     let footPos = new FloatPos(
                         targetPlayer.pos.x,
-                        targetPlayer.pos.y - 1.62, 
+                        targetPlayer.pos.y - 1.62,
                         targetPlayer.pos.z,
                         targetPlayer.pos.dimid
                     );
-                    to.teleport(footPos);
+                    toPlayer2.teleport(footPos);
                 }
-                from.tell(info +lang.get("tpa.tp.okey"));
-                to.tell(info +lang.get("tpa.tp.okey"));
+                fromPlayer2.tell(info + CachePool.lang("tpa.tp.okey"));
+                toPlayer2.tell(info + CachePool.lang("tpa.tp.okey"));
             }
+        } catch (e) {
+            clearInterval(secondTid);
+            logger.warn(`[TPA] 延迟传送异常已清理 (${fromName2} → ${toName2}): ${e}`);
+        }
         }, 1000);
     } else {
         if (!mc.getPlayer(from.name) || !mc.getPlayer(to.name)) {
-            from.tell(info +lang.get("tpa.tp.fail.noonline"));
+            from.tell(info +CachePool.lang("tpa.tp.fail.noonline"));
             return;
         }
         
         if (dir === "to") {
             let targetPlayer = mc.getPlayer(to.name);
             if (!targetPlayer) {
-                from.tell(info +lang.get("tpa.player.offline"));
+                from.tell(info +CachePool.lang("tpa.player.offline"));
                 return;
             }
             let footPos = new FloatPos(
@@ -2542,7 +2603,7 @@ function acceptTpaRequest(targetName) {
         } else {
             let targetPlayer = mc.getPlayer(from.name);
             if (!targetPlayer) {
-                to.tell(info +lang.get("tpa.tp.fail.noonline"));
+                to.tell(info +CachePool.lang("tpa.tp.fail.noonline"));
                 return;
             }
             let footPos = new FloatPos(
@@ -2556,8 +2617,8 @@ function acceptTpaRequest(targetName) {
             },500)
             mc.runcmdEx(`camera ${to.realName} fade time 0.15 0.5 0.35 color 0 0 0`);
         }
-        from.tell(info +lang.get("tpa.tp.okey"));
-        to.tell(info +lang.get("tpa.tp.okey"));
+        from.tell(info +CachePool.lang("tpa.tp.okey"));
+        to.tell(info +CachePool.lang("tpa.tp.okey"));
     }
     
     delete pendingTpaRequests[targetName];
@@ -2567,13 +2628,13 @@ function denyTpaRequest(targetName) {
     let req = pendingTpaRequests[targetName];
     if (!req) {
         let p = mc.getPlayer(targetName);
-        if (p) p.tell(info +lang.get("tpa.no.request"));
+        if (p) p.tell(info +CachePool.lang("tpa.no.request"));
         return;
     }
     
     clearTpaRequest(req);
-    req.from.tell(info +lang.get("tpa.d.request"));
-    req.to.tell(info +lang.get("tpa.d.request.you"));
+    req.from.tell(info +CachePool.lang("tpa.d.request"));
+    req.to.tell(info +CachePool.lang("tpa.d.request.you"));
     delete pendingTpaRequests[targetName];
 }
 
@@ -2599,6 +2660,7 @@ function clearTpaRequest(req) {
 
 if (__YEST_FIRST_LOAD__) {
 mc.listen("onLeft", (pl) => {
+    CachePool.invalidatePlayerList();
     let pname = pl.name;
     
     for (let [key, request] of Object.entries(pendingTpaRequests)) {
@@ -2606,11 +2668,11 @@ mc.listen("onLeft", (pl) => {
         
         if (request.toName === pname) {
             clearTpaRequest(request);
-            request.from.tell(info +lang.get("tpa.player.offline"));
+            request.from.tell(info +CachePool.lang("tpa.player.offline"));
             delete pendingTpaRequests[key];
         } else if (request.fromName === pname) {
             let rec = request.to;
-            if (rec) rec.tell(info +lang.get("tpa.player.offline"));
+            if (rec) rec.tell(info +CachePool.lang("tpa.player.offline"));
             clearTpaRequest(request);
             delete pendingTpaRequests[key];
         }
@@ -2622,7 +2684,7 @@ mc.listen("onLeft", (pl) => {
 // ======================
 // 冷却倒计时由 RadomTeleportSystem.js 内部管理
 ////rtp  remake
-if (conf.get("RTP").EnabledModule) {
+if (CachePool.conf("RTP")?.EnabledModule) {
 const rtpResetCmd = mc.newCommand("rtpreset", "重置传送冷却", PermType.GameMasters);
 rtpResetCmd.overload([]);
 rtpResetCmd.mandatory("player", ParamType.Player);
@@ -2636,7 +2698,7 @@ const asyncRtpCmd = mc.newCommand("rtp", "异步随机传送", PermType.Any);
 asyncRtpCmd.overload([]);
 asyncRtpCmd.setCallback(async (cmd, ori, out, res) => {
     const pl = ori.player;
-    if (!pl) return out.error(lang.get("warp.only.player"));
+    if (!pl) return out.error(CachePool.lang("warp.only.player"));
     
     try {
         await RadomTeleportSystem.performRTPAsync(pl);
@@ -2646,7 +2708,7 @@ asyncRtpCmd.setCallback(async (cmd, ori, out, res) => {
     }
 });
 asyncRtpCmd.setup();
-} // end if (conf.get("RTP").EnabledModule)
+} // end if (CachePool.conf("RTP")?.EnabledModule)
 //经济检查模块
 function smartMoneyCheck(plname, value) {
     const pl = mc.getPlayer(plname);
@@ -2667,13 +2729,13 @@ function smartMoneyCheck(plname, value) {
 // ======================
 function showInsufficientMoneyGui(pl, cost, returnCmd) {
     let fm = mc.newSimpleForm();
-    fm.setTitle(lang.get("gui.insufficient.money.title"));
-    fm.setContent(lang.get("gui.insufficient.money.content")
+    fm.setTitle(CachePool.lang("gui.insufficient.money.title"));
+    fm.setContent(CachePool.lang("gui.insufficient.money.content")
         .replace("${cost}", cost)
-        .replace("${coin}", conf.get("Economy").CoinName));
-    fm.addButton(lang.get("gui.button.confirm"));
+        .replace("${coin}", CachePool.conf("Economy").CoinName));
+    fm.addButton(CachePool.lang("gui.button.confirm"));
     if (returnCmd) {
-        fm.addButton(lang.get("gui.button.back"));
+        fm.addButton(CachePool.lang("gui.button.back"));
     }
     pl.sendForm(fm, (p, id) => {
         if (id === 1 && returnCmd) {
@@ -2683,3 +2745,4 @@ function showInsufficientMoneyGui(pl, cost, returnCmd) {
 }
 // 标记 listener 已注册
 globalThis.__YEST_listeners_registered__ = true;
+
