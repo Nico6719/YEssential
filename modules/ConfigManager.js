@@ -110,7 +110,7 @@ class ConfigManager {
             "Update": {
                 "EnableModule": true,
                 "CheckInterval": 120,
-                "versionUrl": "https://dl.mcmcc.cc/file/Version.json",
+                "versionUrl": "https://dl.mcmcc.cc/file/manifest.json",
                 "baseUrl": "https://dl.mcmcc.cc/file/",
                 "files": [
                     { "url": "YEssential.js",                    "path": "YEssential.js" },
@@ -129,7 +129,10 @@ class ConfigManager {
                     { "url": 'modules/Crash.js',                 "path": './modules/Crash.js' },
                     { "url": 'modules/Warp.js',                 "path": './modules/Warp.js' },
                     { "url": 'modules/PluginInfo.js',                 "path": './modules/PluginInfo.js' },  
-                    { "url": 'modules/Home.js',                 "path": './modules/Home.js' }
+                    { "url": 'modules/Home.js',                 "path": './modules/Home.js' },
+                    { "url": 'modules/CachePool.js',                 "path": './modules/CachePool.js' },
+                    {'url': 'modules/WriteBackStore.js',                 "path": './modules/WriteBackStore.js' },
+                    {'url': 'modules/Crash.js',                 "path": './modules/Crash.js' }
 
                 ],
                 "reloadDelay": 1000,
