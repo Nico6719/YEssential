@@ -99,16 +99,6 @@ function _showModuleListGui(pl) {
 
 function _checkUpdate(pl) {
     pl.tell(info + "§e正在检查更新，请稍候...");
-
-    // 优先复用 AsyncUpdateChecker 模块
-    if (globalThis.AsyncUpdateChecker && typeof globalThis.AsyncUpdateChecker.checkForUpdates === "function") {
-        globalThis.AsyncUpdateChecker.checkForUpdates(version).catch(e => {
-            pl.tell(info + "§c检查更新失败：" + e.message);
-        });
-        return;
-    }
-
-    // 降级：直接 HTTP 请求
     try {
         network.httpGet("https://dl.mcmcc.cc/file/Version.json", (status, result) => {
             if (status !== 200) {
@@ -121,17 +111,31 @@ function _checkUpdate(pl) {
                 return;
             }
             const remoteStr = remoteVer.version || remoteVer.Version || "未知";
-            const isLatest  = remoteStr === version;
+            const isLatest  = remoteStr < version;
 
             const fm = mc.newSimpleForm();
-            fm.setTitle("§l§d[-YEST-] §r§l更新检查");
+            fm.setTitle(info+"§r§l更新检查");
             fm.setContent(
                 "§l当前版本：§r§e" + version + "§r\n" +
                 "§l最新版本：§r§a" + remoteStr + "§r\n\n" +
-                (isLatest ? "§a当前已是最新版本，无需更新。" : "§c检测到新版本，请前往发布页下载更新！")
+                (isLatest ? "§a当前已是最新版本，无需更新。" : "§c检测到新版本，点击更新按钮即可更新！")
             );
+            if (!isLatest) {
+                fm.addButton("§l更新", "textures/ui/new_offer_symbol");
+            }
+            if (isLatest){
             fm.addButton("§l返回", "textures/ui/cancel");
-            pl.sendForm(fm, (pl, _id) => { _showMainGui(pl); });
+            }
+            pl.sendForm(fm, (pl, _id) => { 
+                
+                if(isLatest)
+                    {_showMainGui(pl);logger.info(_id); return;}
+                else{
+                    if(_id === 0){
+                    globalThis.checkForUpdates;
+                    logger.info(_id)
+                    }}
+            });
         });
     } catch (e) {
         pl.tell(info + "§c检查更新异常：" + e.message);

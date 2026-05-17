@@ -35,15 +35,15 @@ function loadOrCreateUUID() {
             }
         }
     } catch (e) {
-        logger.error("[Bstats] 读取 UUID 文件失败: " + e.message);
+        logger.error("读取 UUID 文件失败: " + e.message);
     }
 
     const newUUID = generateUUID();
     try {
         File.writeTo(BSTATS_UUID_PATH, JSON.stringify({ uuid: newUUID }, null, 2));
-        randomGradientLog("[Bstats] 首次生成 UUID 并写入: " + BSTATS_UUID_PATH);
+        randomGradientLog("首次生成 UUID 并写入: " + BSTATS_UUID_PATH);
     } catch (e) {
-        logger.error("[Bstats] 写入 UUID 文件失败: " + e.message);
+        logger.error("写入 UUID 文件失败: " + e.message);
     }
     return newUUID;
 }
@@ -77,13 +77,13 @@ function postWithRetry(url, body, retryLeft) {
     } catch (e) {
         if (retryLeft > 1) {
             logger.warn(
-                "[Bstats] 网络请求异常(第 " + attemptNo + " 次: " + e.message + ")," +
+                "网络请求异常(第 " + attemptNo + " 次: " + e.message + ")," +
                 "10 秒后发起第 " + (attemptNo + 1) + " 次重试..."
             );
             setTimeout(function () { postWithRetry(url, body, retryLeft - 1); }, 10000);
         } else {
             logger.warn(
-                "[Bstats] 网络请求异常(第 " + attemptNo + " 次: " + e.message + ")," +
+                "网络请求异常(第 " + attemptNo + " 次: " + e.message + ")," +
                 "已达最大重试次数 (" + BSTATS_MAX_RETRY + ")，本轮放弃。"
             );
         }
@@ -131,7 +131,7 @@ class BStatsImpl {
                 }
             }
         } catch (e) {
-            logger.error("[Bstats] 读取 manifest.json 失败: " + e.message);
+            logger.error("读取 manifest.json 失败: " + e.message);
         }
         return "2.10.11";
     }
@@ -144,13 +144,13 @@ class BStatsImpl {
                 const match   = content.match(/^online-mode\s*=\s*(true|false)/m);
                 if (match) {
                     if (this.debugMode)
-                        randomGradientLog("[Bstats] online-mode = " + match[1]);
+                        randomGradientLog("online-mode = " + match[1]);
                     return match[1] === "true" ? 1 : 0;
                 }
             }
         } catch (e) {
             if (this.debugMode)
-                logger.error("[Bstats] 读取 server.properties 失败: " + e.message);
+                logger.error("读取 server.properties 失败: " + e.message);
         }
         return 1;
     }
@@ -164,7 +164,7 @@ class BStatsImpl {
                 this.debugMode   = bstatsConf.logSentData  != null ? bstatsConf.logSentData  : true;
             }
         } catch (e) {
-            logger.error("[Bstats] 同步配置失败: " + e.message);
+            logger.error("同步配置失败: " + e.message);
         }
     }
 
@@ -249,7 +249,7 @@ class BStatsImpl {
 
         if (this.debugMode) {
             randomGradientLog(
-                "[Bstats] 内存 — 总计: " + finalRamTotal +
+                "内存 — 总计: " + finalRamTotal +
                 " | 可用: " + finalRamAvail +
                 " | 使用率: " + ramUsagePct
             );
@@ -291,14 +291,14 @@ class BStatsImpl {
     submit() {
         if (!this.enabled) {
             if (this.debugMode)
-                randomGradientLog("[Bstats] 遥测模块已禁用，跳过上报。");
+                randomGradientLog("遥测模块已禁用，跳过上报。");
             return;
         }
 
         const payload = this.collectData();
 
         if (this.debugMode) {
-            randomGradientLog("[Bstats] 准备上报数据包：");
+            randomGradientLog("准备上报数据包：");
             randomGradientLog(JSON.stringify(payload, null, 2));
         }
 

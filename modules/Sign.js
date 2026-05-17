@@ -19,7 +19,7 @@ function initSignModule() {
 
     function L(key, fallback) {
         try {
-            var v = _lang && _lang.get(key);
+            var v = globalThis.CachePool ? CachePool.lang(key) : (_lang && _lang.get(key));
             return (v && v !== key) ? v : (fallback || key);
         } catch (e) { return fallback || key; }
     }
@@ -71,17 +71,30 @@ function initSignModule() {
     // ════════════════════════════════════════════════════════════
     // 配置管理
     // ════════════════════════════════════════════════════════════
+    var _signConfigCache = globalThis.CachePool
+        ? globalThis.CachePool.createModuleCache(2000)
+        : null;
+    var _SIGN_CFG_KEY = "sign_cfg_all";
+
     var Config = {
         get: function (key) {
-            config_data.reload();
-            if (key == null) return JSON.parse(config_data.read());
-            return config_data.get(key);
+            // 尝试从缓存取整个 config 对象
+            var all;
+            if (_signConfigCache) {
+                all = _signConfigCache.get(_SIGN_CFG_KEY);
+            }
+            if (all === undefined) {
+                // 缓存 miss，读一次磁盘
+                config_data.reload();
+                all = JSON.parse(config_data.read() || "{}");
+                if (_signConfigCache) _signConfigCache.set(_SIGN_CFG_KEY, all);
+            }
+            return key == null ? all : all[key];
         },
         set: function (obj) {
-            var keys = Object.keys(obj);
-            for (var i = 0; i < keys.length; i++) {
-                config_data.set(keys[i], obj[keys[i]]);
-            }
+            Object.keys(obj).forEach(function(k) { config_data.set(k, obj[k]); });
+            // 写入后失效缓存
+            if (_signConfigCache) _signConfigCache.invalidate(_SIGN_CFG_KEY);
         },
         getSign:        function () { return this.get("sign"); },
         getRandomMoney: function () { return this.get("random_money"); },

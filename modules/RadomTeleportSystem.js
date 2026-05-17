@@ -10,7 +10,7 @@ class RadomTeleportSystem {
      * 生成随机坐标（在最小和最大半径之间）
      */
     static generateRandomCoordinate() {
-        const config = conf.get("RTP") || {};
+        const config = CachePool.conf("RTP") || {};
         const maxRadius = config.maxRadius || 5000;
         const minRadius = config.minRadius || 100;
         
@@ -30,7 +30,7 @@ class RadomTeleportSystem {
      * 验证坐标是否在有效范围内
      */
     static isCoordinateValid(x, z) {
-        const config = conf.get("RTP") || {};
+        const config = CachePool.conf("RTP") || {};
         const maxRadius = config.maxRadius || 5000;
         const minRadius = config.minRadius || 100;
         
@@ -224,7 +224,7 @@ class RadomTeleportSystem {
      */
     static async performGTA5AnimationAsync(player, searchX, searchZ, dimension) {
         return new Promise(async (resolve) => {
-            const config = conf.get("RTP") || {};
+            const config = CachePool.conf("RTP") || {};
             const playerName = player.realName;
             if (config.Animation == 1) {
                const playerPos = player.pos;
@@ -234,7 +234,7 @@ class RadomTeleportSystem {
         
             if (config.Animation !== 1) {
                 // 无动画模式
-                player.setTitle(info + lang.get("rtp.search.chunks"), 4);
+                player.setTitle(info + CachePool.lang("rtp.search.chunks"), 4);
                 const safeLocation = await this.findSafeLocationAsync(searchX, searchZ, dimension, player);
                 
                 if (safeLocation) {
@@ -255,12 +255,12 @@ class RadomTeleportSystem {
                 // 2秒后开始查找安全位置
                 setTimeout(async () => {
                     //player.sendText(info + "§7§o正在查找安全位置...");
-                    player.setTitle(info +lang.get("rtp.loading.chunks1"), 4);
+                    player.setTitle(info +CachePool.lang("rtp.loading.chunks1"), 4);
                     setTimeout(() => {
-                        player.setTitle(info +lang.get("rtp.loading.chunks2"), 4);
+                        player.setTitle(info +CachePool.lang("rtp.loading.chunks2"), 4);
                     }, 1000);
                     setTimeout(() => {
-                        player.setTitle(info +lang.get("rtp.loading.chunks3"), 4);
+                        player.setTitle(info +CachePool.lang("rtp.loading.chunks3"), 4);
                     }, 2000);
                     // 异步查找安全位置
                     const safeLocation = await this.findSafeLocationAsync(searchX, searchZ, dimension, player);
@@ -324,7 +324,7 @@ class RadomTeleportSystem {
      * 主要的RTP执行方法
      */
     static async performRTPAsync(player) {
-        const config = conf.get("RTP") || {};
+        const config = CachePool.conf("RTP") || {};
         const cost = Number(config.cost || 0); // 强制转为数字
         const cooldown = Number(config.cooldown || 0);
         const playerName = player.realName;
@@ -340,7 +340,7 @@ class RadomTeleportSystem {
             }
             // 2. 余额检查
             if (!smartMoneyCheck(player.realName, cost)) {
-            return player.tell(info + lang.get("money.no.enough"));
+            return player.tell(info + CachePool.lang("money.no.enough"));
             }
 
             // 3. 设置冷却 (防止连续点击)
@@ -349,7 +349,7 @@ class RadomTeleportSystem {
             }
 
             // 4. 开始寻找位置
-            player.setTitle(info + lang.get("rtp.search.chunks"), 4);
+            player.setTitle(info + CachePool.lang("rtp.search.chunks"), 4);
 
             let safeLocation = null;
             const maxCoordinateAttempts = 5; // 适当减少外层循环，防止长时间无响应
@@ -421,9 +421,9 @@ class RadomTeleportSystem {
             
             player.teleport(x, y, z, player.pos.dimid);
             
-            player.sendText(info + lang.get("rtp.tp.success2"));
+            player.sendText(info + CachePool.lang("rtp.tp.success2"));
             player.sendText(info+`§7坐标: X:${x}, Y:${y}, Z:${z}`);
-            player.sendText(info+lang.get("rtp.tp.success2"));
+            player.sendText(info+CachePool.lang("rtp.tp.success2"));
 
             return true;
         } catch (error) {
@@ -449,12 +449,12 @@ class RadomTeleportSystem {
     static refundPlayer(player, cost, cooldown) {
         if (cost > 0) {
             try {
-                if (conf.get("LLMoney")) {
+                if (CachePool.conf("LLMoney")) {
                     player.addMoney(cost);
                 } else {
-                    player.addScore(conf.get("Scoreboard"), cost);
+                    player.addScore(CachePool.conf("Scoreboard"), cost);
                 }
-                player.sendText(info + `§a已退还 ${cost}${lang.get("CoinName")}`);
+                player.sendText(info + `§a已退还 ${cost}${CachePool.lang("CoinName")}`);
             } catch (e) {
                 logger.error(`退还费用失败: ${e.message}`);
             }

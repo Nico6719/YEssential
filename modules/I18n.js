@@ -468,11 +468,11 @@ class AsyncLanguageManager {
                 await AsyncFileManager.writeFile(langFilePath, mergedData);
 
                 if (isFirstLoad) {
-                    randomGradientLog(`语言文件首次释放完成，正在自动重载插件...`);
+                    randomGradientLog(`语言文件首次释放完成，共 ${addedCount} 个条目，即将重载...`);
                     // 稍等一下确保文件写入完毕再 reload
                     setTimeout(() => {
                         mc.runcmdEx("ll reload YEssential");
-                    }, 500);
+                    }, 80);
                 } else {
                     randomGradientLog(`语言文件已更新，新增 ${addedCount} 个条目`);
                     lang = new JsonConfigFile(langFilePath, JSON.stringify(mergedData));
@@ -484,7 +484,32 @@ class AsyncLanguageManager {
         }
     }
 }
+class AsyncFileManager {
+    static readFile(path, defaultContent = '{}') {
+        try {
+            if (!file.exists(path)) {
+                file.writeTo(path, defaultContent);
+                return JSON.parse(defaultContent);
+            }
+            const content = file.readFrom(path);
+            return JSON.parse(content || defaultContent);
+        } catch (e) {
+            logger.error(`读取文件失败: ${path}`, e);
+            return JSON.parse(defaultContent);
+        }
+    }
 
+    static writeFile(path, data) {
+        try {
+            const content = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+            file.writeTo(path, content);
+            return true;
+        } catch (e) {
+            logger.error(`写入文件失败: ${path}`, e);
+            return false;
+        }
+    }
+}
 // ── 模块加载时立即执行 ─────────────────────────────────────────
 // 1. 将 defaultLangContent 暴露到全局，供其他模块引用
 globalThis.defaultLangContent = defaultLangContent;

@@ -20,17 +20,17 @@ function initFcamModule() {
     cmd.setCallback((_cmd, ori, out, _res) => {
         const pl = ori.player;
         if (!pl) {
-            out.error(info + lang.get("fc.error"));
+            out.error(info + CachePool.lang("fc.error"));
             return;
         }
 
         const plname   = pl.realName;
         const plpos    = ori.pos;
-        const timeout  = conf.get("Fcam").TimeOut;
-        const FcamCost = conf.get("Fcam").CostMoney;
+        const timeout  = CachePool.conf("Fcam").TimeOut;
+        const FcamCost = CachePool.conf("Fcam").CostMoney;
 
-        if (conf.get("Fcam").EnableModule == 0) {
-            pl.tell(info + lang.get("module.no.Enabled"));
+        if (CachePool.conf("Fcam").EnableModule == 0) {
+            pl.tell(info + CachePool.lang("module.no.Enabled"));
             return;
         }
 
@@ -39,20 +39,20 @@ function initFcamModule() {
             cleanupFcamBossBar(plname);
 
             try { pl.setGameMode(0); }
-            catch (e) { logger.error(lang.get("fc.error.log1") + e); }
+            catch (e) { logger.error(CachePool.lang("fc.error.log1") + e); }
 
             try { mc.runcmdEx(`tp "${plname}" "${plname}_sp"`); }
-            catch (e) { logger.error(lang.get("fc.error.log2") + e); }
+            catch (e) { logger.error(CachePool.lang("fc.error.log2") + e); }
 
             const spl = mc.getPlayer(plname + "_sp");
             if (spl && spl.isSimulatedPlayer && spl.isSimulatedPlayer()) {
                 try { spl.simulateDisconnect(); }
-                catch (e) { logger.error(lang.get("fc.error.log3") + e); }
+                catch (e) { logger.error(CachePool.lang("fc.error.log3") + e); }
             } else {
                 logger.warn(`FCAM: 未找到模拟玩家 ${plname}_sp，跳过断开`);
             }
 
-            out.success(info + lang.get("fc.success.quit"));
+            out.success(info + CachePool.lang("fc.success.quit"));
             return;
         }
 
@@ -60,14 +60,14 @@ function initFcamModule() {
 
         // 费用检查（smartMoneyCheck 定义于主文件）
         if (!smartMoneyCheck(pl.realName, FcamCost)) {
-            return pl.tell(info + lang.get("money.no.enough"));
+            return pl.tell(info + CachePool.lang("money.no.enough"));
         }
 
         mc.spawnSimulatedPlayer(plname + "_sp", plpos);
         mc.runcmdEx(`gamemode spectator "${plname}_sp"`);
         pl.setGameMode(6);
 
-        out.success(info + lang.get("fc.success.getin").replace("${Fcam}", FcamCost));
+        out.success(info + CachePool.lang("fc.success.getin").replace("${Fcam}", FcamCost));
 
         if (timeout > 0) {
             startFcamBossBar(pl, plname, timeout);
@@ -111,9 +111,9 @@ function initFcamModule() {
                     if (spl && spl.isSimulatedPlayer && spl.isSimulatedPlayer()) {
                         spl.simulateDisconnect();
                     }
-                    currentPlayer.tell(info + lang.get("fc.timeout"));
+                    currentPlayer.tell(info + CachePool.lang("fc.timeout"));
                 } catch (e) {
-                    logger.error(lang.get("fc.error.log4") + e);
+                    logger.error(CachePool.lang("fc.error.log4") + e);
                 }
                 return;
             }
@@ -149,7 +149,7 @@ function initFcamModule() {
         const player = mc.getPlayer(plname);
         if (player && data.bossId) {
             try { player.removeBossBar(data.bossId); }
-            catch (e) { logger.error(lang.get("fc.error.log5") + e); }
+            catch (e) { logger.error(CachePool.lang("fc.error.log5") + e); }
         }
 
         fcamBossBars.delete(plname);

@@ -2,12 +2,12 @@
 // randomGradientLog 由主文件通过 globalThis 注入，此处无需重复定义
 class ConfigManager {
     constructor() {
-        this.currentVersion = 289;
+        this.currentVersion = 292;
         this.pluginPath = pluginpath || "./plugins/YEssential";
         this.moduleListPath = `${this.pluginPath}/modules/modulelist.json`;
         // 默认配置
         this.configDefaults = {
-            "Version": 290,
+            "Version": 292,
             "Economy": {
                 "mode": "scoreboard",
                 "RankingModel" : "New",
@@ -187,6 +187,18 @@ class ConfigManager {
      * 初始化配置系统
      */
     init() {
+        // 清空缓存池（如果是 reload 触发的 init）
+        if (globalThis.CachePool) {
+            globalThis.CachePool.clearAll();
+            logger.info("[CachePool] 缓存已全部清空（reload/init）");
+        }
+        
+        // 强制刷盘所有写回存储（如果是 reload 触发的 init）
+        if (globalThis.WriteBackStore) {
+            globalThis.WriteBackStore.flushAll();
+            logger.info("[WriteBackStore] 所有数据已强制刷盘（reload/init）");
+        }
+
         // 初始化模块列表
         this.initModuleList();
         

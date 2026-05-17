@@ -19,6 +19,11 @@ class MenuConfigManager {
     constructor() {
         this.ensureDirectory();
         this.configFile = new JsonConfigFile(MENU_CONFIG.configPath, "{}");
+        // 模块缓存，TTL 3000ms
+        this._cache = (globalThis.CachePool
+            ? globalThis.CachePool.createModuleCache(3000)
+            : null);
+        this._CACHE_KEY = "cd_menu_cfg";
     }
 
     ensureDirectory() {
@@ -29,13 +34,23 @@ class MenuConfigManager {
     }
 
     get() {
+        // 优先走缓存
+        if (this._cache) {
+            let v = this._cache.get(this._CACHE_KEY);
+            if (v !== undefined) return v;
+        }
+        // 缓存 miss：读磁盘
         this.configFile.reload();
         const content = this.configFile.read();
-        return content ? JSON.parse(content) : {};
+        const result = content ? JSON.parse(content) : {};
+        if (this._cache) this._cache.set(this._CACHE_KEY, result);
+        return result;
     }
 
     set(data) {
         Object.keys(data).forEach(key => this.configFile.set(key, data[key]));
+        // 写入后立即失效缓存，保证下次读取是最新值
+        if (this._cache) this._cache.invalidate(this._CACHE_KEY);
     }
 
     getMoney()            { return this.get().money; }
@@ -44,13 +59,15 @@ class MenuConfigManager {
     getMain()             { return this.get().main; }
     getShield()           { return this.get().shield || []; }
     getItemsTriggerMode() { return this.get().itemsTriggerMode; }
+    getUseDogeUI()        { return this.get().UseDogeUI === 1; }
 
     validate() {
         const cur = this.get();
         const defaults = {
             money: 0, score: "money",
             items: ["minecraft:clock"],
-            itemsTriggerMode: 0, main: "main", shield: []
+            itemsTriggerMode: 0, main: "main", shield: [],
+            UseDogeUI: 0
         };
         const patch = {};
         if (![0, 1].includes(cur.money))               patch.money = defaults.money;
@@ -61,6 +78,7 @@ class MenuConfigManager {
             patch.items = defaults.items;
         if (!(cur.shield instanceof Array) || !cur.shield.every(i => typeof i === "string"))
             patch.shield = defaults.shield;
+        if (![0, 1].includes(cur.UseDogeUI))           patch.UseDogeUI = defaults.UseDogeUI;
         if (Object.keys(patch).length > 0) this.set(patch);
     }
 }
@@ -228,9 +246,13 @@ class MenuPlayerHandler {
         if (menuData.buttons.length === 0) {
             player.tell(info + "菜单按钮为空", 5); return;
         }
-
         var form = mc.newSimpleForm();
-        form.setTitle(menuData.title);
+        // DogeUI 判断：UseDogeUI=1 且当前是主菜单时，使用 /D 前缀格式由客户端渲染广告图
+        if (menuConfig.getUseDogeUI() && fileName === menuConfig.getMain()) {
+            form.setTitle("/D textures/menu/ad/1");
+        } else {
+            form.setTitle(menuData.title);
+        }
         form.setContent(menuData.content);
         menuData.buttons.forEach(function(button) {
             form.addButton(button.text, button.images ? button.image : "");
@@ -265,619 +287,107 @@ class MenuPlayerHandler {
     }
 
     static handleOpForm(player, button, currentMenu) {
-        var opList = button.oplist || [];
-        if (!player.isOP() && opList.length > 0 && opList.indexOf(player.realName) === -1) {
+        if (!player.isOP()) {
             this.showMenu(player, currentMenu);
-            player.tell(info + "此功能仅限管理员使用", 5);
+            player.tell(info + "权限不足", 5);
             return;
         }
         this.showMenu(player, button.command);
     }
 
-    static executeCommand(player, command) {
-        if (command.includes("@s") && !player.isOP())
-            mc.runcmdEx(command.replace("@s", player.realName));
-        else
-            player.runcmd("/" + command);
-    }
-
     static handleOpCommand(player, button, currentMenu) {
-        var opList = button.oplist || [];
-        if (!player.isOP() && opList.length > 0 && opList.indexOf(player.realName) === -1) {
+        if (!player.isOP()) {
             this.showMenu(player, currentMenu);
-            player.tell(info + "此功能仅限管理员使用", 5);
+            player.tell(info + "权限不足", 5);
             return;
         }
         this.executeCommand(player, button.command);
     }
-}
 
-// ==================== 命令注册 ====================
-class MenuCommandHandler {
-    static register() {
-        var commands = [
-            { cmd: "menu", des: "menu", per: PermType.Any },
-            { cmd: "cd",   des: "menu", per: PermType.Any }
-        ];
-        var self = this;
-        commands.forEach(function(cmdInfo) {
-            var cmd = mc.newCommand(cmdInfo.cmd, cmdInfo.des, cmdInfo.per);
-            cmd.setAlias(cmdInfo.des);
-            cmd.setEnum("menuset", ["set"]);
-            cmd.optional("menuset", ParamType.Enum, "menuset", 1);
-            cmd.overload(["menuset"]);
-            cmd.setCallback(function(_cmd, ori, out, res) { self.callback(_cmd, ori, out, res); });
-            cmd.setup();
-        });
-    }
-
-    static callback(_cmd, ori, out, res) {
-        if (!ori.player) {
-            out.error(MENU_CONFIG.prefix + "§4请不要使用命令方块或控制台执行§f" + _cmd + "§4命令");
-            return;
-        }
-        if (!res.menuset) {
-            MenuPlayerHandler.showMenu(ori.player, menuConfig.getMain());
-        } else if (res.menuset === "set") {
-            if (!ori.player.isOP()) ori.player.tell(MENU_CONFIG.prefix + "你不是管理员!");
-            else MenuAdminHandler.showMainSettings(ori.player);
-        }
+    static executeCommand(player, command) {
+        mc.runcmdEx("execute as \"" + player.realName + "\" run " + command);
     }
 }
 
-// ==================== 获取钟表命令 ====================
-class GetClockCommandHandler {
-    static get dataPath() {
-        return "./plugins/YEssential/data/getclock_claimed.json";
-    }
-
-    static loadClaimed() {
-        if (!File.exists(this.dataPath)) {
-            File.writeTo(this.dataPath, "[]");
-            return [];
-        }
-        try {
-            var parsed = JSON.parse(File.readFrom(this.dataPath));
-            return Array.isArray(parsed) ? parsed : [];
-        } catch (e) { return []; }
-    }
-
-    static saveClaimed(list) {
-        File.writeTo(this.dataPath, JSON.stringify(list));
-    }
-
-    static hasClaimed(xuid)  { return this.loadClaimed().indexOf(xuid) !== -1; }
-
-    static markClaimed(xuid) {
-        var list = this.loadClaimed();
-        if (list.indexOf(xuid) === -1) { list.push(xuid); this.saveClaimed(list); }
-    }
-
-    static register() {
-        var cmd = mc.newCommand("getclock", "获取钟表（每人限领一次）", PermType.Any);
-        cmd.overload([]);
-        cmd.setCallback(function(_cmd, ori, out, res) {
-            if (!ori.player) { out.error("§c请不要使用命令方块或控制台执行此命令"); return; }
-            var player = ori.player;
-            if (GetClockCommandHandler.hasClaimed(player.xuid)) {
-                player.tell(info + "§c你已经领取过钟表了");
-                return;
-            }
-            var clockItem = mc.newItem("minecraft:clock", 1);
-            if (!clockItem) { player.tell(info + "§c获取钟表失败"); return; }
-            if (!player.getInventory().hasRoomFor(clockItem)) {
-                mc.spawnItem(clockItem, player.pos);
-                player.tell(info + "§e已获得钟表（背包已满，已掉落在你脚下），此物品每人仅限领取一次");
-            } else {
-                player.giveItem(clockItem);
-                player.refreshItems();
-                player.tell(info + "§a已获得钟表，此物品每人仅限领取一次");
-            }
-            GetClockCommandHandler.markClaimed(player.xuid);
-        });
-        cmd.setup();
-    }
-}
-
-// ==================== 管理员设置界面 ====================
-class MenuAdminHandler {
-    static showMainSettings(player) {
-        var form = mc.newSimpleForm();
-        form.setTitle(info + "菜单设置");
-        form.setContent("选择:");
-        form.addButton("经济设置");
-        form.addButton("添加菜单");
-        form.addButton("删除菜单");
-        form.addButton("修改菜单");
-        form.addButton("修改其他");
-        var self = this;
-        player.sendForm(form, function(pl, id) {
-            if (id == null) return;
-            switch (id) {
-                case 0: self.showMoneySettings(player); break;
-                case 1: self.showAddMenu(player);       break;
-                case 2: self.showDeleteMenu(player);    break;
-                case 3: self.showEditMenu(player);      break;
-                case 4: self.showOtherSettings(player); break;
-            }
-        });
-    }
-
-    static showMoneySettings(player, error, moneyType, scoreName) {
-        var currentMoneyType = menuConfig.getMoney();
-        var currentScore     = menuConfig.getScore();
-        var form = mc.newCustomForm();
-        form.setTitle("设置经济参数");
-        form.addDropdown("选择经济模式---当前: " + (currentMoneyType ? "LLMoney" : "计分板"),
-            ["计分板", "LLMoney"], moneyType != null ? moneyType : currentMoneyType);
-        form.addInput("输入计分板项--当前: " + currentScore, "例如: money",
-            scoreName != null ? scoreName : "");
-        if (error) form.addLabel(error);
-        var self = this;
-        player.sendForm(form, function(pl, data) {
-            if (!data) { self.showMainSettings(player); return; }
-            var selectedMoneyType = data[0], inputScore = data[1];
-            if (selectedMoneyType === currentMoneyType && inputScore === "") {
-                self.showMoneySettings(player, "§l§c你好像什么都没有操作", selectedMoneyType, inputScore);
-                return;
-            }
-            menuConfig.set({ money: selectedMoneyType });
-            if (inputScore !== "") menuConfig.set({ score: inputScore });
-            player.sendModalForm("§l§2修改成功", "已保存更改经济配置", "§1返回", "§1完成",
-                function(pl, btnId) {
-                    if (btnId === 0) self.showMainSettings(player);
-                    else self.showMoneySettings(player, "§l§2已完成更改");
-                });
-        });
-    }
-
-    static showAddMenu(player, type) {
-        if (!type) {
-            var form = mc.newSimpleForm();
-            form.setTitle("添加菜单");
-            form.setContent("选择操作:");
-            form.addButton("添加二级菜单");
-            form.addButton("添加菜单按钮");
-            form.addButton("返回上级");
-            var self = this;
-            player.sendForm(form, function(pl, id) {
-                if (id == null) return;
-                if (id === 0) self.showAddMenu(player, "add_menu");
-                else if (id === 1) self.showAddMenu(player, "add_button");
-                else if (id === 2) self.showMainSettings(player);
-            });
-            return;
-        }
-        if (type === "add_menu")        this.showAddSubMenu(player);
-        else if (type === "add_button") this.showAddButton(player);
-    }
-
-    static showAddSubMenu(player, error, formData) {
-        formData = formData || {};
-        var menuFiles   = MenuUtils.getMenuFiles();
-        var fileOptions = menuFiles.map(f => MenuDataManager.getMenu(f).title + " | " + f);
-        var form = mc.newCustomForm();
-        form.setTitle("添加二级菜单");
-        form.addDropdown("选择上级菜单", fileOptions, formData.parentIndex || 0);
-        form.addInput("二级菜单文件名称", "例如: aaa 或 menu2", formData.fileName || "");
-        form.addInput("二级菜单标题",     "例如: 二级菜单",      formData.title   || "");
-        form.addInput("二级菜单提示",     "例如: 选择:",         formData.content || "");
-        if (error) form.addLabel(error);
-        var self = this;
-        player.sendForm(form, function(pl, data) {
-            if (!data) { self.showAddMenu(player); return; }
-            var parentIndex = data[0], fileName = data[1], title = data[2], content = data[3];
-            if (!MenuUtils.isValidFileName(fileName)) {
-                self.showAddSubMenu(player, "§l§c文件名称不合法（仅限英文字母和数字，1-20个字符）",
-                    { parentIndex, fileName, title, content });
-                return;
-            }
-            if (File.exists(MENU_CONFIG.menusPath + fileName + ".json")) {
-                self.showAddSubMenu(player, "§l§c文件已存在", { parentIndex, fileName, title, content });
-                return;
-            }
-            MenuDataManager.addButton(menuFiles[parentIndex], {
-                images: true, image: "textures/items/apple", money: 0,
-                text: title, command: fileName, type: "form"
-            });
-            MenuDataManager.setMenu(fileName, {
-                title: title, content: content || "选择:",
-                buttons: MenuDataManager.getDefaultSubMenu().buttons
-            });
-            self.showAddMenu(player, "add_menu");
-            player.tell(MENU_CONFIG.prefix + "§2添加成功");
-        });
-    }
-
-    static showAddButton(player, error, formData) {
-        formData = formData || {};
-        var menuFiles = MenuUtils.getMenuFiles();
-        if (menuFiles.length === 0) {
-            player.tell(MENU_CONFIG.prefix + "§c没有可用的菜单文件");
-            this.showAddMenu(player); return;
-        }
-        var fileOptions = menuFiles.map(f => MenuDataManager.getMenu(f).title + " | " + f);
-        var buttonTypes = ["玩家二级菜单", "管理员二级菜单", "玩家执行指令", "管理员执行指令"];
-        var form = mc.newCustomForm();
-        form.setTitle("添加菜单按钮");
-        form.addDropdown("选择菜单文件",          fileOptions,  formData.fileIndex   || 0);
-        form.addDropdown("选择按钮类型",          buttonTypes,  formData.buttonType  || 0);
-        form.addSwitch("是否开启按钮贴图",                      formData.enableImage || false);
-        form.addInput("[选填]按钮贴图地址",  "textures/items/apple", formData.imagePath  || "");
-        form.addInput("[必填]按钮标题",      "例如: 说你好",          formData.buttonText || "");
-        form.addInput("[必填]按钮执行的结果","例如: say @a 你好",     formData.command    || "");
-        form.addInput("[选填]按钮所需金币",  "例如: 999",             formData.money      || "");
-        form.addInput("[选填]按钮位置(0为首)","例如: 0",              formData.position ?? "");
-        if (error) form.addLabel(error);
-        var self = this;
-        player.sendForm(form, function(pl, data) {
-            if (!data) { self.showAddMenu(player); return; }
-            var fileIndex   = data[0], typeIndex  = data[1], enableImage = data[2],
-                imagePath   = data[3], buttonText = data[4], command     = data[5],
-                money       = data[6], position   = data[7];
-            if (!buttonText || !command) {
-                self.showAddButton(player, "§c标题和指令必填",
-                    { fileIndex, buttonType: typeIndex, enableImage, imagePath, buttonText, command, money, position });
-                return;
-            }
-            var typeMap   = ["form", "opfm", "comm", "opcm"];
-            var newButton = {
-                images: enableImage, image: enableImage ? (imagePath || "textures/items/apple") : "",
-                money: parseInt(money) || 0, text: buttonText, command: command, type: typeMap[typeIndex]
-            };
-            if (typeMap[typeIndex].includes("op")) newButton.oplist = [];
-            MenuDataManager.addButton(menuFiles[fileIndex], newButton,
-                position !== "" ? parseInt(position) : null);
-            self.showAddMenu(player, "add_button");
-            player.tell(MENU_CONFIG.prefix + "§2添加成功");
-        });
-    }
-
-    static showDeleteMenu(player, type) {
-        if (!type) {
-            var form = mc.newSimpleForm();
-            form.setTitle("删除菜单");
-            form.setContent("选择操作:");
-            form.addButton("删除二级菜单");
-            form.addButton("删除菜单按钮");
-            form.addButton("返回上级");
-            var self = this;
-            player.sendForm(form, function(pl, id) {
-                if (id == null) return;
-                if (id === 0) self.showDeleteMenu(player, "del_menu");
-                else if (id === 1) self.showDeleteMenu(player, "del_button");
-                else if (id === 2) self.showMainSettings(player);
-            });
-            return;
-        }
-
-        if (type === "del_menu") {
-            var files = MenuUtils.getMenuFiles(true);
-            if (!files.length) {
-                player.tell(MENU_CONFIG.prefix + "§c无可删除的菜单");
-                this.showDeleteMenu(player); return;
-            }
-            var form = mc.newSimpleForm();
-            form.setTitle("删除二级菜单");
-            form.setContent("选择要删除的菜单:");
-            files.forEach(f => form.addButton(MenuDataManager.getMenu(f).title + " | " + f));
-            form.addButton("§c返回上级");
-            var self = this;
-            player.sendForm(form, function(pl, id) {
-                if (id == null || id === files.length) { self.showDeleteMenu(player); return; }
-                if (id >= 0 && id < files.length) {
-                    var deleted = files[id];
-                    MenuDataManager.deleteMenu(deleted);
-                    MenuDataManager.removeOrphanButtons(deleted);
-                    player.tell(MENU_CONFIG.prefix + "§2删除成功: " + deleted);
-                    self.showDeleteMenu(player, type);
-                } else { self.showDeleteMenu(player); }
-            });
-
-        } else if (type === "del_button") {
-            var files = MenuUtils.getMenuFiles();
-            if (!files.length) {
-                player.tell(MENU_CONFIG.prefix + "§c无可用的菜单");
-                this.showDeleteMenu(player); return;
-            }
-            var form = mc.newSimpleForm();
-            form.setTitle("删除菜单按钮");
-            form.setContent("选择菜单:");
-            files.forEach(f => form.addButton(MenuDataManager.getMenu(f).title + " | " + f));
-            form.addButton("§c返回上级");
-            var self = this;
-            player.sendForm(form, function(pl, fileId) {
-                if (fileId == null || fileId === files.length) { self.showDeleteMenu(player); return; }
-                if (fileId >= 0 && fileId < files.length) self.showDeleteButtonList(player, files[fileId]);
-                else self.showDeleteMenu(player);
-            });
-        }
-    }
-
-    static showDeleteButtonList(player, fileName) {
-        var menuData = MenuDataManager.getMenu(fileName);
-        if (!menuData.buttons || menuData.buttons.length === 0) {
-            player.tell(MENU_CONFIG.prefix + "§c该菜单没有按钮");
-            this.showDeleteMenu(player, "del_button"); return;
-        }
-        var form = mc.newSimpleForm();
-        form.setTitle("删除按钮 - " + menuData.title);
-        form.setContent("选择要删除的按钮:");
-        menuData.buttons.forEach(function(btn) {
-            var t = btn.text + " [" + btn.type + "]";
-            if (btn.money > 0) t += " (需" + btn.money + "金币)";
-            form.addButton(t);
-        });
-        form.addButton("§c返回上级");
-        var self = this;
-        player.sendForm(form, function(pl, btnId) {
-            if (btnId == null || btnId === menuData.buttons.length) {
-                self.showDeleteMenu(player, "del_button"); return;
-            }
-            if (btnId >= 0 && btnId < menuData.buttons.length) {
-                var deletedBtn = menuData.buttons[btnId];
-                if (MenuDataManager.deleteButton(fileName, btnId))
-                    player.tell(MENU_CONFIG.prefix + "§2删除成功: " + deletedBtn.text);
-                else
-                    player.tell(MENU_CONFIG.prefix + "§c删除失败");
-                self.showDeleteButtonList(player, fileName);
-            } else { self.showDeleteMenu(player, "del_button"); }
-        });
-    }
-
-    static showEditMenu(player, type) {
-        if (!type) {
-            var form = mc.newSimpleForm();
-            form.setTitle("修改菜单");
-            form.setContent("选择操作:");
-            form.addButton("修改菜单信息");
-            form.addButton("修改菜单按钮");
-            form.addButton("返回上级");
-            var self = this;
-            player.sendForm(form, function(pl, id) {
-                if (id == null) return;
-                if (id === 0) self.showEditMenu(player, "edit_menu");
-                else if (id === 1) self.showEditMenu(player, "edit_button");
-                else if (id === 2) self.showMainSettings(player);
-            });
-            return;
-        }
-        if (type === "edit_menu")        this.showEditMenuInfo(player);
-        else if (type === "edit_button") this.showEditButtonSelect(player);
-    }
-
-    static showEditMenuInfo(player) {
-        var files = MenuUtils.getMenuFiles();
-        if (!files.length) {
-            player.tell(MENU_CONFIG.prefix + "§c无可用的菜单");
-            this.showEditMenu(player); return;
-        }
-        var form = mc.newSimpleForm();
-        form.setTitle("修改菜单信息");
-        form.setContent("选择要修改的菜单:");
-        files.forEach(f => form.addButton(MenuDataManager.getMenu(f).title + " | " + f));
-        form.addButton("§c返回上级");
-        var self = this;
-        player.sendForm(form, function(pl, id) {
-            if (id == null || id === files.length) { self.showEditMenu(player); return; }
-            if (id >= 0 && id < files.length) self.showEditMenuInfoForm(player, files[id]);
-            else self.showEditMenu(player);
-        });
-    }
-
-    static showEditMenuInfoForm(player, fileName, error) {
-        var menuData = MenuDataManager.getMenu(fileName);
-        var form = mc.newCustomForm();
-        form.setTitle("修改菜单: " + fileName);
-        form.addInput("菜单标题", "当前: " + menuData.title,   menuData.title);
-        form.addInput("菜单内容", "当前: " + menuData.content, menuData.content);
-        if (error) form.addLabel(error);
-        var self = this;
-        player.sendForm(form, function(pl, data) {
-            if (!data) { self.showEditMenuInfo(player); return; }
-            var newTitle = data[0], newContent = data[1];
-            if (!newTitle || !newContent) {
-                self.showEditMenuInfoForm(player, fileName, "§c标题和内容不能为空"); return;
-            }
-            menuData.title = newTitle; menuData.content = newContent;
-            MenuDataManager.setMenu(fileName, menuData);
-            player.tell(MENU_CONFIG.prefix + "§2修改成功");
-            self.showEditMenuInfo(player);
-        });
-    }
-
-    static showEditButtonSelect(player) {
-        var files = MenuUtils.getMenuFiles();
-        if (!files.length) {
-            player.tell(MENU_CONFIG.prefix + "§c无可用的菜单");
-            this.showEditMenu(player); return;
-        }
-        var form = mc.newSimpleForm();
-        form.setTitle("修改菜单按钮");
-        form.setContent("选择菜单:");
-        files.forEach(f => form.addButton(MenuDataManager.getMenu(f).title + " | " + f));
-        form.addButton("§c返回上级");
-        var self = this;
-        player.sendForm(form, function(pl, id) {
-            if (id == null || id === files.length) { self.showEditMenu(player); return; }
-            if (id >= 0 && id < files.length) self.showEditButtonList(player, files[id]);
-            else self.showEditMenu(player);
-        });
-    }
-
-    static showEditButtonList(player, fileName) {
-        var menuData = MenuDataManager.getMenu(fileName);
-        if (!menuData.buttons || menuData.buttons.length === 0) {
-            player.tell(MENU_CONFIG.prefix + "§c该菜单没有按钮");
-            this.showEditButtonSelect(player); return;
-        }
-        var form = mc.newSimpleForm();
-        form.setTitle("修改按钮 - " + menuData.title);
-        form.setContent("选择要修改的按钮:");
-        menuData.buttons.forEach(btn => form.addButton(btn.text + " [" + btn.type + "]"));
-        form.addButton("§c返回上级");
-        var self = this;
-        player.sendForm(form, function(pl, btnId) {
-            if (btnId == null || btnId === menuData.buttons.length) {
-                self.showEditButtonSelect(player); return;
-            }
-            if (btnId >= 0 && btnId < menuData.buttons.length)
-                self.showEditButtonForm(player, fileName, btnId);
-            else self.showEditButtonSelect(player);
-        });
-    }
-
-    static showEditButtonForm(player, fileName, buttonIndex, error) {
-        var menuData = MenuDataManager.getMenu(fileName);
-        var button   = menuData.buttons[buttonIndex];
-        var typeMap     = ["form", "opfm", "comm", "opcm"];
-        var buttonTypes = ["玩家二级菜单", "管理员二级菜单", "玩家执行指令", "管理员执行指令"];
-        var rawType = button.type;
-        if (rawType === "vipfm") rawType = "form";
-        if (rawType === "vipcm") rawType = "comm";
-        var currentTypeIndex = typeMap.indexOf(rawType);
-        if (currentTypeIndex === -1) currentTypeIndex = 0;
-        var form = mc.newCustomForm();
-        form.setTitle("修改按钮: " + button.text);
-        form.addDropdown("按钮类型",        buttonTypes, currentTypeIndex);
-        form.addSwitch("是否开启按钮贴图",               button.images  || false);
-        form.addInput("按钮贴图地址", "textures/items/apple", button.image   || "");
-        form.addInput("按钮标题",     "例如: 说你好",           button.text);
-        form.addInput("按钮执行的结果","例如: say @a 你好",     button.command);
-        form.addInput("按钮所需金币", "例如: 999",              String(button.money || 0));
-        if (error) form.addLabel(error);
-        var self = this;
-        player.sendForm(form, function(pl, data) {
-            if (!data) { self.showEditButtonList(player, fileName); return; }
-            var typeIndex   = data[0], enableImage = data[1], imagePath  = data[2],
-                buttonText  = data[3], command     = data[4], money      = data[5];
-            if (!buttonText || !command) {
-                self.showEditButtonForm(player, fileName, buttonIndex, "§c标题和指令不能为空"); return;
-            }
-            var newButton = {
-                images: enableImage, image: enableImage ? (imagePath || "textures/items/apple") : "",
-                money: parseInt(money) || 0, text: buttonText, command: command, type: typeMap[typeIndex]
-            };
-            if (typeMap[typeIndex].includes("op")) newButton.oplist = button.oplist || [];
-            if (MenuDataManager.updateButton(fileName, buttonIndex, newButton))
-                player.tell(MENU_CONFIG.prefix + "§2修改成功");
-            else
-                player.tell(MENU_CONFIG.prefix + "§c修改失败");
-            self.showEditButtonList(player, fileName);
-        });
-    }
-
-    static showOtherSettings(player, error) {
-        var files = MenuUtils.getMenuFiles();
-        var form = mc.newCustomForm();
-        form.setTitle("其他设置");
-        form.addDropdown("主菜单文件（当前: " + menuConfig.getMain() + "）",
-            ["不修改", ...files], 0);
-        if (error) form.addLabel(error);
-        var self = this;
-        player.sendForm(form, function(pl, data) {
-            if (!data) { self.showMainSettings(player); return; }
-            if (data[0] > 0) {
-                menuConfig.set({ main: files[data[0] - 1].replace(".json", "") });
-                self.showOtherSettings(player, "§2修改成功");
-            } else {
-                self.showOtherSettings(player, "§e未做任何修改");
-            }
-        });
-    }
-}
-
-// ==================== 事件与初始化 ====================
-class MenuEventListeners {
-    static register() {
-        this.initializeResources();
-        const mode = menuConfig.getItemsTriggerMode();
-        // Fix: mode=1 监听空气右键（onUseItem），其他情况监听右键方块（onUseItemOn）
-        if (mode === 1) { this.listenUseItem(); }
-        else            { this.listenUseItemOn(); }
-        this.onJoin();
-        this.onLeft();
-    }
-
-    static initializeResources() {
-        MenuCommandHandler.register();
-        GetClockCommandHandler.register();
-        MenuDataManager.initializeAdminMenu();
-        menuConfig.validate();
-        if (!File.exists(MENU_CONFIG.menusPath + "main.json"))
-            MenuDataManager.setMenu("main", MenuDataManager.getDefaultMainMenu());
-    }
-
-    // Fix: 右键方块触发（有 block 参数），不限制平台
-    static listenUseItemOn() {
-        mc.listen("onUseItemOn", (player, item, block) => {
-            const items = menuConfig.getItems();
-            if (!items.includes(item.type)) return;
-            if (block.hasContainer()) return;
-            if (clickCooldown[player.xuid]) return;
-            if (menuPendingThisTick.has(player.xuid)) return;
-            menuPendingThisTick.add(player.xuid);
-            clickCooldown[player.xuid] = true;
-            MenuPlayerHandler.showMenu(player, menuConfig.getMain());
-            setTimeout(() => {
-                clickCooldown[player.xuid] = false;
-                menuPendingThisTick.delete(player.xuid);
-            }, 1000);
-        });
-    }
-
-    // Fix: 空气右键触发（无 block 参数），不限制平台
-    static listenUseItem() {
-        mc.listen("onUseItem", (player, item) => {
-            const items = menuConfig.getItems();
-            if (!items.includes(item.type)) return;
-            if (clickCooldown[player.xuid]) return;
-            if (menuPendingThisTick.has(player.xuid)) return;
-            menuPendingThisTick.add(player.xuid);
-            clickCooldown[player.xuid] = true;
-            MenuPlayerHandler.showMenu(player, menuConfig.getMain());
-            setTimeout(() => {
-                clickCooldown[player.xuid] = false;
-                menuPendingThisTick.delete(player.xuid);
-            }, 1000);
-        });
-    }
-
-    static onJoin() {
-        mc.listen("onJoin", (player) => {
-            MenuEconomyManager.add(player, 0);
-            if (!GetClockCommandHandler.hasClaimed(player.xuid)) {
-                var clockItem = mc.newItem("minecraft:clock", 1);
-                if (clockItem) {
-                    if (!player.getInventory().hasRoomFor(clockItem)) {
-                        mc.spawnItem(clockItem, player.pos);
-                        player.tell(info + "§e首次进服赠品：钟表已掉落在你脚下（背包已满），此物品每人仅限一次");
-                    } else {
-                        player.giveItem(clockItem);
-                        player.refreshItems();
-                        player.tell(info + "§a首次进服赠品：已获得钟表，此物品每人仅限一次");
-                    }
-                    GetClockCommandHandler.markClaimed(player.xuid);
-                }
-            }
-        });
-    }
-
-    static onLeft() {
-        mc.listen("onLeft", (player) => {
-            delete clickCooldown[player.xuid];
-        });
-    }
-}
-
-// ==================== 模块导出与启动 ====================
+// ==================== 实例初始化 ====================
 const menuConfig = new MenuConfigManager();
+menuConfig.validate();
+MenuDataManager.initializeAdminMenu();
 
-if (typeof module !== "undefined" && module.exports) {
-    module.exports = {
-        MenuConfigManager, MenuEventListeners, MenuUtils,
-        MenuEconomyManager, MenuDataManager, MenuPlayerHandler,
-        MenuCommandHandler, MenuAdminHandler, GetClockCommandHandler
-    };
+// ==================== 指令注册 ====================
+function registerCommands() {
+    const cdCmd = mc.newCommand("cd", "菜单系统", PermType.Any);
+    cdCmd.setAlias("menu");
+    cdCmd.overload([]);
+    cdCmd.overload(["set"]);
+    cdCmd.overload(["add", "string"]);
+    cdCmd.overload(["del", "string"]);
+    cdCmd.overload(["open", "string"]);
+    
+    cdCmd.setCallback((cmd, ori, out, res) => {
+        const pl = ori.player;
+        if (!pl) return;
+        
+        const action = res.action || "";
+        const target = res.string || "";
+        
+        switch (action) {
+            case "set":
+                if (!pl.isOP()) return pl.tell(info + "权限不足");
+                MenuAdminHandler.showSettings(pl);
+                break;
+            case "add":
+                if (!pl.isOP()) return pl.tell(info + "权限不足");
+                MenuAdminHandler.showAddMenu(pl, target);
+                break;
+            case "del":
+                if (!pl.isOP()) return pl.tell(info + "权限不足");
+                MenuAdminHandler.showDeleteMenu(pl, target);
+                break;
+            case "open":
+                MenuPlayerHandler.showMenu(pl, target);
+                break;
+            default:
+                MenuPlayerHandler.showMenu(pl, menuConfig.getMain());
+                break;
+        }
+    });
+    cdCmd.setup();
 }
-setTimeout(() => { MenuEventListeners.register(); }, 2000);
+
+// ==================== 事件监听 ====================
+function registerEvents() {
+    mc.listen("onUseItemOn", (pl, item) => {
+        if (menuPendingThisTick.has(pl.xuid)) return;
+        const triggerMode = menuConfig.getItemsTriggerMode();
+        if (triggerMode !== 0 && triggerMode !== 2) return;
+        
+        const items = menuConfig.getItems();
+        if (items.includes(item.type)) {
+            menuPendingThisTick.add(pl.xuid);
+            MenuPlayerHandler.showMenu(pl, menuConfig.getMain());
+            setTimeout(() => menuPendingThisTick.delete(pl.xuid), 50);
+        }
+    });
+
+    mc.listen("onUseItem", (pl, item) => {
+        if (menuPendingThisTick.has(pl.xuid)) return;
+        const triggerMode = menuConfig.getItemsTriggerMode();
+        if (triggerMode !== 1 && triggerMode !== 2) return;
+        
+        const items = menuConfig.getItems();
+        if (items.includes(item.type)) {
+            menuPendingThisTick.add(pl.xuid);
+            MenuPlayerHandler.showMenu(pl, menuConfig.getMain());
+            setTimeout(() => menuPendingThisTick.delete(pl.xuid), 50);
+        }
+    });
+}
+
+// ==================== 模块导出 ====================
+module.exports = {
+    init: function() {
+        registerCommands();
+        registerEvents();
+    }
+};

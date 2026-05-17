@@ -11,7 +11,7 @@ module.exports = {
 };
 
 function initPvpModule() {
-    if (!conf.get("PVP").EnabledModule) return;
+    if (!CachePool.conf("PVP").EnabledModule) return;
 
     // ── 注册 /pvp 命令 ───────────────────────────────────────
     const pvp = mc.newCommand("pvp", "设置是否 PVP。", PermType.Any);
@@ -23,8 +23,8 @@ function initPvpModule() {
         const player = ori.player;
         const xuid   = player.realName;
 
-        if (!conf.get("PVP").EnabledModule) {
-            player.tell(info + lang.get("module.no.Enabled"));
+        if (!CachePool.conf("PVP").EnabledModule) {
+            player.tell(info + CachePool.lang("module.no.Enabled"));
             return;
         }
 
@@ -32,7 +32,7 @@ function initPvpModule() {
         const newState     = (res.bool === undefined) ? !currentState : res.bool;
 
         pvpConfig.set(xuid, newState);
-        out.success(info + (newState ? lang.get("pvp.is.on") : lang.get("pvp.is.off")));
+        out.success(info + (newState ? CachePool.lang("pvp.is.on") : CachePool.lang("pvp.is.off")));
     });
     pvp.setup();
 
@@ -40,13 +40,14 @@ function initPvpModule() {
     mc.listen("onEntityExplode", (source, pos, radius, maxResistance, isDestroy, isFire) => {
         if (!pos) return true;
 
-        const pvpSettings = conf.get("PVP");
+        // ✅ CachePool.conf() 5s 缓存，避免爆炸事件每次读磁盘
+        const pvpSettings = CachePool.conf("PVP");
         if (!pvpSettings || !pvpSettings.EnabledModule) return true;
 
         const protectionRange = Math.max(radius, 5);
 
-        // v2.10.5: 先按维度过滤，排除不同维度玩家，再做距离计算
-        const sameDimPlayers = mc.getOnlinePlayers().filter(p => p.pos && p.pos.dimid === pos.dimid);
+        // ✅ CachePool.getOnlinePlayers() 1s 缓存
+        const sameDimPlayers = CachePool.getOnlinePlayers().filter(p => p.pos && p.pos.dimid === pos.dimid);
         if (sameDimPlayers.length < 2) return true;
 
         const playersNearby = sameDimPlayers.filter(player => {
@@ -79,7 +80,8 @@ function initPvpModule() {
         if (!mob.isPlayer()) return true;
 
         const victim = mob.toPlayer();
-        if (!conf.get("PVP").EnabledModule) return true;
+        // ✅ CachePool.conf() 5s 缓存，避免每次伤害都读磁盘
+        if (!CachePool.conf("PVP").EnabledModule) return true;
 
         // 情况 1：玩家互殴
         if (source && source.isPlayer()) {
@@ -88,11 +90,11 @@ function initPvpModule() {
             const victimPVP   = pvpConfig.get(victim.realName, false);
 
             if (!attackerPVP) {
-                attacker.tell(info + lang.get("your.pvp.isoff"), 6);
+                attacker.tell(info + CachePool.lang("your.pvp.isoff"), 6);
                 return false;
             }
             if (!victimPVP) {
-                attacker.tell(info + lang.get("then.pvp.isoff"), 6);
+                attacker.tell(info + CachePool.lang("then.pvp.isoff"), 6);
                 return false;
             }
         }
@@ -101,7 +103,7 @@ function initPvpModule() {
         const isFireDamage = (cause === 6 || cause === 7);
         if (isFireDamage && !pvpConfig.get(victim.realName, false)) {
             const p = victim.pos;
-            const nearbyPlayers = mc.getOnlinePlayers().filter(other => {
+            const nearbyPlayers = CachePool.getOnlinePlayers().filter(other => {
                 if (other.realName === victim.realName) return false;
                 const op = other.pos;
                 if (op.dimid !== p.dimid) return false;
@@ -118,7 +120,7 @@ function initPvpModule() {
         const isExplosionDamage = (cause === 2 || cause === 3 || cause === 11);
         if (isExplosionDamage && !pvpConfig.get(victim.realName, false)) {
             const p = victim.pos;
-            const nearbyPlayers = mc.getOnlinePlayers().filter(other => {
+            const nearbyPlayers = CachePool.getOnlinePlayers().filter(other => {
                 const op = other.pos;
                 if (op.dimid !== p.dimid) return false;
                 return Math.sqrt(

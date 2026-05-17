@@ -9,6 +9,10 @@
             "name": "Bstats"
         },
         {
+            "path": "CachePool.js",
+            "name": "CachePool"
+        },
+        {
             "path": "Cd.js",
             "name": "Cd"
         },
@@ -63,6 +67,10 @@
         {
             "path": "Warp.js",
             "name": "Warp"
+        },
+        {
+            "path": "WriteBackStore.js",
+            "name": "WriteBackStore"
         }
     ]
 }

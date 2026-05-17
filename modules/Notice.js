@@ -44,11 +44,11 @@ function initNoticeModule() {
 
 /** 启动时若 IsUpdate == 1，清空玩家阅读记录并重置标记 */
 function _checkNoticeUpdateFlag() {
-    const noticeCfg = conf.get("Notice");
+    const noticeCfg = CachePool.conf("Notice");
     if (!noticeCfg || noticeCfg.IsUpdate != 1) return;
 
     File.delete(_getNoticeSettingFile());
-    randomGradientLog(lang.get("notice.is.changed"));
+    randomGradientLog(CachePool.lang("notice.is.changed"));
     noticeCfg.IsUpdate = false;
     conf.set("Notice", noticeCfg);
 }
@@ -62,8 +62,8 @@ function _registerNoticeCmd() {
         const pl = ori.player;
         if (!pl) return;
 
-        if (!conf.get("Notice").EnableModule) {
-            pl.tell(info + lang.get("module.no.Enabled"));
+        if (!CachePool.conf("Notice").EnableModule) {
+            pl.tell(info + CachePool.lang("module.no.Enabled"));
             return;
         }
 
@@ -79,14 +79,14 @@ function _registerNoticeCmd() {
         const lines = rawContent.split("\n");
 
         const fm = mc.newCustomForm()
-            .setTitle(info + lang.get("notice.for.server"));
+            .setTitle(info + CachePool.lang("notice.for.server"));
 
         lines.forEach(line => {
             if (line.trim() !== "") fm.addLabel(line);
         });
 
         fm.addSwitch(
-            lang.get("notice.dont.showagain"),
+            CachePool.lang("notice.dont.showagain"),
             noticeconf.get(String(pl.realName)) != 0
         );
 
@@ -111,12 +111,12 @@ function _registerNoticeSetCmd() {
         const pl = ori.player;
         if (!pl) return;
 
-        if (!conf.get("Notice").EnableModule) {
-            pl.tell(info + lang.get("module.no.Enabled"));
+        if (!CachePool.conf("Notice").EnableModule) {
+            pl.tell(info + CachePool.lang("module.no.Enabled"));
             return;
         }
         if (!pl.isOP()) {
-            output.error(info + lang.get("player.not.op"));
+            output.error(info + CachePool.lang("player.not.op"));
             return;
         }
 
@@ -127,7 +127,7 @@ function _registerNoticeSetCmd() {
         // 递归多行编辑表单
         const sendNoticeForm = (player, lines) => {
             const form = mc.newCustomForm()
-                .setTitle(info + lang.get("notice.editor"));
+                .setTitle(info + CachePool.lang("notice.editor"));
 
             lines.forEach((line, index) => {
                 form.addInput(`§a行 ${index + 1}`, "", line || "");
@@ -137,7 +137,7 @@ function _registerNoticeSetCmd() {
 
             player.sendForm(form, (plr, data) => {
                 if (data === null || data === undefined) {
-                    plr.tell(info + lang.get("notice.exit.edit"));
+                    plr.tell(info + CachePool.lang("notice.exit.edit"));
                     return;
                 }
 
@@ -148,7 +148,7 @@ function _registerNoticeSetCmd() {
                     case 0: { // 完成编辑
                         const newContent = contentLines.join("\n");
                         if (newContent === currentNotice) {
-                            plr.tell(info + lang.get("notice.no.change"));
+                            plr.tell(info + CachePool.lang("notice.no.change"));
                             return;
                         }
                         // 备份旧公告
@@ -156,18 +156,18 @@ function _registerNoticeSetCmd() {
                             if (file.exists(NOTICE_FILE)) {
                                 if (file.exists(NOTICE_BAK)) file.delete(NOTICE_BAK);
                                 file.rename(NOTICE_FILE, NOTICE_BAK);
-                                plr.tell(info + lang.get("notice.backupto"));
+                                plr.tell(info + CachePool.lang("notice.backupto"));
                             }
                         } catch (e) {
                             plr.tell(info + "§c备份失败: " + e);
                         }
                         // 保存新公告并重置阅读记录
                         file.writeTo(NOTICE_FILE, newContent);
-                        plr.tell(info + lang.get("notice.save.ok"));
+                        plr.tell(info + CachePool.lang("notice.save.ok"));
                         File.delete(_getNoticeSettingFile());
-                        randomGradientLog(lang.get("notice.is.changed"));
+                        randomGradientLog(CachePool.lang("notice.is.changed"));
                         // 重置更新标记
-                        const noticeObj = conf.get("Notice");
+                        const noticeObj = CachePool.conf("Notice");
                         noticeObj.IsUpdate = false;
                         conf.set("Notice", noticeObj);
                         break;
@@ -182,7 +182,7 @@ function _registerNoticeSetCmd() {
                             contentLines.pop();
                             sendNoticeForm(plr, contentLines);
                         } else {
-                            plr.tell(info + lang.get("notice.cannot.del"));
+                            plr.tell(info + CachePool.lang("notice.cannot.del"));
                             sendNoticeForm(plr, contentLines);
                         }
                         break;
@@ -199,7 +199,7 @@ function _registerNoticeSetCmd() {
 /** 监听 onJoin，自动弹出公告 */
 function _registerJoinListener() {
     mc.listen("onJoin", (pl) => {
-        const noticeCfg = conf.get("Notice");
+        const noticeCfg = CachePool.conf("Notice");
         if (!noticeCfg || !noticeCfg.EnableModule) return;
         if (!noticeCfg.Join_ShowNotice) return;
 
