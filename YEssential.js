@@ -14,8 +14,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件 `;
-const version = "2.12.0";
-const regversion =[2,12,0];
+const version = "2.12.1";
+const regversion =[2,12,1];
 const info = "§l§d[-YEST-] §r§l> ";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
@@ -2194,11 +2194,11 @@ const pendingTpaRequests = {};
 // TPA 主菜单
 function showTpaMainMenu(player) {
     const fm = mc.newSimpleForm();
-    fm.setTitle("TPA 主菜单");
-    fm.setContent("请选择您要进行的操作：");
-    fm.addButton("传送到玩家");
-    fm.addButton("把玩家传过来");
-    fm.addButton("偏好设置");
+    fm.setTitle(CachePool.lang("tpa.main.title"));
+    fm.setContent(CachePool.lang("tpa.main.content"));
+    fm.addButton(CachePool.lang("tpa.btn.to"));
+    fm.addButton(CachePool.lang("tpa.btn.here"));
+    fm.addButton(CachePool.lang("tpa.btn.prefs"));
     player.sendForm(fm, (pl, id) => {
         if (id == null) return;
         if (id === 0) showTpaMenu(pl, "to");
@@ -2216,7 +2216,7 @@ function showTpaMenu(player, fixedDirection) {
         return;
     }
     let form = mc.newCustomForm();
-    form.setTitle(fixedDirection === "to" ? "传送到玩家" : "把玩家传过来");
+    form.setTitle(CachePool.lang(fixedDirection === "to" ? "tpa.btn.to" : "tpa.btn.here"));
     let nameList = onlinePlayers.map(p => p.name);
     form.addDropdown(CachePool.lang("tpa.choose.player"), nameList);
     form.addLabel(CachePool.lang("tpa.cost").replace("${cost}", cost).replace("${Scoreboard}", Scoreboard));
@@ -2226,7 +2226,7 @@ function showTpaMenu(player, fixedDirection) {
     
     let hasDelaySlider = false;
     if (isDelayEnabled) {
-        form.addSlider(`§e传送延迟(0~${maxD}秒)`, 0, maxD, 1, 0);
+        form.addSlider((CachePool.lang("tpa.delay.slider") || "§e传送延迟(0~${max}秒)").replace("${max}", maxD), 0, maxD, 1, 0);
         hasDelaySlider = true;
     }
     
@@ -2266,10 +2266,10 @@ function showTpaPrefsGui(player) {
     const tpaConfig = CachePool.conf("tpa") || {};
     
     const fm = mc.newCustomForm();
-    fm.setTitle("tpa设置");
-    fm.addLabel("关闭此开关将立即拒绝任何tpa请求。");
-    fm.addSwitch("tpa开关", prefs.acceptTpaRequests !== false);
-    fm.addDropdown("接收到tpa请求时", ["弹窗提醒", "文字提醒"],
+    fm.setTitle(CachePool.lang("tpa.prefs.title"));
+    fm.addLabel(CachePool.lang("tpa.prefs.label"));
+    fm.addSwitch(CachePool.lang("tpa.prefs.switch"), prefs.acceptTpaRequests !== false);
+    fm.addDropdown(CachePool.lang("tpa.prefs.prompt"), [CachePool.lang("tpa.prefs.prompt.form"), CachePool.lang("tpa.prefs.prompt.text")],
         (prefs.promptType === "text" ? 1 : 0));
     fm.addInput("tpa请求有效时间/秒", "秒", String(prefs.requestTimeout || tpaConfig.requestTimeout || 60), CachePool.lang("tpa.timeout.tip") || "");
     
@@ -2370,11 +2370,11 @@ function sendTpaRequest(fromPlayer, toPlayerName, direction, delaySec) {
     let pType = toPrefs.promptType || tpaConfig.promptType || "form";
     let timeoutSec = toPrefs.requestTimeout || tpaConfig.requestTimeout || 60;
     toPlayer.tell(`${info}§e收到传送请求(${req.fromName}想${direction === "to" ? CachePool.lang("tpa.to.here"):CachePool.lang("tpa.to.he.she")})\n` +
-                 (delaySec > 0 ? `§6并设置了延迟: ${delaySec}秒\n` : "") +
+                 (delaySec > 0 ? (CachePool.lang("tpa.delay.set") || "§6并设置了延迟: ${delay}秒").replace("${delay}", delaySec) + "\n" : "") +
                  `${CachePool.lang("tpa.a.and.d")}\n` +
-                 `§c请求最多等待${timeoutSec}秒`);
+                 (CachePool.lang("tpa.request.wait") || "§c请求最多等待${timeout}秒").replace("${timeout}", timeoutSec));
  //1816   
-    fromPlayer.tell(`${info}§a已向 ${toPlayerName} 发送请求(延迟=${delaySec}), 等待对方同意(最多${timeoutSec}s)`);
+    fromPlayer.tell(info + (CachePool.lang("tpa.sent.request") || "§a已向 ${player} 发送请求(延迟=${delay}秒), 等待对方同意(最多${timeout}秒)").replace("${player}", toPlayerName).replace("${delay}", delaySec).replace("${timeout}", timeoutSec));
     
     if (pType === "form") {
         showTpaConfirmForm(req, timeoutSec);
@@ -2387,7 +2387,7 @@ function showTpaConfirmForm(req, timeoutSec) {
     let toPlayer = req.to;
     let fromName = req.fromName;
     let dirText = (req.direction === "to" ? CachePool.lang("tpa.to.here"): CachePool.lang("tpa.to.here"));
-    let delayStr = (req.delay > 0 ? `(延迟${req.delay}秒)\n` : "");
+    let delayStr = (req.delay > 0 ? (CachePool.lang("tpa.delay.info") || "(延迟${delay}秒)").replace("${delay}", req.delay) + "\n" : "");
     
     let form = mc.newSimpleForm();
     form.setTitle(CachePool.lang("tpa.request"));
@@ -2411,11 +2411,12 @@ function showTpaBossbarPrompt(req, timeoutSec) {
     let toPlayer = req.to;
     let fromName = req.fromName;
     let dirText = (req.direction === "to" ? CachePool.lang("tpa.to.here"): CachePool.lang("tpa.to.he.she"));
-    let delayStr = (req.delay > 0 ? `(延迟${req.delay}秒)` : "");
+    let delayStr = (req.delay > 0 ? (CachePool.lang("tpa.delay.info") || "(延迟${delay}秒)").replace("${delay}", req.delay) : "");
     let barId = req.bossbarId;
     
     toPlayer.setBossBar(barId,
-        `§a${fromName}请求${dirText}§f${delayStr}\n§c(/tpayes同意 /tpano拒绝)`,
+        (CachePool.lang("tpa.bossbar.text") || "§a${from}请求${dir}§f${delay}\n§c(/tpayes同意 /tpano拒绝)")
+            .replace("${from}", fromName).replace("${dir}", dirText).replace("${delay}", delayStr),
         100, 3
     );
     
@@ -2448,7 +2449,8 @@ function startTpaRequestCountdown(req, timeoutSec, bossbarMode) {
                 let dirText = (req.direction === "to" ? CachePool.lang("tpa.to.here") : CachePool.lang("tpa.to.he.she"));
                 let delayStr = (req.delay > 0 ? `(延迟${req.delay}秒)` : "");
                 toPlayer.setBossBar(barId,
-                    `§a${fromName}请求${dirText}§f${delayStr}§s(/tpy同意 /tpn拒绝),剩余${remain}s`,
+                    (CachePool.lang("tpa.bossbar.countdown") || "§a${from}请求${dir}§f${delay}(/tpayes同意 /tpano拒绝),剩余${remain}s")
+                        .replace("${from}", fromName).replace("${dir}", dirText).replace("${delay}", delayStr).replace("${remain}", remain),
                     percent, 3
                 );
             }
@@ -2504,7 +2506,9 @@ function acceptTpaRequest(targetName) {
     let dir = req.direction;
     
     to.tell(info +CachePool.lang("tpa.accpet.request"));
-    from.tell(`${info}§a对方已同意请求，` + (delay > 0 ? `将在${delay}秒后传送...` : "正在传送..."));
+    from.tell(info + (delay > 0
+        ? (CachePool.lang("tpa.accept.delay") || "§a对方已同意请求，将在${delay}秒后传送...").replace("${delay}", delay)
+        : CachePool.lang("tpa.accept.now")));
         if (cost > 0) {
         if (!EconomyManager.checkAndReduce(from.realName, cost)) {
             showInsufficientMoneyGui(from, cost);
@@ -2535,8 +2539,9 @@ function acceptTpaRequest(targetName) {
                 }
 
                 let percent = Math.floor((remain / delay) * 100);
-                fromPlayer2.setBossBar(secondBarId, `§d传送倒计时: ${remain}s`, percent, 1);
-                toPlayer2.setBossBar(secondBarId, `§d传送倒计时: ${remain}s`, percent, 1);
+                const countdownText = (CachePool.lang("tpa.countdown.bar") || "§d传送倒计时: ${remain}s").replace("${remain}", remain);
+                fromPlayer2.setBossBar(secondBarId, countdownText, percent, 1);
+                toPlayer2.setBossBar(secondBarId, countdownText, percent, 1);
 
                 if (remain <= 0) {
                     clearInterval(secondTid);
