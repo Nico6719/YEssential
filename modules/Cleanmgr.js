@@ -15,11 +15,11 @@ var CleanMgr = (function () {
   var BASE = "./plugins/YEssential/";
   
   // 配置文件路径
-  var CONFIG_DIR = BASE + "config/cleanmgr/";
+  var CONFIG_DIR = BASE + "config/Cleanmgr/";
   var CONFIG_PATH = CONFIG_DIR + "config.json";
   
   // 语言文件路径
-  var LANG_DIR   = BASE + "lang/cleanmgr/";
+  var LANG_DIR   = BASE + "lang/Cleanmgr/";
   var LANG_PATH   = LANG_DIR + "lang.json";
 
   // 玩家数据路径: plugins/YEssential/data/CleanmgrSettingData.json
@@ -76,7 +76,7 @@ var CleanMgr = (function () {
       "^minecraft:ender_crystal$", "^minecraft:ender_dragon$", "^minecraft:parrot$",
       "^minecraft:chest_minecart$", "^minecraft:minecart$", "^minecraft:hopper_minecart$",
       "^minecraft:armor_stand$", "^minecraft:boat$", "^minecraft:sheep$","^minecraft:leash_knot$",
-      "^minecraft:cow$", "^minecraft:pig$", "^minecraft:painting$"
+      "^minecraft:cow$", "^minecraft:pig$", "^minecraft:painting$","^minecraft:copper_golem$"
     ],
     notice: { notice1: 30, notice2: 15, notice3: 5 },
     LowTpsClean: { 

@@ -190,6 +190,27 @@ const defaultLangContent = {
     "tpa.to.here": "§e传送到我",
     "tpa.noplayer.online": "§c当前没有其他在线玩家",
     "tpa.fail": "传送失败:",
+    "tpa.main.title": "TPA 主菜单",
+    "tpa.main.content": "请选择您要进行的操作：",
+    "tpa.btn.to": "传送到玩家",
+    "tpa.btn.here": "把玩家传过来",
+    "tpa.btn.prefs": "偏好设置",
+    "tpa.delay.slider": "§e传送延迟(0~${max}秒)",
+    "tpa.prefs.title": "TPA 偏好设置",
+    "tpa.prefs.label": "关闭此开关将立即拒绝任何TPA请求。",
+    "tpa.prefs.switch": "TPA 开关",
+    "tpa.prefs.prompt": "接收到TPA请求时",
+    "tpa.prefs.prompt.form": "弹窗提醒",
+    "tpa.prefs.prompt.text": "文字提醒",
+    "tpa.delay.set": "§6并设置了延迟: ${delay}秒",
+    "tpa.request.wait": "§c请求最多等待${timeout}秒",
+    "tpa.sent.request": "§a已向 ${player} 发送请求(延迟=${delay}秒), 等待对方同意(最多${timeout}秒)",
+    "tpa.delay.info": "(延迟${delay}秒)",
+    "tpa.bossbar.text": "§a${from}请求${dir}§f${delay}\n§c(/tpayes同意 /tpano拒绝)",
+    "tpa.bossbar.countdown": "§a${from}请求${dir}§f${delay}(/tpayes同意 /tpano拒绝),剩余${remain}s",
+    "tpa.accept.delay": "§a对方已同意请求，将在${delay}秒后传送...",
+    "tpa.accept.now": "§a对方已同意请求，正在传送...",
+    "tpa.countdown.bar": "§d传送倒计时: ${remain}s",
 
     // 公告相关
     "notice.backupto": "§a原公告已备份为 notice.txt.bak",
@@ -468,11 +489,13 @@ class AsyncLanguageManager {
                 await AsyncFileManager.writeFile(langFilePath, mergedData);
 
                 if (isFirstLoad) {
-                    randomGradientLog(`语言文件首次释放完成，共 ${addedCount} 个条目，即将重载...`);
-                    // 稍等一下确保文件写入完毕再 reload
-                    setTimeout(() => {
-                        mc.runcmdEx("ll reload YEssential");
-                    }, 80);
+                    // [fix] 不再触发 ll reload YEssential：
+                    // reload 会让已注册命令的 setCallback 被 LSE 忽略（"运行时命令已存在"），
+                    // 旧 JS 上下文随即被销毁，命令执行时回调引用失效 → "get on empty Global"。
+                    // 直接热替换 globalThis.lang 即可，与非首次加载路径行为一致。
+                    randomGradientLog(`语言文件首次释放完成，共 ${addedCount} 个条目，已热更新语言缓存`);
+                    lang = new JsonConfigFile(langFilePath, JSON.stringify(mergedData));
+                    globalThis.lang = lang;
                 } else {
                     randomGradientLog(`语言文件已更新，新增 ${addedCount} 个条目`);
                     lang = new JsonConfigFile(langFilePath, JSON.stringify(mergedData));
