@@ -42,6 +42,14 @@ body:
         3. Other players can browse and purchase items
     validations:
       required: true
+  - type: input
+    id: yes-version
+    attributes:
+      label: YEssential Plugin Version (Optional)
+      description: If this suggestion is related to a specific version, please specify.
+      placeholder: "e.g., v2.11.0"
+    validations:
+      required: false
   - type: textarea
     id: alternatives
     attributes:

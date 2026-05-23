@@ -58,15 +58,12 @@ body:
       placeholder: "请在此处粘贴图片或提供链接。"
     validations:
       required: false
-  - type: dropdown
+  - type: input
     id: server-version
     attributes:
       label: 服务器版本
       description: 您使用的 Minecraft 基岩版服务器版本是什么？
-      options:
-        - "1.20.x"
-        - "1.21.x"
-        - "其他 (请在下方补充)"
+      placeholder: "例如：1.21.2"
     validations:
       required: true
   - type: input
@@ -77,15 +74,12 @@ body:
       placeholder: "例如：v2.11.0"
     validations:
       required: true
-  - type: dropdown
+  - type: input
     id: lse-version
     attributes:
       label: LSE/LeviLamina 版本
       description: 您使用的 LegacyScriptEngine (LSE) 或 LeviLamina 版本。
-      options:
-        - "最新版"
-        - "旧版本 (请在下方补充)"
-        - "不确定"
+      placeholder: "例如：LSE v0.10.0 或 LeviLamina v0.15.0"
     validations:
       required: true
   - type: textarea

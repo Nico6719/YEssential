@@ -58,15 +58,12 @@ body:
       placeholder: "Please paste images or provide links here."
     validations:
       required: false
-  - type: dropdown
+  - type: input
     id: server-version
     attributes:
       label: Server Version
       description: What Minecraft Bedrock Edition server version are you using?
-      options:
-        - "1.20.x"
-        - "1.21.x"
-        - "Other (please specify below)"
+      placeholder: "e.g., 1.21.2"
     validations:
       required: true
   - type: input
@@ -77,15 +74,12 @@ body:
       placeholder: "e.g., v2.11.0"
     validations:
       required: true
-  - type: dropdown
+  - type: input
     id: lse-version
     attributes:
       label: LSE/LeviLamina Version
       description: The LegacyScriptEngine (LSE) or LeviLamina version you are using.
-      options:
-        - "Latest"
-        - "Older version (please specify below)"
-        - "Unsure"
+      placeholder: "e.g., LSE v0.10.0 or LeviLamina v0.15.0"
     validations:
       required: true
   - type: textarea

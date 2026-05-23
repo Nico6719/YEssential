@@ -42,6 +42,14 @@ body:
         3. 其他玩家可以浏览和购买商品
     validations:
       required: true
+  - type: input
+    id: yes-version
+    attributes:
+      label: YEssential 插件版本 (可选)
+      description: 如果此建议与特定版本相关，请填写。
+      placeholder: "例如：v2.11.0"
+    validations:
+      required: false
   - type: textarea
     id: alternatives
     attributes:
