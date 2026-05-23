@@ -1,0 +1,60 @@
+name: Feature Request
+description: Suggest a new feature or improvement for the YEssential plugin
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |-
+        Thank you for your valuable feature suggestion for the YEssential plugin! Please describe your idea in as much detail as possible so that we can better understand and evaluate it.
+  - type: input
+    id: contact
+    attributes:
+      label: Contact Information
+      description: How can we contact you if we have more questions?
+      placeholder: "e.g., QQ number, email (optional)"
+    validations:
+      required: false
+  - type: textarea
+    id: feature-description
+    attributes:
+      label: Feature Description
+      description: Please clearly and concisely describe the feature you wish to add or improve.
+      placeholder: "I hope the YEssential plugin can add a 'Player Shop' function."
+    validations:
+      required: true
+  - type: textarea
+    id: problem-statement
+    attributes:
+      label: Problem Solved
+      description: What problem will this new feature solve or what benefits will it bring?
+      placeholder: "Currently, player trading is inconvenient. Adding a shop function can promote player interaction and economic development."
+    validations:
+      required: true
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use Case
+      description: Please describe how this feature would work in practice.
+      placeholder: |-
+        1. Players use the command `/shop create` to create a shop
+        2. Players can manage items through the GUI interface
+        3. Other players can browse and purchase items
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives (Optional)
+      description: Have you considered other implementations or existing plugins? Why do you think this suggestion is better?
+      placeholder: "Currently, plugin XYZ can achieve similar functionality, but built-in YEssential would be more convenient."
+    validations:
+      required: false
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context (Optional)
+      description: Is there any other information you think would be helpful for us to evaluate this feature suggestion?
+      placeholder: "e.g., You can refer to the implementation methods of other plugins."
+    validations:
+      required: false

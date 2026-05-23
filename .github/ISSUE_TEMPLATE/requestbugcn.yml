@@ -1,0 +1,98 @@
+name: Bug 反馈
+description: 报告 YEssential 插件中遇到的 Bug
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |-
+        感谢您花时间提交 Bug 报告！请尽可能详细地填写以下信息，以便我们更好地理解和解决问题。
+  - type: input
+    id: contact
+    attributes:
+      label: 联系方式
+      description: 如果我们有更多问题，如何联系您？
+      placeholder: "例如：QQ号、邮箱等 (可选)"
+    validations:
+      required: false
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug 描述
+      description: 请清晰简洁地描述您遇到的 Bug。
+      placeholder: "请描述 Bug 的具体表现..."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 复现步骤
+      description: 请提供详细的步骤，以便我们复现此 Bug。
+      placeholder: |-
+        1. 启动服务器
+        2. 执行命令 `/ye example`
+        3. 观察到错误
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: 预期行为
+      description: 您期望插件如何正常工作？
+      placeholder: "我期望插件能正常执行命令，不报错。"
+    validations:
+      required: true
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: 实际行为
+      description: 实际发生了什么？请附上错误日志或截图。
+      placeholder: "插件执行命令后，服务器崩溃并显示错误日志。"
+    validations:
+      required: true
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 截图或视频 (可选)
+      description: 如果可以，请提供相关的截图或视频链接，这有助于我们更快地定位问题。
+      placeholder: "请在此处粘贴图片或提供链接。"
+    validations:
+      required: false
+  - type: dropdown
+    id: server-version
+    attributes:
+      label: 服务器版本
+      description: 您使用的 Minecraft 基岩版服务器版本是什么？
+      options:
+        - "1.20.x"
+        - "1.21.x"
+        - "其他 (请在下方补充)"
+    validations:
+      required: true
+  - type: input
+    id: yes-version
+    attributes:
+      label: YEssential 插件版本
+      description: 您使用的 YEssential 插件版本号。
+      placeholder: "例如：v2.11.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: lse-version
+    attributes:
+      label: LSE/LeviLamina 版本
+      description: 您使用的 LegacyScriptEngine (LSE) 或 LeviLamina 版本。
+      options:
+        - "最新版"
+        - "旧版本 (请在下方补充)"
+        - "不确定"
+    validations:
+      required: true
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: 额外上下文 (可选)
+      description: 您认为还有哪些信息对我们解决此 Bug 有帮助？例如，其他插件的冲突、特殊配置等。
+      placeholder: "例如：与 XYZ 插件同时使用时出现问题。"
+    validations:
+      required: false

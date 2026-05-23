@@ -1,0 +1,60 @@
+name: 功能建议
+description: 提交 YEssential 插件的新功能建议或改进意见
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |-
+        感谢您为 YEssential 插件提出宝贵的功能建议！请尽可能详细地描述您的想法，以便我们更好地理解和评估。
+  - type: input
+    id: contact
+    attributes:
+      label: 联系方式
+      description: 如果我们有更多问题，如何联系您？
+      placeholder: "例如：QQ号、邮箱等 (可选)"
+    validations:
+      required: false
+  - type: textarea
+    id: feature-description
+    attributes:
+      label: 功能描述
+      description: 请清晰简洁地描述您希望添加或改进的功能。
+      placeholder: "我希望 YEssential 插件能增加一个 '玩家商店' 功能。"
+    validations:
+      required: true
+  - type: textarea
+    id: problem-statement
+    attributes:
+      label: 解决的问题
+      description: 这个新功能将解决什么问题或带来什么好处？
+      placeholder: "目前玩家之间交易不便，增加商店功能可以促进玩家互动和经济发展。"
+    validations:
+      required: true
+  - type: textarea
+    id: use-case
+    attributes:
+      label: 使用场景
+      description: 请描述这个功能在实际使用中会如何运作。
+      placeholder: |-
+        1. 玩家使用命令 `/shop create` 创建商店
+        2. 玩家可以通过 GUI 界面管理商品
+        3. 其他玩家可以浏览和购买商品
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 替代方案 (可选)
+      description: 您是否考虑过其他实现方式或现有插件？为什么您认为这个建议更好？
+      placeholder: "目前有 XYZ 插件可以实现类似功能，但 YEssential 内置会更方便。"
+    validations:
+      required: false
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: 额外上下文 (可选)
+      description: 您认为还有哪些信息对我们评估此功能建议有帮助？
+      placeholder: "例如：可以参考其他插件的实现方式。"
+    validations:
+      required: false
