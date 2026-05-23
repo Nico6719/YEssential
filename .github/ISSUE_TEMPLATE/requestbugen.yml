@@ -1,0 +1,98 @@
+name: Bug Report
+description: Report a bug encountered in the YEssential plugin
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |-
+        Thank you for taking the time to submit a bug report! Please fill in the following information as detailed as possible so that we can better understand and resolve the issue.
+  - type: input
+    id: contact
+    attributes:
+      label: Contact Information
+      description: How can we contact you if we have more questions?
+      placeholder: "e.g., QQ number, email (optional)"
+    validations:
+      required: false
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: Please clearly and concisely describe the bug you encountered.
+      placeholder: "Please describe the specific manifestation of the bug..."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Please provide detailed steps so that we can reproduce this bug.
+      placeholder: |-
+        1. Start the server
+        2. Execute command `/ye example`
+        3. Observe the error
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: How do you expect the plugin to work normally?
+      placeholder: "I expect the plugin to execute commands normally without errors."
+    validations:
+      required: true
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual Behavior
+      description: What actually happened? Please attach error logs or screenshots.
+      placeholder: "After executing the command, the server crashed and displayed error logs."
+    validations:
+      required: true
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or Videos (Optional)
+      description: If possible, please provide relevant screenshots or video links. This will help us pinpoint the issue faster.
+      placeholder: "Please paste images or provide links here."
+    validations:
+      required: false
+  - type: dropdown
+    id: server-version
+    attributes:
+      label: Server Version
+      description: What Minecraft Bedrock Edition server version are you using?
+      options:
+        - "1.20.x"
+        - "1.21.x"
+        - "Other (please specify below)"
+    validations:
+      required: true
+  - type: input
+    id: yes-version
+    attributes:
+      label: YEssential Plugin Version
+      description: The version number of the YEssential plugin you are using.
+      placeholder: "e.g., v2.11.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: lse-version
+    attributes:
+      label: LSE/LeviLamina Version
+      description: The LegacyScriptEngine (LSE) or LeviLamina version you are using.
+      options:
+        - "Latest"
+        - "Older version (please specify below)"
+        - "Unsure"
+    validations:
+      required: true
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context (Optional)
+      description: Is there any other information you think would be helpful for us to resolve this bug? For example, conflicts with other plugins, special configurations, etc.
+      placeholder: "e.g., Problems occur when used simultaneously with plugin XYZ."
+    validations:
+      required: false
