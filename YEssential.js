@@ -14,8 +14,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件 `;
-const version = "2.12.1";
-const regversion =[2,12,1];
+const version = "2.12.2";
+const regversion =[2,12,2];
 const info = "§l§d[-YEST-] §r§l> ";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
@@ -493,7 +493,7 @@ function initializePlugin() {
             p.simulateDisconnect();
         }
     });
-    if(CachePool.conf("Update")?.EnableModule==0) {return;}
+    if(CachePool.conf("Update", globalThis.updateConf)?.EnableModule==0) {return;}
      else{
     // 第七步：异步初始化更新检查器并检查更新
     setTimeout(() => {
@@ -503,7 +503,7 @@ function initializePlugin() {
                 await AsyncUpdateChecker.init();
                 
                 // 获取更新配置
-                const updateConfig = CachePool.conf("Update");
+                const updateConfig = CachePool.conf("Update", globalThis.updateConf);
                 
                 // 检查是否启用更新模块
                 if (updateConfig && updateConfig.EnableModule) {
@@ -1649,6 +1649,40 @@ function MoneyHistoryGui(plname) {
     });
 }
 
+// ══════════════════════════════════════════════════════════════
+// calcTax — 阶梯税率计算
+// 档位匹配依据：玩家【余额】，税额作用于【转账金额】
+// Economy.PayTaxRate 支持两种格式：
+//   数字（旧版兼容）: 如 5 → 固定 5%
+//   数组（新版阶梯）: [{min,max,max=-1代表无上限,rate}, ...]
+// 参考 LSE Economy API: https://lse.levimc.org/apis/DataAPI/Economy/
+// ══════════════════════════════════════════════════════════════
+/**
+ * @param {number} amount  转账金额（用于计算税额）
+ * @param {number} balance 玩家当前余额（用于匹配档位）
+ * @returns {{ tax:number, rate:number, taxTip:string }}
+ */
+function calcTax(amount, balance) {
+    const cfg = CachePool.conf("Economy").PayTaxRate;
+
+    // 旧版兼容：单一数字
+    if (typeof cfg === "number") {
+        return { tax: Math.floor(amount * (cfg / 100)), rate: cfg, taxTip: `${cfg}%` };
+    }
+
+    // 新版阶梯数组 — 按余额匹配档位，对转账金额征税
+    if (Array.isArray(cfg) && cfg.length > 0) {
+        for (const tier of cfg) {
+            if (balance >= tier.min && (tier.max === -1 || balance < tier.max)) {
+                const taxTip = `${tier.rate}%`;
+                return { tax: Math.floor(amount * (tier.rate / 100)), rate: tier.rate, taxTip };
+            }
+        }
+    }
+
+    return { tax: 0, rate: 0, taxTip: "0%" };
+}
+
 /**
  * 玩家转账 GUI
  * 优化点：封装经济接口、增强金额验证、加入备注支持、修复税率逻辑
@@ -1658,14 +1692,15 @@ function MoneyTransferGui(plname) {
     if (!pl) return;
     const playerNames = CachePool.getOnlinePlayers().map(p => p.realName);
     const myBalance = Economy.get(pl);
-    const taxRate = CachePool.conf("Economy").PayTaxRate;
     const coinName = economyCfg.coinName;
+    // 用 calcTax(0, myBalance) 只为取 taxTip 展示当前档位
+    const { taxTip } = calcTax(0, myBalance);
     const fm = mc.newCustomForm();
     fm.setTitle(CachePool.lang("money.transfer.title") + coinName);
     fm.addLabel(CachePool.lang("money.transfer.balance")
         .replace("${balance}", myBalance)
         .replace("${coin}", coinName) + "\n" + 
-        CachePool.lang("money.transfer.tax").replace("${rate}", taxRate));
+        CachePool.lang("money.transfer.tax").replace("${rate}", taxTip));
     fm.addDropdown(CachePool.lang("choose") + CachePool.lang("one") + CachePool.lang("player"), playerNames);
     fm.addInput(CachePool.lang("money.tr.amount"), CachePool.lang("money.transfer.input.amount"), "0", CachePool.lang("money.tr.amount.tip") || "");
     fm.addInput(CachePool.lang("money.tr.beizhu"), CachePool.lang("money.tr.beizhu"), "无", CachePool.lang("money.tr.beizhu.tip") || "");
@@ -1693,7 +1728,7 @@ function MoneyTransferGui(plname) {
                 : CachePool.lang("money.must.bigger0")));
         }
 
-        const tax = Math.floor(finalAmount * (taxRate / 100));
+        const { tax } = calcTax(finalAmount, Economy.get(player));
         const actualReceived = finalAmount - tax;
 
         if (actualReceived <= 0 || Economy.get(player) < finalAmount) {
@@ -1741,8 +1776,8 @@ function MoneyTransferOfflineGui(plname) {
     if (!pl) return;
 
     const coinName  = CachePool.conf("Economy").CoinName;
-    const taxRate = CachePool.conf("Economy").PayTaxRate;
     const myBalance = Economy.get(pl);
+    const { taxTip } = calcTax(0, myBalance);
 
     const fm = mc.newCustomForm();
     fm.setTitle(CachePool.lang("money.offline.transfer.title"));
@@ -1750,7 +1785,7 @@ function MoneyTransferOfflineGui(plname) {
         CachePool.lang("money.offline.transfer.label")
             .replace("${balance}", myBalance)
             .replace("${coin}", coinName)
-            .replace("${rate}", taxRate)
+            .replace("${rate}", taxTip)
     );
     fm.addInput(CachePool.lang("money.offline.transfer.input.target"), CachePool.lang("money.offline.transfer.input.target.hint"), "Steve", CachePool.lang("money.offline.transfer.input.target.tip") || "");
     fm.addInput(CachePool.lang("money.offline.transfer.input.amount"), CachePool.lang("money.offline.transfer.input.amount.hint"), "0", CachePool.lang("money.offline.transfer.input.amount.tip") || "");
@@ -1782,7 +1817,7 @@ function MoneyTransferOfflineGui(plname) {
 
         if (finalAmount <= 0) return player.tell(info + CachePool.lang("money.must.bigger0"));
 
-        const tax            = Math.floor(finalAmount * (taxRate / 100));
+        const { tax, taxTip: confirmedTaxTip } = calcTax(finalAmount, myBal);
         const actualReceived = finalAmount - tax;
 
         if (actualReceived <= 0) return player.tell(info + CachePool.lang("money.transfer.tax.notenough"));
@@ -1797,7 +1832,7 @@ function MoneyTransferOfflineGui(plname) {
                 .replace("${amount}",   finalAmount)
                 .replace("${coin}",     coinName)
                 .replace("${tax}",      tax)
-                .replace("${rate}",     taxRate)
+                .replace("${rate}",     confirmedTaxTip)
                 .replace("${received}", actualReceived) +
             (note ? "\n" + CachePool.lang("notify.transfer.note").replace("${note}", note) : "") +
             "\n\n" + CachePool.lang("money.offline.transfer.confirm.warn")
