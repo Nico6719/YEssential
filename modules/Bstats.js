@@ -257,7 +257,9 @@ class BStatsImpl {
 
         const econConf = (typeof conf !== "undefined") ? conf.get("Economy") : null;
         const rtpConf  = (typeof conf !== "undefined") ? conf.get("RTP")     : null;
-        const updConf  = (typeof conf !== "undefined") ? conf.get("Update")  : null;
+        // Update 配置已迁移至独立的 Updateconfig.json，优先从 globalThis.updateConf 读取
+        const _updSrc  = (typeof globalThis.updateConf !== "undefined") ? globalThis.updateConf : conf;
+        const updConf  = (_updSrc !== undefined && _updSrc !== null) ? _updSrc.get("Update") : null;
 
         return {
             serverUUID:     this.serverUUID,

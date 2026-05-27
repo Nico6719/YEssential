@@ -67,8 +67,11 @@ function _registerNoticeCmd() {
             return;
         }
 
-        // 初始化玩家偏好（默认 0 = 每次进服都弹）
-        noticeconf.init(String(pl.realName), 0);
+        // noticeconf 可能是 WriteBackStore.Store（无 .init 方法）或原始 JsonConfigFile
+        // 统一用 has + set 实现「不存在时写入默认值」的语义
+        if (!noticeconf.has(String(pl.realName))) {
+            noticeconf.set(String(pl.realName), 0);
+        }
 
         // 若公告文件不存在，自动创建
         if (!file.exists(NOTICE_FILE)) {

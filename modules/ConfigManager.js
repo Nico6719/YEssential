@@ -2,16 +2,27 @@
 // randomGradientLog 由主文件通过 globalThis 注入，此处无需重复定义
 class ConfigManager {
     constructor() {
-        this.currentVersion = 292;
+        this.currentVersion = 294;
         this.pluginPath = pluginpath || "./plugins/YEssential";
         this.moduleListPath = `${this.pluginPath}/modules/modulelist.json`;
-        // 默认配置
+        // Update 配置独立文件路径（与 config.json 同级，均在 Config/ 目录下）
+        this.updateConfigPath = `${this.pluginPath}/Config/Updateconfig.json`;
+        // 默认配置（不含 Update，Update 已独立到 Updateconfig.json）
         this.configDefaults = {
-            "Version": 292,
+            "Version": 294,
             "Economy": {
                 "mode": "scoreboard",
                 "RankingModel" : "New",
-                "PayTaxRate": 0,
+                // PayTaxRate 支持两种格式：
+                //   旧版兼容：单一数字，如 5 表示全额固定 5% 税率
+                //   新版阶梯：对象数组，按转账金额区间分级征税
+                //     min: 区间下限（含），max: 区间上限（不含），-1 表示无上限，rate: 税率百分比
+                "PayTaxRate": [
+                    { "min": 0,      "max": 1000,   "rate": 0  },
+                    { "min": 1000,   "max": 10000,  "rate": 2  },
+                    { "min": 10000,  "max": 100000, "rate": 5  },
+                    { "min": 100000, "max": -1,     "rate": 10 }
+                ],
                 "Scoreboard": "money",
                 "CoinName": "金币"
             },
@@ -107,6 +118,11 @@ class ConfigManager {
             "Warp": 0,
             "BackTipAfterDeath": false,
             "KeepInventory": false,
+        };
+
+        // Update 模块的默认配置（独立存放于 Updateconfig.json）
+        // 参考 LSE JsonConfigFile API: new JsonConfigFile(path, defaultContent)
+        this.updateConfigDefaults = {
             "Update": {
                 "EnableModule": true,
                 "CheckInterval": 120,
@@ -122,24 +138,25 @@ class ConfigManager {
                     { "url": "modules/Bstats.js",                "path": "./modules/Bstats.js" },
                     { "url": "modules/Cd.js",                    "path": "./modules/Cd.js" },
                     { "url": "modules/PVP.js",                   "path": "./modules/PVP.js" },
-                    { "url": "modules/Redpacket.js",             "path": "./modules/Redpacket.js"},
+                    { "url": "modules/Redpacket.js",             "path": "./modules/Redpacket.js" },
                     { "url": "modules/Fcam.js",                  "path": "./modules/Fcam.js" },
                     { "url": "modules/Notice.js",                "path": "./modules/Notice.js" },
-                    { "url": "modules/Sign.js",                "path": "./modules/Sign.js" },
-                    { "url": 'modules/Crash.js',                 "path": './modules/Crash.js' },
-                    { "url": 'modules/Warp.js',                 "path": './modules/Warp.js' },
-                    { "url": 'modules/PluginInfo.js',                 "path": './modules/PluginInfo.js' },  
-                    { "url": 'modules/Home.js',                 "path": './modules/Home.js' },
-                    { "url": 'modules/CachePool.js',                 "path": './modules/CachePool.js' },
-                    {'url': 'modules/WriteBackStore.js',                 "path": './modules/WriteBackStore.js' },
-                    {'url': 'modules/Crash.js',                 "path": './modules/Crash.js' }
-
+                    { "url": "modules/Sign.js",                  "path": "./modules/Sign.js" },
+                    { "url": "modules/Crash.js",                 "path": "./modules/Crash.js" },
+                    { "url": "modules/Warp.js",                  "path": "./modules/Warp.js" },
+                    { "url": "modules/PluginInfo.js",            "path": "./modules/PluginInfo.js" },
+                    { "url": "modules/Home.js",                  "path": "./modules/Home.js" },
+                    { "url": "modules/CachePool.js",             "path": "./modules/CachePool.js" },
+                    { "url": "modules/WriteBackStore.js",        "path": "./modules/WriteBackStore.js" }
                 ],
                 "reloadDelay": 1000,
                 "timeout": 30000,
                 "checkMissingFilesOnStart": true
-            },
+            }
         };
+
+        // Update 配置文件对象（在 initUpdateConfig 中初始化）
+        this.updateConf = null;
 
         // 默认模块列表
         this.defaultModules = [
@@ -170,10 +187,12 @@ class ConfigManager {
         ];
 
         // 废弃的配置项列表(需要删除的旧配置)
+        // "Update" 已迁移至独立的 Updateconfig.json，在此列为废弃以清理 config.json 中的残留
         this.deprecatedConfigs = [
             "OldConfigKey1",
             "ObsoleteFeature",
-            "LegacySetting"
+            "LegacySetting",
+            "Update"
         ];
 
         // 废弃的嵌套配置项(格式:父键.子键)
@@ -202,6 +221,9 @@ class ConfigManager {
             logger.info("[WriteBackStore] 所有数据已强制刷盘（reload/init）");
         }
 
+        // 初始化独立的 Update 配置文件（Updateconfig.json）
+        this.initUpdateConfig();
+
         // 初始化模块列表
         this.initModuleList();
         
@@ -221,8 +243,61 @@ class ConfigManager {
         // 确保所有配置项都存在
         this.ensureAllConfigs();
         
+        // 确保 Update 配置项在独立文件中存在
+        this.ensureUpdateConfig();
+        
         // 清理废弃的配置
         this.cleanupDeprecatedConfigs();
+    }
+
+    // ========== Update 独立配置文件管理 ==========
+
+    /**
+     * 初始化 Updateconfig.json（与 config.json 同级）
+     * 参考 LSE JsonConfigFile API: new JsonConfigFile(path, defaultContent)
+     * https://lse.levimc.org/apis/DataAPI/ConfigFile/
+     */
+    initUpdateConfig() {
+        try {
+            // 只创建文件对象，不传默认值
+            // 原因：默认值写入必须在 migrateConfig（迁移旧 Update 键）之后才能执行，
+            // 否则 migrateTo294 会误判文件已存在而跳过迁移。
+            // 默认值由后续的 ensureUpdateConfig() 负责补全。
+            this.updateConf = new JsonConfigFile(this.updateConfigPath);
+            // 暴露到全局，供 CachePool 等模块通过 updateConf.get("Update") 访问
+            globalThis.updateConf = this.updateConf;
+            randomGradientLog(`Update 配置文件初始化成功: ${this.updateConfigPath}`);
+        } catch (error) {
+            logger.error(`Update 配置文件初始化失败: ${error.message}`);
+        }
+    }
+
+    /**
+     * 确保 Updateconfig.json 中 Update 块存在且字段完整（补全缺失子键）
+     */
+    ensureUpdateConfig() {
+        if (!this.updateConf) return;
+        try {
+            const defaultUpdate = this.updateConfigDefaults.Update;
+            let current = this.updateConf.get("Update");
+
+            if (!this.isValidObject(current)) {
+                this.updateConf.set("Update", defaultUpdate);
+                randomGradientLog("Updateconfig.json: Update 块不存在，已写入默认值");
+                return;
+            }
+
+            // 合并缺失的子键（不覆盖已有值）
+            const merged = this.mergeConfigs(defaultUpdate, current);
+            this.updateConf.set("Update", merged);
+
+            const added = this.getAddedProperties(defaultUpdate, current);
+            if (added.length > 0) {
+                randomGradientLog(`Updateconfig.json 新增缺失字段: ${added.join(", ")}`);
+            }
+        } catch (error) {
+            logger.error(`ensureUpdateConfig 失败: ${error.message}`);
+        }
     }
 
     // ========== 模块列表管理 ==========
@@ -406,7 +481,8 @@ class ConfigManager {
         this.backupConfig(oldVersion);
         
         const migrations = [
-            { version: 292, handler: () => this.migrateTo291() }
+            { version: 293, handler: () => this.migrateTo293() },
+            { version: 294, handler: () => this.migrateTo294() }
         ];
 
         migrations.forEach(migration => {
@@ -435,6 +511,16 @@ class ConfigManager {
             }
         }
 
+        // 同时备份 Updateconfig.json 中的内容
+        if (this.updateConf) {
+            try {
+                const updateValue = this.updateConf.get("Update");
+                if (updateValue !== undefined) {
+                    allConfigs["Update"] = updateValue;
+                }
+            } catch (e) { /* updateConf 尚未就绪时忽略 */ }
+        }
+
         conf.set(backupKey, {
             version: version,
             timestamp: timestamp,
@@ -443,47 +529,82 @@ class ConfigManager {
     }
 
     // ========== 版本特定迁移方法 ==========
-migrateTo291() {
-        randomGradientLog("更新配置版本到292");
-        // 新增模块: I18n, PVP, Fcam, Notice
-        const newFiles = [
-            { "url": "modules/Home.js",   "path": "./modules/Home.js" },
-            { "url": "modules/Warp.js",   "path": "./modules/Warp.js" },
-            { "url": 'modules/PluginInfo.js', "path": './modules/PluginInfo.js' },  
-        ];
+    /*
+     迁移到 v293：将旧版单一数字 PayTaxRate 自动转换为阶梯数组
+     */
+    migrateTo293() {
+        randomGradientLog("更新配置版本到293：迁移 PayTaxRate 为阶梯税率格式");
 
-        let updateConfig = conf.get("Update");
-
-        if (!this.isValidObject(updateConfig)) {
-            // Update 块完全不存在，使用默认值（含新模块）
-            conf.set("Update", this.configDefaults.Update);
+        const economy = conf.get("Economy");
+        if (!this.isValidObject(economy)) {
+            // Economy 块不存在，由 mergeConfigs 补全默认值，此处无需处理
+            randomGradientLog("Economy 配置不存在，将使用默认阶梯税率");
             return;
         }
 
-        // Update 块存在，只补充缺失的 files 条目
-        if (!Array.isArray(updateConfig.files)) {
-            updateConfig.files = [];
+        const oldRate = economy.PayTaxRate;
+
+        // 已经是数组 → 无需迁移
+        if (Array.isArray(oldRate)) {
+            randomGradientLog("PayTaxRate 已为阶梯数组，跳过迁移");
+            return;
         }
 
-        let addedModules = [];
-        newFiles.forEach(newFile => {
-            const exists = updateConfig.files.some(f => f.url === newFile.url);
-            if (!exists) {
-                updateConfig.files.push(newFile);
-                addedModules.push(newFile.url);
-            }
-        });
-
-        conf.set("Update", updateConfig);
-
-        if (addedModules.length > 0) {
-            randomGradientLog(`已向 Update.files 写入新模块: ${addedModules.join(", ")}`);
+        let newRate;
+        if (typeof oldRate === "number" && oldRate > 0) {
+            // 旧值为非零数字：保留原税率，转为单档（行为完全兼容）
+            newRate = [{ "min": 0, "max": -1, "rate": oldRate }];
+            randomGradientLog(`PayTaxRate 旧值 ${oldRate}% → 转为单档阶梯 [{min:0, max:-1, rate:${oldRate}}]`);
         } else {
-            randomGradientLog("Update.files 中新模块已存在，无需重复写入");
+            // 旧值为 0 或非预期值：写入默认四档阶梯
+            newRate = this.configDefaults.Economy.PayTaxRate;
+            randomGradientLog("PayTaxRate 旧值为 0，写入默认阶梯税率配置");
         }
 
+        economy.PayTaxRate = newRate;
+        conf.set("Economy", economy);
+        randomGradientLog("PayTaxRate 迁移完成，请根据需要在配置文件中调整各档位参数");
         // 确保 modulelist.json 中 I18n.js 始终排在第一位
         this.ensureI18nFirst();
+    }
+
+    /**
+     * 迁移到 v294：将 config.json 中的 Update 块迁移到独立的 Updateconfig.json
+     *
+     * 迁移策略：
+     *   1. 若 config.json 存在 Update 键 → 写入 Updateconfig.json，再从 config.json 删除
+     *   2. 若 config.json 不存在 Update 键 → Updateconfig.json 将由 ensureUpdateConfig 补全默认值
+     *   3. 若 Updateconfig.json 已存在 Update 键 → 不覆盖，仅删除 config.json 中的旧键
+     */
+    migrateTo294() {
+        randomGradientLog("更新配置版本到294：将 Update 配置迁移到独立的 Updateconfig.json");
+
+        // updateConf 必须在迁移前已初始化（init 中已优先调用 initUpdateConfig）
+        if (!this.updateConf) {
+            logger.error("migrateTo294: updateConf 未初始化，跳过迁移");
+            return;
+        }
+
+        const oldUpdate = conf.get("Update");
+
+        if (this.isValidObject(oldUpdate)) {
+            // Updateconfig.json 中已有 Update 键时不覆盖，保留用户已有配置
+            const existingUpdate = this.updateConf.get("Update");
+            if (!this.isValidObject(existingUpdate)) {
+                this.updateConf.set("Update", oldUpdate);
+                randomGradientLog("Update 配置已写入 Updateconfig.json");
+            } else {
+                randomGradientLog("Updateconfig.json 中 Update 已存在，保留现有配置，不覆盖");
+            }
+
+            // 从 config.json 中删除旧的 Update 键
+            conf.delete("Update");
+            randomGradientLog("已从 config.json 中删除旧的 Update 键");
+        } else {
+            randomGradientLog("config.json 中不存在 Update 键，将由 ensureUpdateConfig 写入默认值");
+        }
+
+        randomGradientLog("Update 配置迁移完成，今后请在 Updateconfig.json 中修改更新相关配置");
     }
 
     /**

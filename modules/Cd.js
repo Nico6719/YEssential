@@ -305,7 +305,10 @@ class MenuPlayerHandler {
     }
 
     static executeCommand(player, command) {
-        mc.runcmdEx("execute as \"" + player.realName + "\" run " + command);
+        // player.runcmd() 以玩家身份执行，可触发插件注册的命令（如 pland、home 等）
+        // mc.runcmdEx("execute as ... run") 仅对原版命令有效，插件命令无响应
+        // 参考 LSE Player API: https://lse.levimc.org/apis/GameAPI/Player/
+        player.runcmd(command);
     }
 }
 

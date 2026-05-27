@@ -95,7 +95,10 @@ class AsyncUpdateChecker {
      */
     static getConfig() {
         try {
-            const updateConfig = conf.get("Update");
+            // Update 配置已迁移至独立的 Updateconfig.json
+            // 优先从 globalThis.updateConf 读取，回退到旧的 conf（兼容迁移期）
+            const src = globalThis.updateConf || conf;
+            const updateConfig = src.get("Update");
 
             if (updateConfig && typeof updateConfig === 'object') {
                 return {
