@@ -100,7 +100,7 @@ function _showModuleListGui(pl) {
 function _checkUpdate(pl) {
     pl.tell(info + "§e正在检查更新，请稍候...");
     try {
-        network.httpGet("https://dl.mcmcc.cc/file/Version.json", (status, result) => {
+        network.httpGet("https://plugin.tobecraft.xyz/file/manifest.json", (status, result) => {
             if (status !== 200) {
                 pl.tell(info + "§c请求失败，状态码：" + status);
                 return;

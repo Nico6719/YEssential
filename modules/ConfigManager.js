@@ -126,8 +126,8 @@ class ConfigManager {
             "Update": {
                 "EnableModule": true,
                 "CheckInterval": 120,
-                "versionUrl": "https://dl.mcmcc.cc/file/manifest.json",
-                "baseUrl": "https://dl.mcmcc.cc/file/",
+                "versionUrl": "https://plugin.tobecraft.xyz/file/manifest.json",
+                "baseUrl": "https://plugin.tobecraft.xyz/file/",
                 "files": [
                     { "url": "YEssential.js",                    "path": "YEssential.js" },
                     { "url": "modules/I18n.js",                  "path": "./modules/I18n.js" },

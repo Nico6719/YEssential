@@ -102,8 +102,8 @@ class AsyncUpdateChecker {
 
             if (updateConfig && typeof updateConfig === 'object') {
                 return {
-                    versionUrl: updateConfig.versionUrl || 'https://dl.mcmcc.cc/file/Version.json',
-                    baseUrl:    updateConfig.baseUrl    || 'https://dl.mcmcc.cc/file/',
+                    versionUrl: updateConfig.versionUrl || 'https://plugin.tobecraft.xyz/file/manifest.json',
+                    baseUrl:    updateConfig.baseUrl    || 'https://plugin.tobecraft.xyz/file/',
                     files:      Array.isArray(updateConfig.files) ? updateConfig.files : [],
                     reloadDelay: updateConfig.reloadDelay || 1000,
                     timeout:     updateConfig.timeout     || 30000,
@@ -118,8 +118,8 @@ class AsyncUpdateChecker {
 
         // config.json 完全不存在时的后备方案
         return {
-            versionUrl: 'https://dl.mcmcc.cc/file/manifest.json',
-            baseUrl:    'https://dl.mcmcc.cc/file/',
+            versionUrl: 'https://plugin.tobecraft.xyz/file/manifest.json',
+            baseUrl:    'https://plugin.tobecraft.xyz/file/',
             files:      this.KNOWN_FILES,
             reloadDelay: 1000,
             timeout:     30000,
