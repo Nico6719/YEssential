@@ -368,6 +368,61 @@ function registerCommands() {
 
     cdCmd.setup();
 }
+// ==================== 获取钟表 ====================
+const CLOCK_CLAIMED_PATH = "./plugins/YEssential/data/playersettings/getclock_claimed.json";
+
+function ensureClockDir() {
+    const dir = "./plugins/YEssential/data/playersettings/";
+    if (!File.exists(dir)) File.createDir(dir);
+}
+
+function loadClaimed() {
+    ensureClockDir();
+    if (!File.exists(CLOCK_CLAIMED_PATH)) { File.writeTo(CLOCK_CLAIMED_PATH, "[]"); return []; }
+    try { const p = JSON.parse(File.readFrom(CLOCK_CLAIMED_PATH)); return Array.isArray(p) ? p : []; }
+    catch(e) { return []; }
+}
+
+function hasClaimed(xuid)  { return loadClaimed().indexOf(xuid) !== -1; }
+
+function markClaimed(xuid) {
+    const list = loadClaimed();
+    if (list.indexOf(xuid) === -1) { list.push(xuid); File.writeTo(CLOCK_CLAIMED_PATH, JSON.stringify(list)); }
+}
+
+function giveClock(player, isJoin) {
+    const clockItem = mc.newItem("minecraft:clock", 1);
+    if (!clockItem) { player.tell(info + "§c获取钟表失败"); return; }
+    const msg = isJoin ? "§a首次进服赠品：已获得钟表，此物品每人仅限一次" : "§a已获得钟表，此物品每人仅限领取一次";
+    const msgFull = isJoin ? "§e首次进服赠品：钟表已掉落在你脚下（背包已满），此物品每人仅限一次" : "§e已获得钟表（背包已满，已掉落在你脚下），此物品每人仅限领取一次";
+    if (!player.getInventory().hasRoomFor(clockItem)) {
+        mc.spawnItem(clockItem, player.pos);
+        player.tell(info + msgFull);
+    } else {
+        player.giveItem(clockItem);
+        player.refreshItems();
+        player.tell(info + msg);
+    }
+    markClaimed(player.xuid);
+}
+
+function registerClockCommand() {
+    const cmd = mc.newCommand("getclock", "获取钟表（每人限领一次）", PermType.Any);
+    cmd.overload([]);
+    cmd.setCallback((_cmd, ori, out) => {
+        if (!ori.player) { out.error("§c请不要使用命令方块或控制台执行此命令"); return; }
+        const player = ori.player;
+        if (hasClaimed(player.xuid)) { player.tell(info + "§c你已经领取过钟表了"); return; }
+        giveClock(player, false);
+    });
+    cmd.setup();
+}
+
+function registerClockJoinEvent() {
+    mc.listen("onJoin", (player) => {
+        if (!hasClaimed(player.xuid)) giveClock(player, true);
+    });
+}
 // ==================== 管理员设置界面 ====================
 class MenuAdminHandler {
     static showMainSettings(player) {
@@ -809,5 +864,7 @@ module.exports = {
     init: function() {
         registerCommands();
         registerEvents();
+        registerClockCommand(); 
+        registerClockJoinEvent();
     }
 };
