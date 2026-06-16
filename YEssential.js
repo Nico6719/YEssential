@@ -4,7 +4,6 @@ this plugin is distributed under the AGPLv3 License
 该插件由Nico6719,PHEyeji联合创作
 未经允许禁止擅自修改或者发售
 该插件仅在[github,MineBBS,KLPBBS]发布，禁止二次发布插件
-语言文件路径（defaultLangContent 及 AsyncLanguageManager 已迁移至 modules/I18n.js）
 调用示例： pl.tell(info + CachePool.lang("x.x"))
 ----------------------------------*/
 // LiteLoader-AIDS automatic generated
@@ -14,8 +13,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件 `;
-const version = "2.12.3";
-const regversion =[2,12,3];
+const version = "2.12.4";
+const regversion =[2,12,4];
 const info = "§l§d[-YEST-] §r§l> ";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
