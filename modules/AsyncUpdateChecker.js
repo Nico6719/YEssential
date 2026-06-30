@@ -64,26 +64,26 @@ class AsyncUpdateChecker {
      */
     static get KNOWN_FILES() {
         return [
-            { url: 'YEssential.js',                    path: 'YEssential.js' },
-            { url: 'modules/I18n.js',                  path: './modules/I18n.js' },
-            { url: 'modules/Cleanmgr.js',              path: './modules/Cleanmgr.js' },
-            { url: 'modules/ConfigManager.js',         path: './modules/ConfigManager.js' },
-            { url: 'modules/AsyncUpdateChecker.js',    path: './modules/AsyncUpdateChecker.js' },
+            { url: 'YEssential.js',                    path: 'YEssential.js' },  //1
+            { url: 'modules/I18n.js',                  path: './modules/I18n.js' },  //2
+            { url: 'modules/Cleanmgr.js',              path: './modules/Cleanmgr.js' },  //3
+            { url: 'modules/ConfigManager.js',         path: './modules/ConfigManager.js' },  //4
+            { url: 'modules/AsyncUpdateChecker.js',    path: './modules/AsyncUpdateChecker.js' },  //5
             { url: 'modules/RadomTeleportSystem.js',   path: './modules/RadomTeleportSystem.js' },
             { url: 'modules/Bstats.js',                path: './modules/Bstats.js' },
             { url: 'modules/Cd.js',                    path: './modules/Cd.js' },
             { url: 'modules/PVP.js',                   path: './modules/PVP.js' },
-            { url: 'modules/Fcam.js',                  path: './modules/Fcam.js' },
+            { url: 'modules/Fcam.js',                  path: './modules/Fcam.js' },  //10
             { url: "modules/Redpacket.js",             path: "./modules/Redpacket.js"},
             { url: 'modules/Notice.js',                path: './modules/Notice.js' },
-            { url: 'modules/Sign.js',                path: './modules/Sign.js' },
+            { url: 'modules/Sign.js',                  path: './modules/Sign.js' },
             { url: 'modules/Crash.js',                 path: './modules/Crash.js' },
-            { url: 'modules/Home.js',                    path: './modules/Home.js'},
-            { url: 'modules/PluginInfo.js',                               path: './modules/PluginInfo.js'},
-            { url: 'modules/Warp.js',                    path: './modules/Warp.js'},
-            { url: 'modules/CachePool.js',                    path: './modules/CachePool.js'},
-            { url: 'modules/WriteBackStore.js',                    path: './modules/WriteBackStore.js'},
-            {url: 'modules/Crash.js',                    path: './modules/Crash.js'}
+            { url: 'modules/Home.js',                  path: './modules/Home.js'},
+            { url: 'modules/PluginInfo.js',            path: './modules/PluginInfo.js'},
+            { url: 'modules/Warp.js',                  path: './modules/Warp.js'},
+            { url: 'modules/CachePool.js',             path: './modules/CachePool.js'},
+            { url: 'modules/WriteBackStore.js',        path: './modules/WriteBackStore.js'},
+            {url: 'modules/Crash.js',                  path: './modules/Crash.js'}  //20
         ];
     }
 

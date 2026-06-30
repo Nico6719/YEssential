@@ -27,6 +27,15 @@ const defaultLangContent = {
     "cd.vip.deny": "§l§c会员功能未启用",
     "cd.op.deny": "§l§c你没有权限使用这个按钮,抱歉",
 
+    // 钟表领取相关
+    "cd.clock.create.fail":   "§c获取钟表失败",
+    "cd.clock.join.got":      "§a首次进服赠品：已获得钟，此物品每人仅限一次",
+    "cd.clock.join.full":     "§e首次进服赠品：钟已掉落在你脚下（背包已满），此物品每人仅限一次",
+    "cd.clock.manual.got":    "§a已获得钟表，此物品每人仅限领取一次",
+    "cd.clock.manual.full":   "§e已获得钟（背包已满，已掉落在你脚下），此物品每人仅限领取一次",
+    "cd.clock.already":       "§c你已经领取过了",
+    "cd.clock.no.console":    "§c请不要使用命令方块或控制台执行此命令",
+
     // warp相关
     "warp.command.desc": "公共传送点",
     "warp.only.player": "仅限玩家执行",

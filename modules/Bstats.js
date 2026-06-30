@@ -50,12 +50,12 @@ function loadOrCreateUUID() {
 
 // ─── 带重试的 HTTP 上报 ───────────────────────────────────────────
 
-function postWithRetry(url, body, retryLeft) {
+function postWithRetry(url, body, retryLeft, debugMode) {
     const attemptNo = BSTATS_MAX_RETRY - retryLeft + 1;
     try {
         network.httpPost(url, body, "application/json", function (status, result) {
             if (status === 200) {
-                if (this.debugMode)
+                if (debugMode)
                 {
                 randomGradientLog("遥测数据上报成功 ");
                 }
@@ -66,7 +66,7 @@ function postWithRetry(url, body, retryLeft) {
                     "上报失败(第 " + attemptNo + " 次 / 状态码: " + status + ")," +
                     "10 秒后发起第 " + (attemptNo + 1) + " 次重试..."
                 );
-                setTimeout(function () { postWithRetry(url, body, retryLeft - 1); }, 10000);
+                setTimeout(function () { postWithRetry(url, body, retryLeft - 1, debugMode); }, 10000);
             } else {
                 logger.warn(
                     "上报失败(第 " + attemptNo + " 次 / 状态码: " + status + ")," +
@@ -80,7 +80,7 @@ function postWithRetry(url, body, retryLeft) {
                 "网络请求异常(第 " + attemptNo + " 次: " + e.message + ")," +
                 "10 秒后发起第 " + (attemptNo + 1) + " 次重试..."
             );
-            setTimeout(function () { postWithRetry(url, body, retryLeft - 1); }, 10000);
+            setTimeout(function () { postWithRetry(url, body, retryLeft - 1, debugMode); }, 10000);
         } else {
             logger.warn(
                 "网络请求异常(第 " + attemptNo + " 次: " + e.message + ")," +
@@ -134,6 +134,40 @@ class BStatsImpl {
             logger.error("读取 manifest.json 失败: " + e.message);
         }
         return "2.10.11";
+    }
+
+    // 将 Economy.PayTaxRate（数字 或 阶梯数组）转换为 Disabled/Enabled 两种分类
+    // 避免直接 toString() 阶梯数组导致 "[object Object]" 的问题
+    describePayTaxRate(rate) {
+        if (rate == null) return "Disabled";
+        if (typeof rate === "number") {
+            return rate > 0 ? "Enabled" : "Disabled";
+        }
+        if (Array.isArray(rate)) {
+            // 只要存在任意一档税率 >0，即视为启用
+            const hasPositiveRate = rate.some(tier => tier && typeof tier.rate === "number" && tier.rate > 0);
+            return hasPositiveRate ? "Enabled" : "Disabled";
+        }
+        return "Disabled";
+    }
+
+    // 将 Home.MaxHome（家数量上限）归并为有限区间分类，避免原始数值导致饼图碎片化
+    bucketHomeMax(max) {
+        if (max == null || typeof max !== "number" || isNaN(max)) return "Default(10)";
+        if (max <= 0)   return "Disabled(0)";
+        if (max <= 5)   return "Low(1-5)";
+        if (max <= 10)  return "Mid(6-10)";
+        if (max <= 20)  return "High(11-20)";
+        return "VeryHigh(20+)";
+    }
+
+    // 通用 cost 分桶：None / 10<cost<25 / 25<cost<50 / 50++
+    bucketCost(cost) {
+        if (cost == null || typeof cost !== "number" || isNaN(cost) || cost <= 0) return "None";
+        if (cost < 10)  return "1-10";
+        if (cost < 25)  return "10-25";
+        if (cost < 50)  return "25-50";
+        return "50++";
     }
 
     readServerProperties() {
@@ -257,6 +291,24 @@ class BStatsImpl {
 
         const econConf = (typeof conf !== "undefined") ? conf.get("Economy") : null;
         const rtpConf  = (typeof conf !== "undefined") ? conf.get("RTP")     : null;
+        const homeConf = (typeof conf !== "undefined") ? conf.get("Home")    : null;
+        const tpaConf  = (typeof conf !== "undefined") ? conf.get("tpa")     : null;
+
+        if (this.debugMode) {
+            randomGradientLog("[Debug] econConf 原始内容: " + JSON.stringify(econConf));
+            randomGradientLog("[Debug] econConf.mode 原始值: " + JSON.stringify(econConf && econConf.mode) + " (typeof: " + (econConf && typeof econConf.mode) + ")");
+            const _economyTypeValue = (econConf && String(econConf.mode).toLowerCase() === "llmoney") ? "LLMoney" : "Scoreboard";
+            randomGradientLog("[Debug] economy_type 即将上报的值: " + _economyTypeValue);
+
+            randomGradientLog("[Debug] homeConf 原始内容: " + JSON.stringify(homeConf));
+            randomGradientLog("[Debug] MaxHome 即将上报的值: " + this.bucketHomeMax(homeConf && homeConf.MaxHome));
+
+            randomGradientLog("[Debug] tpaConf 原始内容: " + JSON.stringify(tpaConf));
+            randomGradientLog("[Debug] TpaCost 即将上报的值: " + this.bucketCost(tpaConf && tpaConf.cost));
+
+            randomGradientLog("[Debug] econConf.PayTaxRate 原始内容: " + JSON.stringify(econConf && econConf.PayTaxRate));
+            randomGradientLog("[Debug] playerpaytaxrate 即将上报的值: " + this.describePayTaxRate(econConf && econConf.PayTaxRate));
+        }
         // Update 配置已迁移至独立的 Updateconfig.json，优先从 globalThis.updateConf 读取
         const _updSrc  = (typeof globalThis.updateConf !== "undefined") ? globalThis.updateConf : conf;
         const updConf  = (_updSrc !== undefined && _updSrc !== null) ? _updSrc.get("Update") : null;
@@ -280,10 +332,12 @@ class BStatsImpl {
                 pluginVersion: this.pluginVersion,
                 customCharts: [
                     { chartId: "lse_version",             type: "simple_pie", data: { value: pureLseVer } },
-                    { chartId: "economy_type",            type: "simple_pie", data: { value: (econConf && econConf.mode === "LLMoney") ? "LLMoney" : "Scoreboard" } },
+                    { chartId: "economy_type",            type: "simple_pie", data: { value: (econConf && String(econConf.mode).toLowerCase() === "llmoney") ? "LLMoney" : "Scoreboard" } },
                     { chartId: "installed_modules_count", type: "simple_pie", data: { value: moduleCount.toString() } },
                     { chartId: "AutoUpdate",              type: "simple_pie", data: { value: (updConf && updConf.EnableModule) ? "Enabled" : "Disabled" } },
-                    { chartId: "pay_tax_rate",            type: "simple_pie", data: { value: ((econConf && econConf.PayTaxRate != null) ? econConf.PayTaxRate : 0).toString() + "%" } },
+                    { chartId: "playerpaytaxrate",        type: "simple_pie", data: { value: this.describePayTaxRate(econConf && econConf.PayTaxRate) } },
+                    { chartId: "MaxHome",                 type: "simple_pie", data: { value: this.bucketHomeMax(homeConf && homeConf.MaxHome) } },
+                    { chartId: "TpaCost",                 type: "simple_pie", data: { value: this.bucketCost(tpaConf && tpaConf.cost) } },
                     { chartId: "rtp_status",              type: "simple_pie", data: { value: (rtpConf && rtpConf.EnabledModule) ? "Enabled" : "Disabled" } }
                 ]
             }
@@ -304,7 +358,7 @@ class BStatsImpl {
             randomGradientLog(JSON.stringify(payload, null, 2));
         }
 
-        postWithRetry(this.baseUrl, JSON.stringify(payload), BSTATS_MAX_RETRY);
+        postWithRetry(this.baseUrl, JSON.stringify(payload), BSTATS_MAX_RETRY, this.debugMode);
     }
 
     start() {
