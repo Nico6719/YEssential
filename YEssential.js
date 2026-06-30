@@ -13,8 +13,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件 `;
-const version = "2.12.4";
-const regversion =[2,12,4];
+const version = "2.12.5";
+const regversion =[2,12,5];
 const info = "§l§d[-YEST-] §r§l> ";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
@@ -532,17 +532,17 @@ function ranking(plname) {
     let pl = mc.getPlayer(plname);
     if (!pl) return;
 
-    // ✅ 优先用 WriteBackStore.getAll()（内存直取），回退裸文件读
+    // 优先用 WriteBackStore.getAll()（内存直取），回退裸文件读
     let datas = globalThis.moneyRankingStore
         ? globalThis.moneyRankingStore.getAll()
         : (moneyranking.read() ? JSON.parse(moneyranking.read()) : {});
 
-    // 2. [关键修复] 合并内存缓存中的其他玩家数据
+    // 合并内存缓存中的其他玩家数据
     for (let name in moneyCache) {
         datas[name] = moneyCache[name];
     }
 
-    // 3. [核心修复] 强制获取“你自己”的当前实时余额
+    // 强制获取“你自己”的当前实时余额
     // 不管文件或缓存里是多少，现在立刻查一次真实的钱
     let myRealMoney;
     if (economyCfg.isLLMoney) {
@@ -1539,7 +1539,7 @@ function openPlayerSelectionGui(pl, title, callback) {
     });
 }
 /**
- * 统一金币历史记录查询 GUI (清爽版)
+ * 统一金币历史记录查询 GUI 
  * @param {Player} viewer 发起查看请求的玩家
  * @param {string} targetName 被查询的目标玩家名
  */
