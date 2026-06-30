@@ -142,6 +142,19 @@
             this._confCache.invalidate("conf:" + key);
         },
 
+        /**
+         * 写穿：conf.delete 后同步失效对应 key
+         * 与 setConf 对称，保证「写穿 + 失效缓存」这一约定在删除场景下也成立，
+         * 避免有调用方先 delete 底层文件、又忘记让 CachePool 一起失效，
+         * 导致后续 CachePool.conf(key) 仍命中 TTL 内的旧缓存值。
+         */
+        deleteConf(key, confFile) {
+            const src = confFile || globalThis.conf;
+            const ok = src ? src.delete(key) : false;
+            this._confCache.invalidate("conf:" + key);
+            return ok;
+        },
+
         /** 手动失效某个 conf key（比如 reload 后） */
         invalidateConf(key) {
             if (key) this._confCache.invalidate("conf:" + key);

@@ -7,6 +7,9 @@ class ConfigManager {
         this.moduleListPath = `${this.pluginPath}/modules/modulelist.json`;
         // Update 配置独立文件路径（与 config.json 同级，均在 Config/ 目录下）
         this.updateConfigPath = `${this.pluginPath}/Config/Updateconfig.json`;
+        // 配置备份独立文件路径（不再混入 config.json，避免主配置被一堆备份记录刷屏）
+        this.backupConfigPath = `${this.pluginPath}/Config/ConfigBackup.json`;
+        this.backupConf = null;
         // 默认配置（不含 Update，Update 已独立到 Updateconfig.json）
         this.configDefaults = {
             "Version": 294,
@@ -224,6 +227,9 @@ class ConfigManager {
         // 初始化独立的 Update 配置文件（Updateconfig.json）
         this.initUpdateConfig();
 
+        // 初始化独立的配置备份文件（ConfigBackup.json），避免备份记录混入 config.json
+        this.initBackupConfig();
+
         // 初始化模块列表
         this.initModuleList();
         
@@ -250,6 +256,18 @@ class ConfigManager {
         this.cleanupDeprecatedConfigs();
     }
 
+    /**
+     * 初始化 ConfigBackup.json（与 config.json 同级）
+     * 所有迁移备份记录都存放在这个独立文件中，不再混入 config.json
+     */
+    initBackupConfig() {
+        try {
+            this.backupConf = new JsonConfigFile(this.backupConfigPath, JSON.stringify({}));
+        } catch (error) {
+            logger.error(`配置备份文件初始化失败: ${error.message}`);
+        }
+    }
+
     // ========== Update 独立配置文件管理 ==========
 
     /**
@@ -266,7 +284,6 @@ class ConfigManager {
             this.updateConf = new JsonConfigFile(this.updateConfigPath);
             // 暴露到全局，供 CachePool 等模块通过 updateConf.get("Update") 访问
             globalThis.updateConf = this.updateConf;
-            randomGradientLog(`Update 配置文件初始化成功: ${this.updateConfigPath}`);
         } catch (error) {
             logger.error(`Update 配置文件初始化失败: ${error.message}`);
         }
@@ -498,11 +515,18 @@ class ConfigManager {
 
     /**
      * 备份配置
+     * 写入独立的 ConfigBackup.json，不再混入 config.json
+     * 仅备份 config.json 的内容（不含 Updateconfig.json），且只保留最近一份备份：
+     * 每次都写入同一个固定 key，新备份会直接覆盖旧备份，无需额外清理逻辑。
      */
     backupConfig(version) {
+        if (!this.backupConf) {
+            logger.error("backupConfig: backupConf 未初始化，跳过备份");
+            return;
+        }
+
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const backupKey = `ConfigBackup_v${version}_${timestamp}`;
-        
+
         let allConfigs = {};
         for (let key in this.configDefaults) {
             let value = conf.get(key);
@@ -511,17 +535,8 @@ class ConfigManager {
             }
         }
 
-        // 同时备份 Updateconfig.json 中的内容
-        if (this.updateConf) {
-            try {
-                const updateValue = this.updateConf.get("Update");
-                if (updateValue !== undefined) {
-                    allConfigs["Update"] = updateValue;
-                }
-            } catch (e) { /* updateConf 尚未就绪时忽略 */ }
-        }
-
-        conf.set(backupKey, {
+        // 固定 key，覆盖写入，确保 ConfigBackup.json 中只保留最近一份 config.json 备份
+        this.backupConf.set("LatestConfigBackup", {
             version: version,
             timestamp: timestamp,
             configs: allConfigs
@@ -743,42 +758,61 @@ class ConfigManager {
             }
         }
 
-        removedCount += this.cleanupOldBackups();
+        removedCount += this.cleanupLegacyConfigBackupKeys();
 
         if (removedCount > 0) {
             randomGradientLog(`清理完成,共删除 ${removedCount} 个废弃配置`);
         }
     }
 
-    cleanupOldBackups(keepCount = 5) {
-        let allKeys = this.getAllConfigKeys();
-        let backupKeys = allKeys.filter(key => key.startsWith("ConfigBackup_"));
+    /**
+     * 注：旧版本曾依赖 cleanupOldBackups()/getBackupConfigKeys() 来清理多份历史备份，
+     * 但 LSE 官方 JsonConfigFile API（conf.init/set/get/delete/reload/close/getPath/read/write）
+     * 并未提供 keys()/getKeys() 接口，依赖它是非官方/不可靠的写法。
+     * 现在 backupConfig() 固定使用同一个 key 覆盖写入，ConfigBackup.json 天然只保留最近一份备份，
+     * 因此不再需要这两个方法。
+     */
 
-        if (backupKeys.length <= keepCount) {
+    getAllConfigKeys() {
+        try {
+            let raw = conf.read();
+            let parsed = JSON.parse(raw);
+            if (this.isValidObject(parsed)) {
+                return Object.keys(parsed);
+            }
+        } catch (error) {
+            logger.error(`getAllConfigKeys: 读取/解析 config.json 失败: ${error.message}`);
+        }
+        return [];
+    }
+
+    /**
+     * 清理 config.json 中残留的旧版备份记录（"ConfigBackup_v..." 格式的 key）。
+     * 这些是早期版本（备份未独立到 ConfigBackup.json 之前）遗留下来的旧数据，
+     * 现在备份已经迁移到独立的 ConfigBackup.json 文件，这些残留 key 不再需要。
+     * LSE 官方 JsonConfigFile 没有 keys()/getKeys() 接口，因此通过官方支持的
+     * conf.read() 读取整个文件内容并 JSON.parse 来获取所有 key，再逐一 conf.delete()。
+     */
+    cleanupLegacyConfigBackupKeys() {
+        let allKeys = this.getAllConfigKeys();
+        let legacyBackupKeys = allKeys.filter(key => key.startsWith("ConfigBackup_"));
+
+        if (legacyBackupKeys.length === 0) {
             return 0;
         }
 
-        backupKeys.sort((a, b) => {
-            let timeA = a.split('_').pop();
-            let timeB = b.split('_').pop();
-            return timeB.localeCompare(timeA);
+        legacyBackupKeys.forEach(key => {
+            // 走缓存池的写穿删除：底层文件 delete 的同时同步失效 CachePool 里的旧值，
+            // 避免其他模块通过 CachePool.conf(key) 在 TTL(5s) 内读到已经被删除的脏缓存。
+            if (globalThis.CachePool && typeof globalThis.CachePool.deleteConf === 'function') {
+                globalThis.CachePool.deleteConf(key, conf);
+            } else {
+                conf.delete(key);
+            }
+            randomGradientLog(`清理 config.json 中残留的旧版备份: ${key}`);
         });
 
-        let toDelete = backupKeys.slice(keepCount);
-        toDelete.forEach(key => {
-            conf.delete(key);
-        });
-
-        return toDelete.length;
-    }
-
-    getAllConfigKeys() {
-        if (typeof conf.keys === 'function') {
-            return conf.keys();
-        } else if (typeof conf.getKeys === 'function') {
-            return conf.getKeys();
-        }
-        return [];
+        return legacyBackupKeys.length;
     }
 }
 
