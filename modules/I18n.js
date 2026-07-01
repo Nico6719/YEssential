@@ -249,7 +249,7 @@ const defaultLangContent = {
     // Tip相关
     "Tip1": "如有Bug请联系作者反馈！！！！",
     "Tip2": "感谢PHEyeji和小黑可爱喵提供技术支持和指导！感谢ender罗小黑提供在线网页支持！",
-    "Tip3": "在线config编辑器：https://jzrxh.work/projects/yessential/config.html",
+    "Tip3": "在线config编辑器：https://jzrxh.work/projects/yessential/index.html",
     "Version.Chinese": "版本:",
 
     "wh.warn": "服务器启动时维护模式已启用，非OP玩家将无法加入!!!!!",
