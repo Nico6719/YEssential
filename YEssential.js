@@ -13,8 +13,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件`;
-const version = "2.12.8";
-const regversion =[2,12,8];
+const version = "2.12.9";
+const regversion =[2,12,9];
 const info = "§l§d[-YEST-] §r§l> ";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
@@ -785,12 +785,13 @@ sethubcmd.setCallback((cmd, ori, out, res) => {
         pl.tell(info + CachePool.lang("player.not.op"));
         return;
     }
-    Hubdata = {
+    const Hubdata = {
         "x": pl.pos.x.toFixed(1) * 1,
         "y": pl.pos.y.toFixed(1) * 1,
         "z": pl.pos.z.toFixed(1) * 1,
         "dimid": pl.pos.dimid,
-        isSet: true
+        isSet: true,
+        EnabledModule: true
     };
     CachePool.setConf("Hub", Hubdata);
     pl.tell([
