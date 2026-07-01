@@ -390,10 +390,10 @@ function registerCommands() {
     cdCmd.setup();
 }
 // ==================== 获取钟表 ====================
-const CLOCK_CLAIMED_PATH = "./plugins/YEssential/data/playersettings/getclock_claimed.json";
+const CLOCK_CLAIMED_PATH = MENU_CONFIG.menusPath + "PlayerSet/getclock_claimed.json";
 
 function ensureClockDir() {
-    const dir = "./plugins/YEssential/data/playersettings/";
+    const dir = MENU_CONFIG.menusPath + "PlayerSet/";
     if (!File.exists(dir)) File.createDir(dir);
 }
 
@@ -429,16 +429,21 @@ function markClaimed(xuid) {
 function giveClock(player, isJoin) {
     const clockItem = mc.newItem("minecraft:clock", 1);
     if (!clockItem) { player.tell(info + CachePool.lang("cd.clock.create.fail")); return; }
+    // 锁定该物品，防止在背包/容器界面被移动或丢弃
+    const clockNbt = clockItem.getNbt();
+    clockNbt.setTag("tag", (clockNbt.getTag("tag") ?? new NbtCompound())
+        .setByte("minecraft:item_lock", 2));
+    clockItem.setNbt(clockNbt);
     const msg     = CachePool.lang(isJoin ? "cd.clock.join.got"  : "cd.clock.manual.got");
     const msgFull = CachePool.lang(isJoin ? "cd.clock.join.full" : "cd.clock.manual.full");
     if (!player.getInventory().hasRoomFor(clockItem)) {
-        mc.spawnItem(clockItem, player.pos);
+        // 背包已满：不强制丢在地上，提示玩家自己腾出空间后重新领取（进服触发的也不占用领取次数，方便之后手动 /getclock）
         player.tell(info + msgFull);
-    } else {
-        player.giveItem(clockItem);
-        player.refreshItems();
-        player.tell(info + msg);
+        return;
     }
+    player.giveItem(clockItem);
+    player.refreshItems();
+    player.tell(info + msg);
     markClaimed(player.xuid);
 }
 

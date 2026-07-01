@@ -1,6 +1,5 @@
 /**
- * YEssential - WriteBackStore 写回数据存储 (LLSE 官方接口严谨版)
- * ============================================================
+ * YEssential - WriteBackStore 写回数据存储
  * 核心逻辑：
  * 1. 读优化：内存 Map 提供极速读取。
  * 2. 写优化：set/delete 仅操作内存，不立即触发磁盘 I/O。
@@ -24,6 +23,9 @@
             this._loaded  = false;
             this._stats = { reads: 0, writes: 0, flushes: 0 };
             this._timer = null;
+            // [fix] 记录本轮 flush 之前被 delete() 掉的 key，
+            // 否则 flush() 只会 set 内存里剩下的 key，已删除的 key 永远留在底层文件里
+            this._deletedKeys = new Set();
         }
 
         load() {
@@ -79,6 +81,8 @@
             const k = String(key);
             if (!this._data.has(k)) return false;
             this._data.delete(k);
+            // [fix] 标记这个 key 需要在下次 flush 时从底层 jcf 里物理删除
+            this._deletedKeys.add(k);
             this._dirty = true;
             this._stats.writes++;
             return true;
@@ -86,24 +90,33 @@
 
         /**
          * 物理落盘逻辑
-         * 必须显式调用 jcf.set + jcf.save()，因为 LLSE 没有自动保存机制
          */
         flush() {
             if (!this._dirty) return false;
             
             try {
+                // 1. [fix] 先把本轮被 delete() 的 key 从底层 jcf 物理删除，
+                //    再更新剩余 key 的内容。顺序反过来的话，如果同一个 key
+                //    先删后又被重新 set，会被错误地删掉。
+                for (const k of this._deletedKeys) {
+                    if (!this._data.has(k) && this._jcf.delete) {
+                        this._jcf.delete(k);
+                    }
+                }
+                this._deletedKeys.clear();
+
                 const obj = this.getAll();
-                // 1. 更新底层对象内容
+                // 2. 更新底层对象内容
                 // 注意：这里使用全量覆盖逻辑，因为 WriteBackStore 管理的是整个文件的数据
                 for (const [k, v] of Object.entries(obj)) {
                     this._jcf.set(k, v);
                 }
-                
-                // 2. 显式物理写盘 (核心步骤)
+
+                // 3. 显式物理写盘 (核心步骤)
                 if (this._jcf.save) {
                     this._jcf.save();
                 }
-                
+
                 this._dirty = false;
                 this._stats.flushes++;
                 return true;
@@ -159,7 +172,5 @@
 
     globalThis.WriteBackStore = WriteBackStore;
     randomGradientLog("回写系统初始化完成 ");
-
     module.exports = { WriteBackStore };
-
 })();

@@ -12,9 +12,9 @@ const YEST_LangDir = "./plugins/YEssential/lang/";
 const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
-const PluginInfo =`基岩版多功能基础插件 `;
-const version = "2.12.6";
-const regversion =[2,12,6];
+const PluginInfo =`基岩版多功能基础插件`;
+const version = "2.12.7";
+const regversion =[2,12,7];
 const info = "§l§d[-YEST-] §r§l> ";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
@@ -28,7 +28,6 @@ let homedata = new JsonConfigFile(datapath +"homedata.json",JSON.stringify({}));
 let warpdata = new JsonConfigFile(datapath +"warpdata.json",JSON.stringify({}));
 
 // ── Preinit: 同步加载核心模块 ──
-// 必须在所有 conf.get/lang.get 替换项执行前就绪
 (function preinit() {
     try {
         // 暴露基础变量给 require 沙箱
@@ -59,17 +58,26 @@ let warpdata = new JsonConfigFile(datapath +"warpdata.json",JSON.stringify({}));
 // 用全局变量保证所有 mc.listen 只注册一次
 const __YEST_FIRST_LOAD__ = !globalThis.__YEST_listeners_registered__;
 
-
 ll.registerPlugin(NAME, PluginInfo,regversion, {
     Author: "Nico6719",
     License: "AGPL-3.0",
     QQ : "1584573887",
 });
 
+// [fix] 插件卸载/reload 兜底落盘
+ll.onUnload(() => {
+    try {
+        if (globalThis.WriteBackStore) {
+            const n = globalThis.WriteBackStore.flushAll();
+            randomGradientLog(`卸载插件前已保存 ${n} 个数据存储`);
+        }
+    } catch (e) {
+        logger.error(`onUnload 保存数据失败: ${e.message}`);
+    }
+});
+
 // 全局MOTD定时器管理
 let motdTimerId = null;
-
-// lang 在此处以空文件初始化（JsonConfigFile 若文件已存在则从磁盘读取）
 
 let transdimid = {
     0:"主世界",
@@ -659,6 +667,9 @@ function updateSinglePlayerCache(pl) {
     }
 }
 
+// [fix] 加 __YEST_FIRST_LOAD__ 保护：这两个定时器之前没加，
+// 每次 /reload 都会重新执行到这里，导致定时器越叠越多（旧的从未 clearInterval）
+if (__YEST_FIRST_LOAD__) {
 setInterval(() => {
     CachePool.getOnlinePlayers().forEach(pl => updateSinglePlayerCache(pl));
 }, 30000);
@@ -673,6 +684,7 @@ setInterval(() => {
         moneyDirty = false;
     }
 }, 60000);
+}
 
 // 玩家退出时立即保存其数据
 if (__YEST_FIRST_LOAD__) {
@@ -2718,11 +2730,7 @@ mc.listen("onLeft", (pl) => {
     }
 });
 }
-// ======================
-// RTP2252 2.2.9
-// ======================
-// 冷却倒计时由 RadomTeleportSystem.js 内部管理
-////rtp  remake
+// RTP已独立为模块
 if (CachePool.conf("RTP")?.EnabledModule) {
 const rtpResetCmd = mc.newCommand("rtpreset", "重置传送冷却", PermType.GameMasters);
 rtpResetCmd.overload([]);
@@ -2738,7 +2746,6 @@ asyncRtpCmd.overload([]);
 asyncRtpCmd.setCallback(async (cmd, ori, out, res) => {
     const pl = ori.player;
     if (!pl) return out.error(CachePool.lang("warp.only.player"));
-    
     try {
         await RadomTeleportSystem.performRTPAsync(pl);
     } catch (error) {
@@ -2747,7 +2754,7 @@ asyncRtpCmd.setCallback(async (cmd, ori, out, res) => {
     }
 });
 asyncRtpCmd.setup();
-} // end if (CachePool.conf("RTP")?.EnabledModule)
+}
 //经济检查模块
 function smartMoneyCheck(plname, value) {
     const pl = mc.getPlayer(plname);
