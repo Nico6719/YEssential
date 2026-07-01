@@ -13,8 +13,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件`;
-const version = "2.12.7";
-const regversion =[2,12,7];
+const version = "2.12.8";
+const regversion =[2,12,8];
 const info = "§l§d[-YEST-] §r§l> ";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
@@ -987,6 +987,12 @@ moneycmd.setCallback((cmd, ori, out, res) => {
         if (amount === undefined || amount === null) {
             return out.error(`§c请指定数量！用法: /moneys ${res.option} <玩家> <数量>`);
         }
+        if (economyMethod === 'set' && amount < 0) {
+            return out.error(info + CachePool.lang("key.not.number"));
+        }
+        if ((economyMethod === 'add' || economyMethod === 'reduce') && amount <= 0) {
+            return out.error(info + CachePool.lang("key.not.number"));
+        }
         Economy.execute(targetPl, economyMethod, amount);
         const operatorName = ori.player ? ori.player.realName : "控制台";
         history[timestamp] = `${coinName}${CachePool.lang(actionKey)}${amount} (操作员: ${operatorName})`;
@@ -1605,7 +1611,6 @@ function showUnifiedHistory(viewer, targetName) {
         }
     });
 }
-
 /**
  * 通用的管理员金币操作逻辑 (设置/增加/减少)
  */
@@ -1623,7 +1628,9 @@ function handleAdminOp(pl, target, opType, actionText, inputLabel) {
         }
         
         const amount = parseInt(inputVal, 10);
-        if (isNaN(amount) || amount <= 0) return admin.tell(info + CachePool.lang("key.not.number"));
+        if (isNaN(amount)) return admin.tell(info + CachePool.lang("key.not.number"));
+        if (opType === 'set' && amount < 0) return admin.tell(info + CachePool.lang("money.must.biggerzero"));
+        if ((opType === 'add' || opType === 'reduce') && amount <= 0) return admin.tell(info + CachePool.lang("money.must.biggerzero"));
 
         const coinName = economyCfg.coinName;
         
@@ -1645,7 +1652,6 @@ function handleAdminOp(pl, target, opType, actionText, inputLabel) {
         admin.sendText(`${info}玩家当前金币为：${Economy.get(target)}`);
     });
 }
-
 // --- 3. 功能入口函数 ---
 
 // [查看历史]
@@ -1660,14 +1666,7 @@ function MoneyHistoryGui(plname) {
     });
 }
 
-// ══════════════════════════════════════════════════════════════
 // calcTax — 阶梯税率计算
-// 档位匹配依据：玩家【余额】，税额作用于【转账金额】
-// Economy.PayTaxRate 支持两种格式：
-//   数字（旧版兼容）: 如 5 → 固定 5%
-//   数组（新版阶梯）: [{min,max,max=-1代表无上限,rate}, ...]
-// 参考 LSE Economy API: https://lse.levimc.org/apis/DataAPI/Economy/
-// ══════════════════════════════════════════════════════════════
 /**
  * @param {number} amount  转账金额（用于计算税额）
  * @param {number} balance 玩家当前余额（用于匹配档位）
@@ -1918,17 +1917,14 @@ function OPOfflineMoneyGui(plname) {
         ];
         const opType = opTypeMap[opIdx];
         const opWord = opWordMap[opIdx];
-
         const amountStr = (rawAmount || "").trim();
         if (!/^\d+$/.test(amountStr)) return admin.tell(info + CachePool.lang("key.not.number"));
         const amount = parseInt(amountStr, 10);
-        if (opType !== "set" && amount <= 0) return admin.tell(info + CachePool.lang("money.must.bigger0"));
-        if (opType === "set" && amount < 0) return admin.tell(info + CachePool.lang("money.must.bigger0"));
-
+        if (opType !== "set" && amount <= 0) return admin.tell(info + CachePool.lang("money.must.biggerzero"));
+        if (opType === "set" && amount < 0) return admin.tell(info + CachePool.lang("money.must.biggerzero"));
         if (mc.getPlayer(targetName)) {
             return admin.tell(info + CachePool.lang("money.op.offline.target.online"));
         }
-
         // ── 确认表单 ──────────────────────────────────────────
         const confirmFm = mc.newSimpleForm();
         confirmFm.setTitle(CachePool.lang("money.op.offline.confirm.title"));
@@ -2555,7 +2551,7 @@ function acceptTpaRequest(targetName) {
     from.tell(info + (delay > 0
         ? (CachePool.lang("tpa.accept.delay") || "§a对方已同意请求，将在${delay}秒后传送...").replace("${delay}", delay)
         : CachePool.lang("tpa.accept.now")));
-        if (cost > 0) {
+        if (cost >= 1) {
         if (!EconomyManager.checkAndReduce(from.realName, cost)) {
             showInsufficientMoneyGui(from, cost);
             return false;
