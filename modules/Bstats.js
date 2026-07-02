@@ -96,10 +96,6 @@ class BStatsImpl {
         this.cachedOsName    = "Unknown";
         this.cachedOsArch    = "Unknown";
         this.cachedOsVersion = "Unknown";
-        this.cachedRamTotal  = "Unknown";
-        this.cachedRamAvail  = "Unknown";
-        this._rawLinuxMem    = null;
-        this._rawWmicMem     = null;
 
         this.platform = "bukkit";
         this.baseUrl  = "https://bstats.org/api/v2/data/" + this.platform;
@@ -125,7 +121,7 @@ class BStatsImpl {
         } catch (e) {
             logger.error("读取 manifest.json 失败: " + e.message);
         }
-        return "2.12.9";
+        return "2.12.10";
     }
 
     // 将 Economy.PayTaxRate（数字 或 阶梯数组）转换为 Disabled/Enabled 两种分类
@@ -184,8 +180,8 @@ class BStatsImpl {
     // 只同步开关，UUID 不再从 conf 读写
     syncConfig() {
         try {
-            if (typeof conf !== "undefined") {
-                const bstatsConf = conf.get("Bstats") || {};
+            if (typeof CachePool !== "undefined") {
+                const bstatsConf = CachePool.conf("Bstats") || {};
                 this.enabled     = bstatsConf.EnableModule != null ? bstatsConf.EnableModule : true;
                 this.debugMode   = bstatsConf.logSentData  != null ? bstatsConf.logSentData  : true;
             }
@@ -209,31 +205,11 @@ class BStatsImpl {
         set("uname -s", "cachedOsName");
         set("uname -m", "cachedOsArch");
         set("uname -r", "cachedOsVersion");
-        set("grep -E 'MemTotal|MemAvailable' /proc/meminfo", "_rawLinuxMem");
 
         // Windows 兜底
         set("echo %NUMBER_OF_PROCESSORS%",                             "cachedCoreCount");
         set("echo %OS%",                                               "cachedOsName");
         set("echo %PROCESSOR_ARCHITECTURE%",                           "cachedOsArch");
-        set("wmic OS get TotalVisibleMemorySize,FreePhysicalMemory /value", "_rawWmicMem");
-
-        // 28 秒后解析，确保在 30 秒首次上报前就绪
-        setTimeout(function () { self._parseMemInfo(); }, 28 * 1000);
-    }
-
-    _parseMemInfo() {
-        if (this._rawLinuxMem) {
-            const totalM = this._rawLinuxMem.match(/MemTotal:\s+(\d+)/);
-            const availM = this._rawLinuxMem.match(/MemAvailable:\s+(\d+)/);
-            if (totalM) this.cachedRamTotal = Math.round(parseInt(totalM[1]) / 1024) + " MB";
-            if (availM) this.cachedRamAvail = Math.round(parseInt(availM[1]) / 1024) + " MB";
-        }
-        if (this._rawWmicMem && this.cachedRamTotal === "Unknown") {
-            const totalM = this._rawWmicMem.match(/TotalVisibleMemorySize=(\d+)/);
-            const freeM  = this._rawWmicMem.match(/FreePhysicalMemory=(\d+)/);
-            if (totalM) this.cachedRamTotal = Math.round(parseInt(totalM[1]) / 1024) + " MB";
-            if (freeM)  this.cachedRamAvail = Math.round(parseInt(freeM[1])  / 1024) + " MB";
-        }
     }
 
     collectData() {
@@ -262,45 +238,12 @@ class BStatsImpl {
         const finalOsArch    = this.cachedOsArch    !== "Unknown" ? this.cachedOsArch    : "x86_64";
         const finalCoreCount = this.cachedCoreCount !== "Unknown" ? this.cachedCoreCount : "8";
         const finalOsVersion = this.cachedOsVersion !== "Unknown" ? this.cachedOsVersion : "10.0";
-        const finalRamTotal  = this.cachedRamTotal  !== "Unknown" ? this.cachedRamTotal  : "Unknown";
-        const finalRamAvail  = this.cachedRamAvail  !== "Unknown" ? this.cachedRamAvail  : "Unknown";
 
-        let ramUsagePct = "Unknown";
-        if (finalRamTotal !== "Unknown" && finalRamAvail !== "Unknown") {
-            const total = parseInt(finalRamTotal);
-            const avail = parseInt(finalRamAvail);
-            const used  = total - avail;
-            ramUsagePct = Math.round((used / total) * 100) + "% (" + used + " MB / " + total + " MB)";
-        }
+        const econConf = (typeof CachePool !== "undefined") ? CachePool.conf("Economy") : null;
+        const rtpConf  = (typeof CachePool !== "undefined") ? CachePool.conf("RTP")     : null;
+        const homeConf = (typeof CachePool !== "undefined") ? CachePool.conf("Home")    : null;
+        const tpaConf  = (typeof CachePool !== "undefined") ? CachePool.conf("tpa")     : null;
 
-        if (this.debugMode) {
-            randomGradientLog(
-                "内存 — 总计: " + finalRamTotal +
-                " | 可用: " + finalRamAvail +
-                " | 使用率: " + ramUsagePct
-            );
-        }
-
-        const econConf = (typeof conf !== "undefined") ? conf.get("Economy") : null;
-        const rtpConf  = (typeof conf !== "undefined") ? conf.get("RTP")     : null;
-        const homeConf = (typeof conf !== "undefined") ? conf.get("Home")    : null;
-        const tpaConf  = (typeof conf !== "undefined") ? conf.get("tpa")     : null;
-
-        if (this.debugMode) {
-            randomGradientLog("[Debug] econConf 原始内容: " + JSON.stringify(econConf));
-            randomGradientLog("[Debug] econConf.mode 原始值: " + JSON.stringify(econConf && econConf.mode) + " (typeof: " + (econConf && typeof econConf.mode) + ")");
-            const _economyTypeValue = (econConf && String(econConf.mode).toLowerCase() === "llmoney") ? "LLMoney" : "Scoreboard";
-            randomGradientLog("[Debug] economy_type 即将上报的值: " + _economyTypeValue);
-
-            randomGradientLog("[Debug] homeConf 原始内容: " + JSON.stringify(homeConf));
-            randomGradientLog("[Debug] MaxHome 即将上报的值: " + this.bucketHomeMax(homeConf && homeConf.MaxHome));
-
-            randomGradientLog("[Debug] tpaConf 原始内容: " + JSON.stringify(tpaConf));
-            randomGradientLog("[Debug] TpaCost 即将上报的值: " + this.bucketCost(tpaConf && tpaConf.cost));
-
-            randomGradientLog("[Debug] econConf.PayTaxRate 原始内容: " + JSON.stringify(econConf && econConf.PayTaxRate));
-            randomGradientLog("[Debug] playerpaytaxrate 即将上报的值: " + this.describePayTaxRate(econConf && econConf.PayTaxRate));
-        }
         // Update 配置已迁移至独立的 Updateconfig.json，优先从 globalThis.updateConf 读取
         const _updSrc  = (typeof globalThis.updateConf !== "undefined") ? globalThis.updateConf : conf;
         const updConf  = (_updSrc !== undefined && _updSrc !== null) ? _updSrc.get("Update") : null;
@@ -316,9 +259,6 @@ class BStatsImpl {
             osArch:         finalOsArch,
             osVersion:      finalOsVersion,
             coreCount:      parseInt(finalCoreCount) || 8,
-            ramTotal:       finalRamTotal,
-            ramAvailable:   finalRamAvail,
-            ramUsage:       ramUsagePct,
             service: {
                 id:            this.pluginId,
                 pluginVersion: this.pluginVersion,
@@ -354,12 +294,31 @@ class BStatsImpl {
     }
 
     start() {
-        const self = this;
-        setTimeout(function () { self.submit(); }, 30 * 1000);
-        setInterval(function () { self.submit(); }, 30 * 60 * 1000);
+    const self = this;
+    const randRange = function (min, max) {
+        return (Math.random() * (max - min) + min) * 1000;
+    };
+
+    // 首次上报：30~60 秒随机延迟
+    setTimeout(function () {
+        self.submit();
+
+        // 第二次上报：25~30 分钟随机延迟
         setTimeout(function () {
-            randomGradientLog("遥测模块已启动。首次上报将在 30 秒后发送，失败最多重试 " + BSTATS_MAX_RETRY + " 次。");
-        }, 2000);
+            self.submit();
+
+            // 此后固定每 30 分钟上报一次
+            setInterval(function () {
+                self.submit();
+            }, 30 * 60 * 1000);
+
+        }, randRange(25 * 60, 30 * 60));
+
+    }, randRange(30, 60));
+
+    setTimeout(function () {
+        randomGradientLog("遥测模块已启动。首次上报将在 30~60 秒后发送，失败最多重试 " + BSTATS_MAX_RETRY + " 次。");
+    }, 2000);
     }
 }
 

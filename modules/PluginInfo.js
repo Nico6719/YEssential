@@ -165,7 +165,7 @@ function _showConfigGui(pl) {
 
     let content = "";
     sections.forEach(([key, label]) => {
-        const cfg     = conf.get(key);
+        const cfg     = CachePool.conf(key);
         const enabled = cfg ? (cfg.EnabledModule !== undefined ? cfg.EnabledModule : cfg.EnableModule) : undefined;
         const tag     = enabled === true  ? "§a[启用]§r" :
                         enabled === false ? "§c[禁用]§r" : "§7[未配置]§r";

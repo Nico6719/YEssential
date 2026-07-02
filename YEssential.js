@@ -3,7 +3,7 @@ Produced by Nico6719
 this plugin is distributed under the AGPLv3 License
 该插件由Nico6719,PHEyeji联合创作
 未经允许禁止擅自修改或者发售
-该插件仅在[github,MineBBS,KLPBBS]发布，禁止二次发布插件
+该插件仅在[Github,MineBBS,KlpBBS]发布，禁止二次发布插件
 调用示例： pl.tell(info + CachePool.lang("x.x"))
 ----------------------------------*/
 // LiteLoader-AIDS automatic generated
@@ -13,8 +13,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件`;
-const version = "2.12.9";
-const regversion =[2,12,9];
+const version = "2.12.10";
+const regversion =[2,12,10];
 const info = "§l§d[-YEST-] §r§l> ";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
@@ -854,7 +854,9 @@ mc.listen("onConsoleCmd",(cmd)=>{
     CachePool.getOnlinePlayers().forEach((pl)=>{
         pl.disconnect(msg)
     })
-    mc.runcmdEx("stop")  //再次尝试
+    setTimeout(() => {
+        mc.runcmdEx("stop")  //再次尝试
+    }, 500)
 })
 }
 //自杀模块
@@ -896,7 +898,6 @@ function Motd(){
     }, 5000);
 }
 
-// 灵魂出窍（FCAM）
 //维护模块
 // 初始化维护状态变量，从配置读取
 
