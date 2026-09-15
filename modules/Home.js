@@ -88,7 +88,7 @@ function TpHome(plname) {
         fm2.addLabel("坐标：" + pldata[lst[id]].x + "," + pldata[lst[id]].y + "," + pldata[lst[id]].z + " " + transdimid[pldata[lst[id]].dimid]);
         pl.sendForm(fm2, (pl, data) => {
             if (data == null) return pl.runcmd("home");
-            if (!EconomyManager.checkAndReduce(pl.realName, cost)) return showInsufficientMoneyGui(pl, cost, "home");
+            if (!EconomyManager.checkAndReduce(pl.realName, cost, "回家传送")) return showInsufficientMoneyGui(pl, cost, "home");
             setTimeout(() => {
                 pl.teleport(parseFloat(pldata[lst[id]].x), parseFloat(pldata[lst[id]].y), parseFloat(pldata[lst[id]].z), parseInt(pldata[lst[id]].dimid));
                 pl.sendText(info + "传送家 " + lst[id] + " 成功！");
@@ -147,7 +147,7 @@ function ShareHome(plname) {
         fm2.addLabel("传送花费：" + cost + coinName);
         pl.sendForm(fm2, (pl, data) => {
             if (data == null) return pl.runcmd("home");
-            if (!EconomyManager.checkAndReduce(pl.realName, cost)) return showInsufficientMoneyGui(pl, cost, "home");
+            if (!EconomyManager.checkAndReduce(pl.realName, cost, "公共家传送")) return showInsufficientMoneyGui(pl, cost, "home");
             setTimeout(() => {
                 pl.teleport(parseFloat(h.x), parseFloat(h.y), parseFloat(h.z), parseInt(h.dimid));
                 pl.sendText(info + "传送至公共家 §e" + h.name + "§r (" + h.owner + ") 成功！");
@@ -247,7 +247,7 @@ function DelHome(plname) {
         fm2.addLabel("坐标：" + pldata[lst[id]].x + "," + pldata[lst[id]].y + "," + pldata[lst[id]].z + " " + transdimid[pldata[lst[id]].dimid]);
         pl.sendForm(fm2, (pl, data) => {
             if (data == null) return pl.tell(info + CachePool.lang("gui.exit"));
-            if (!EconomyManager.checkAndReduce(pl.realName, cost)) return showInsufficientMoneyGui(pl, cost, "home");
+            if (!EconomyManager.checkAndReduce(pl.realName, cost, "删除家")) return showInsufficientMoneyGui(pl, cost, "home");
             delete pldata[lst[id]];
             homeStore.set(pl.realName, pldata);
             pl.sendText(info + "删除家 " + lst[id] + " 成功！");
@@ -284,7 +284,7 @@ function AddHome(plname) {
         if (data[3] == "" || !data[3]) return pl.tell(info + CachePool.lang("home.name.noinput"));
         const pldata2 = homeStore.get(pl.realName) || {};
         if (Object.keys(pldata2).includes(data[3])) return pl.tell(info + CachePool.lang("home.name.repetitive"));
-        if (!EconomyManager.checkAndReduce(pl.realName, cost)) return showInsufficientMoneyGui(pl, cost, "home");
+        if (!EconomyManager.checkAndReduce(pl.realName, cost, "添加家")) return showInsufficientMoneyGui(pl, cost, "home");
         pldata2[data[3]] = {
             x:       JSON.parse(pl.pos.x).toFixed(1),
             y:       JSON.parse(pl.pos.y).toFixed(1),

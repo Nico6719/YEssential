@@ -40,9 +40,9 @@ module.exports = {
 
         const Money = {
             get:        pl         => _Economy.get(pl),
-            add:        (pl, n)    => _Economy.execute(pl,   "add",    n),
-            reduce:     (pl, n)    => _Economy.execute(pl,   "reduce", n),
-            addOffline: (name, n)  => _Economy.execute(name, "add",    n),
+            add:        (pl, n)    => _Economy.execute(pl,   "add",    n, "红包"),
+            reduce:     (pl, n)    => _Economy.execute(pl,   "reduce", n, "红包"),
+            addOffline: (name, n)  => _Economy.execute(name, "add",    n, "红包"),
         };
 
         // ════════════════════════════════════════════════════════

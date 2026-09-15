@@ -86,7 +86,7 @@ function WarpGui(plname) {
 
         pl.sendForm(confirmFm, (pl, data) => {
             if (data == null) return pl.tell(info + CachePool.lang("gui.exit"));
-            if (!EconomyManager.checkAndReduce(pl.realName, cost)) return showInsufficientMoneyGui(pl, cost, "warp");
+            if (!EconomyManager.checkAndReduce(pl.realName, cost, "Warp传送")) return showInsufficientMoneyGui(pl, cost, "warp");
             setTimeout(() => {
                 pl.teleport(parseFloat(warpInfo.x), parseFloat(warpInfo.y), parseFloat(warpInfo.z), parseInt(warpInfo.dimid));
                 pl.sendText(info + CachePool.lang("warp.teleported").replace("${name}", warpName));

@@ -58,8 +58,8 @@ function initSignModule() {
     // 经济封装
     // ════════════════════════════════════════════════════════════
     var Money = {
-        add: function (player, amount) {
-            if (_Economy) return _Economy.execute(player, "add", amount);
+        add: function (player, amount, reason) {
+            if (_Economy) return _Economy.execute(player, "add", amount, reason || "签到奖励");
             var sb = _eco ? _eco.scoreboard : "money";
             return player.addScore(sb, Number(amount));
         },
@@ -352,7 +352,7 @@ function initSignModule() {
     // ════════════════════════════════════════════════════════════
     // 发放奖励 & 连续奖励检查
     // ════════════════════════════════════════════════════════════
-    function giveReward(player, rewardObj) {
+    function giveReward(player, rewardObj, reason) {
         if (rewardObj.type === "item") {
             var item = rewardObj.reward;
             if (player.getInventory().hasRoomFor(item)) {
@@ -362,7 +362,7 @@ function initSignModule() {
                 player.sendToast("§l签到提示", "§e背包已满，奖励物品已掉落到脚下 ↓");
             }
         } else if (rewardObj.type === "money") {
-            Money.add(player, rewardObj.reward);
+            Money.add(player, rewardObj.reward, reason || "签到奖励");
         } else if (rewardObj.type === "exp") {
             player.addExperience(Number(rewardObj.reward));
         }
@@ -374,18 +374,101 @@ function initSignModule() {
         var key      = String(cont);
         if (addition[key]) {
             var bonus = Reward.parse(addition[key]);
-            giveReward(player, bonus);
+            giveReward(player, bonus, "连续签到里程碑奖励");
             player.tell(_info + "§b§l连续签到里程碑！§r §e第 §6§l" + cont + "§r§e 天附加奖励：§f" + bonus.name);
         }
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // 防刷奖：整月每一天的随机奖励按日期固定（全局缓存）
+    // 存 data/Sign/dailyroll.json，键为日期；同一天所有人看到/领到同一结果
+    // 跨月自动清理旧记录
+    // （修复：旧版每次打开 GUI 都重新 Math.random()，可反复刷出好奖励）
+    // ════════════════════════════════════════════════════════════
+    var DAILYROLL_PATH = "./plugins/YEssential/data/Sign/dailyroll.json";
+    var dailyroll_data = new JsonConfigFile(DAILYROLL_PATH, "{}");
+
+    // 取某一天的随机奖励：有缓存重建，没有则摇一次存进 all（由调用方统一落盘）
+    function _getRollForDate(all, dateStr, token) {
+        var rec = all[dateStr];
+        if (rec && rec.token === token) {
+            if (rec.type === "item") {
+                try {
+                    return { obj: { name: rec.name, reward: mc.newItem(NBT.parseSNBT(rec.snbt)), type: "item" }, isNew: false };
+                } catch (e) { /* 缓存损坏则往下重摇 */ }
+            } else {
+                return { obj: { name: rec.name, reward: rec.value, type: rec.type }, isNew: false };
+            }
+        }
+        var roll = Reward.parse(token);
+        var rec2 = { token: token, name: roll.name, type: roll.type };
+        if (roll.type === "item") {
+            try { rec2.snbt = roll.reward.getNbt().toSNBT(); }
+            catch (e) { rec2.type = "none"; rec2.value = 0; rec2.name = "无奖励"; }
+        } else {
+            rec2.value = roll.reward;
+        }
+        all[dateStr] = rec2;
+        return { obj: roll, isNew: true };
+    }
+
+    // 生成当月每日奖励列表：随机项按日期固定，重复打开不重摇（展示=实发）
+    function buildMonthlyStable() {
+        var cfg  = Config.getReward();
+        var days = Sign.totalDaysInMonth();
+        var now  = new Date();
+        var y    = now.getFullYear();
+        var mStr = ((now.getMonth() + 1) < 10 ? "0" : "") + (now.getMonth() + 1);
+        var prefix = y + "-" + mStr + "-";
+
+        dailyroll_data.reload();
+        var all;
+        try { all = JSON.parse(dailyroll_data.read() || "{}"); } catch (e) { all = {}; }
+
+        var list = [];
+        var changed = false;
+        for (var i = 0; i < days; i++) {
+            var token = cfg[i % cfg.length];
+            if (typeof token === "string" && token.indexOf("random_") === 0) {
+                var dStr = prefix + ((i + 1) < 10 ? "0" : "") + (i + 1);
+                var r = _getRollForDate(all, dStr, token);
+                if (r.isNew) changed = true;
+                list.push(r.obj);
+            } else {
+                list.push(Reward.parse(token));
+            }
+        }
+        if (changed) {
+            // 只保留本月的记录，清掉上月残留
+            var cleaned = {};
+            Object.keys(all).forEach(function (k) { if (k.indexOf(prefix) === 0) cleaned[k] = all[k]; });
+            dailyroll_data.write(JSON.stringify(cleaned));
+        }
+        return list;
     }
 
     // ════════════════════════════════════════════════════════════
     // GUI - 签到主界面
     // ════════════════════════════════════════════════════════════
     function openSignForm(player) {
-        var rewardList   = Reward.buildMonthly();
-        var rewardText   = Reward.format(rewardList);
         var today        = new Date().getDate();
+        // 防刷奖：整月随机项按日期固定（全局缓存），重复打开不重摇，展示=实发
+        var rewardCfg    = Config.getReward();
+        var rewardList   = buildMonthlyStable();
+        var todayRoll    = rewardList[today - 1];
+        // 展示用列表：随机项隐藏具体金额/物品名，玩家看不到数值就没法照着刷
+        var displayList  = rewardList.map(function (r, i) {
+            var token = rewardCfg[i % rewardCfg.length];
+            if (typeof token === "string" && token.indexOf("random_") === 0) {
+                var masked = "随机奖励";
+                if (token === "random_money") masked = "随机" + Money.coinName();
+                else if (token === "random_item") masked = "随机物品";
+                else if (token === "random_exp")  masked = "随机经验";
+                return { name: masked, reward: r.reward, type: r.type };
+            }
+            return r;
+        });
+        var rewardText   = Reward.format(displayList);
         var canSign      = (Sign.timeDiff(player) > 0 || Sign.getCount(player) === 0);
         var monthCnt     = Sign.getMonthlyCount(player);
         var contCnt      = Sign.getContSign(player);
@@ -410,8 +493,8 @@ function initSignModule() {
                 pl.tell(_info + "§e今日签到已完成，明天 §6" + Sign.todayStr().slice(0,7) + "§e 继续哦~");
                 return;
             }
-            var todayReward = rewardList[today - 1];
-            giveReward(pl, todayReward);
+            var todayReward = todayRoll;
+            giveReward(pl, todayReward, "每日签到奖励");
             Sign.clockIn(pl);
             checkAddition(pl);
             var isFirst = Sign.getCount(pl) === 1;

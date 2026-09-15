@@ -301,7 +301,20 @@ class MenuPlayerHandler {
                 player.tell(info + "按钮类型错误", 5);
                 return;
         }
-        if (requiredMoney > 0) MenuEconomyManager.reduce(player, requiredMoney);
+        if (requiredMoney > 0 && MenuEconomyManager.reduce(player, requiredMoney)) {
+            // 菜单消费：记账（MoneyHistory，余额为变动后的值）+ 通知玩家
+            const balAfter = MenuEconomyManager.get(player);
+            try {
+                if (globalThis.Logger && Logger.change) {
+                    Logger.change(player.realName, -requiredMoney, "菜单按钮消费", balAfter);
+                }
+            } catch (e) {}
+            try {
+                if (globalThis.EconomyNotify) {
+                    EconomyNotify.send(player, EconomyNotify.fmt.system("reduce", requiredMoney, economyCfg.coinName, `菜单按钮消费 | 余额: ${balAfter}`));
+                }
+            } catch (e) {}
+        }
     }
 
     static handleOpForm(player, button, currentMenu) {

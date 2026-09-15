@@ -13,8 +13,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件`;
-const version = "2.12.13";
-const regversion =[2,12,13];
+const version = "2.12.14";
+const regversion =[2,12,14];
 const info = "§l§d[-YEST-] §r§l> ";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
@@ -893,9 +893,9 @@ suicidecmd.setCallback((cmd,ori,out,res)=>{
     if (remain > 0) return pl.tell(info + CachePool.lang("suicide.cooldown").replace("${time}", remain));
 
     if(!economyCfg.isLLMoney){
-            if(!smartMoneyCheck(pl.realName,suicideCfg.cost)) { suicideCooldownMap.delete(pl.realName); return pl.tell(info + CachePool.lang("money.no.enough")); }
+            if(!smartMoneyCheck(pl.realName,suicideCfg.cost,"自杀指令")) { suicideCooldownMap.delete(pl.realName); return pl.tell(info + CachePool.lang("money.no.enough")); }
     }else{
-            if(!smartMoneyCheck(pl.realName,suicideCfg.cost)) { suicideCooldownMap.delete(pl.realName); return pl.tell(info + CachePool.lang("money.no.enough")); }
+            if(!smartMoneyCheck(pl.realName,suicideCfg.cost,"自杀指令")) { suicideCooldownMap.delete(pl.realName); return pl.tell(info + CachePool.lang("money.no.enough")); }
     }
     pl.tell(info + CachePool.lang("suicide.kill.ok"));
     pl.kill()
@@ -1023,7 +1023,7 @@ moneycmd.setCallback((cmd, ori, out, res) => {
         if ((economyMethod === 'add' || economyMethod === 'reduce') && amount <= 0) {
             return out.error(info + CachePool.lang("key.not.number"));
         }
-        Economy.execute(targetPl, economyMethod, amount);
+        Economy.execute(targetPl, economyMethod, amount, null, true, true);  // skipLog+skipNotify：下方手动记（含操作员）与通知
         const operatorName = ori.player ? ori.player.realName : "控制台";
         history[timestamp] = `${coinName}${CachePool.lang(actionKey)}${amount} (操作员: ${operatorName})`;
         MoneyHistory.set(targetPl.realName, history);
@@ -1313,7 +1313,7 @@ const OfflineMoneyCache = {
         let totalChange = 0;
         
         operations.forEach(op => {
-            Economy.execute(player, op.type, op.amount);
+            Economy.execute(player, op.type, op.amount, "离线期间变动", false, true);  // 记账但不逐条通知（下方有汇总提示）
             
             // 计算总变化（用于通知）
             if (op.type === 'add' || op.type === 'set') {
@@ -1350,28 +1350,47 @@ const Economy = {
     },
     
     // 执行变更操作（自动处理在线/离线）
-    execute: (playerIdentifier, type, amount) => {
+    // reason: 变动原因（记入 MoneyHistory）；skipLog=true 跳过自动记账（调用方自己记）；
+    // skipNotify=true 跳过玩家余额变动提示（调用方自己通知，如转账/管理员操作）
+    execute: (playerIdentifier, type, amount, reason, skipLog, skipNotify) => {
         // 如果是 Player 对象（在线玩家）
         if (typeof playerIdentifier === 'object' && playerIdentifier.getScore) {
             const p = playerIdentifier;
             const isScore = Economy.isScoreboard();
             const obj = Economy.getObjName();
-            
+            let ok;
             switch (type) {
-                case 'set': return isScore ? p.setScore(obj, amount) : p.setMoney(amount);
-                case 'add': return isScore ? p.addScore(obj, amount) : p.addMoney(amount);
-                case 'reduce': return isScore ? p.reduceScore(obj, amount) : p.reduceMoney(amount);
+                case 'set': ok = isScore ? p.setScore(obj, amount) : p.setMoney(amount); break;
+                case 'add': ok = isScore ? p.addScore(obj, amount) : p.addMoney(amount); break;
+                case 'reduce': ok = isScore ? p.reduceScore(obj, amount) : p.reduceMoney(amount); break;
                 default: return false;
             }
+            // 变动成功后：记账（时间为变动发生时刻，余额为变动后的值）+ 通知玩家
+            if (ok !== false && ok !== null && ok !== undefined && amount !== 0) {
+                const bal = Economy.get(p);
+                const cn  = economyCfg.coinName;
+                if (!skipLog) {
+                    try {
+                        if (type === 'set') Logger.add(p.realName, `=${amount} ${cn} 设定（${reason || "未注明"}）| 余额: ${bal}`);
+                        else Logger.change(p.realName, type === 'add' ? amount : -amount, reason, bal);
+                    } catch (e) { logger.error(`[Economy] 记账失败: ${e.message}`); }
+                }
+                if (!skipNotify) {
+                    try {
+                        EconomyNotify.send(p, EconomyNotify.fmt.system(type, amount, cn, `${reason || "未注明"} | 余额: ${bal}`));
+                    } catch (e) { logger.error(`[Economy] 通知失败: ${e.message}`); }
+                }
+            }
+            return ok;
         }
-        
+
         // 如果是字符串（玩家名） - 尝试获取在线玩家
         const playerName = typeof playerIdentifier === 'string' ? playerIdentifier : playerIdentifier.realName;
         const onlinePlayer = mc.getPlayer(playerName);
-        
+
         if (onlinePlayer) {
             // 玩家在线，直接操作
-            return Economy.execute(onlinePlayer, type, amount);
+            return Economy.execute(onlinePlayer, type, amount, reason, skipLog, skipNotify);
         } else {
             // 玩家离线，添加到缓存队列
             OfflineMoneyCache.add(playerName, type, amount);
@@ -1385,10 +1404,10 @@ const EconomyManager = {
     getScoreboard: () => economyCfg.scoreboard,
     isLLMoney: () => !!economyCfg.isLLMoney,
     
-    checkAndReduce: function(playerName, amount) {
+    checkAndReduce: function(playerName, amount, reason) {
         const player = mc.getPlayer(playerName);
         if (!player) return false;
-        
+        let ok = false;
         if (this.isLLMoney()) {
             const balance = player.getMoney();
             if (balance === null || balance === undefined) {
@@ -1396,13 +1415,22 @@ const EconomyManager = {
                 return false;
             }
             if (balance < amount) return false;
-            return player.reduceMoney(amount);
+            ok = player.reduceMoney(amount);
         } else {
             const sb = this.getScoreboard();
             const score = player.getScore(sb);
             if (score < amount) return false;
-            return player.reduceScore(sb, amount);
+            ok = player.reduceScore(sb, amount);
         }
+        // 扣款成功：记账（时间为变动时刻，余额为变动后的值）+ 通知玩家
+        if (ok && amount > 0) {
+            const bal = Economy.get(player);
+            try { Logger.change(playerName, -amount, reason || "消费", bal); }
+            catch (e) { logger.error(`[Economy] 记账失败: ${e.message}`); }
+            try { EconomyNotify.send(player, EconomyNotify.fmt.system("reduce", amount, economyCfg.coinName, `${reason || "消费"} | 余额: ${bal}`)); }
+            catch (e) { logger.error(`[Economy] 通知失败: ${e.message}`); }
+        }
+        return ok;
     }
 };
 
@@ -1548,6 +1576,22 @@ const Logger = {
         let key = `${system.getTimeStr()}§${getRandomLetter()}`;
         history[key] = message;
         MoneyHistory.set(targetName, history);
+    },
+    /**
+     * 记一笔经济变动（统一格式：±金额 收入/支出（原因）| 余额: X）
+     * key 为变动发生时刻（system.getTimeStr），余额为变动后的值
+     * @param {string} targetName        谁的钱变了
+     * @param {number} delta             变动量（正=收入，负=支出）
+     * @param {string} reason            变动原因
+     * @param {number|null} balanceAfter 变动后余额（null/undefined 则不显示）
+     */
+    change: (targetName, delta, reason, balanceAfter) => {
+        const cn = economyCfg.coinName;
+        const sign = delta > 0 ? "+" : "-";
+        const kind = delta > 0 ? "收入" : "支出";
+        let msg = `${sign}${Math.abs(delta)} ${cn} ${kind}（${reason || "未注明"}）`;
+        if (balanceAfter !== null && balanceAfter !== undefined) msg += ` | 余额: ${balanceAfter}`;
+        Logger.add(targetName, msg);
     }
 };
 
@@ -1665,8 +1709,8 @@ function handleAdminOp(pl, target, opType, actionText, inputLabel) {
         const coinName = economyCfg.coinName;
         
         // 执行经济操作
-        Economy.execute(target, opType, amount);
-        
+        Economy.execute(target, opType, amount, null, true, true);  // skipLog+skipNotify：下方手动记（含操作员）与通知
+
         // 记录日志 (修复了原代码存错人的Bug)
         const logMsg = `${coinName}${actionText}${amount} (操作员: ${admin.realName})`;
         Logger.add(target.realName, logMsg);
@@ -1779,8 +1823,8 @@ function MoneyTransferGui(plname) {
                 : CachePool.lang("money.no.enough")));
         }
 
-        Economy.execute(player, 'reduce', finalAmount);
-        Economy.execute(target, 'add', actualReceived);
+        Economy.execute(player, 'reduce', finalAmount, null, true, true);  // skipLog+skipNotify：下方有详细转账记录与通知
+        Economy.execute(target, 'add', actualReceived, null, true, true);
 
         const timeStr = system.getTimeStr();
         const noteMsg = note ? ` ${CachePool.lang("money.tr.beizhu")}: ${note}` : "";
@@ -1887,7 +1931,7 @@ function MoneyTransferOfflineGui(plname) {
 
             if (Economy.get(pl2) < finalAmount) return pl2.tell(info + CachePool.lang("money.no.enough"));
 
-            Economy.execute(pl2, 'reduce', finalAmount);
+            Economy.execute(pl2, 'reduce', finalAmount, null, true, true);  // skipLog+skipNotify：下方有详细转账记录与通知
             OfflineMoneyCache.add(targetName, 'add', actualReceived);
 
             const timeStr = system.getTimeStr();
@@ -2206,9 +2250,9 @@ function BackGUI(plname) {
         
         // 检查金钱
         if (!economyCfg.isLLMoney) {
-            if (!smartMoneyCheck(pl.realName, backCfg2.cost)) return pl.tell(info + CachePool.lang("money.no.enough"));
+            if (!smartMoneyCheck(pl.realName, backCfg2.cost, "返回死亡点")) return pl.tell(info + CachePool.lang("money.no.enough"));
         } else {
-            if (!smartMoneyCheck(pl.realName, backCfg2.cost)) return pl.tell(info + CachePool.lang("money.no.enough"));
+            if (!smartMoneyCheck(pl.realName, backCfg2.cost, "返回死亡点")) return pl.tell(info + CachePool.lang("money.no.enough"));
         }
         
         // 传送到选择的死亡点
@@ -2717,7 +2761,7 @@ function acceptTpaRequest(targetName) {
         ? (CachePool.lang("tpa.accept.delay") || "§a对方已同意请求，将在${delay}秒后传送...").replace("${delay}", delay)
         : CachePool.lang("tpa.accept.now")));
         if (cost >= 1) {
-        if (!EconomyManager.checkAndReduce(from.realName, cost)) {
+        if (!EconomyManager.checkAndReduce(from.realName, cost, "tpa传送")) {
             showInsufficientMoneyGui(from, cost);
             return false;
         }
@@ -2917,7 +2961,7 @@ asyncRtpCmd.setCallback(async (cmd, ori, out, res) => {
 asyncRtpCmd.setup();
 }
 //经济检查模块
-function smartMoneyCheck(plname, value) {
+function smartMoneyCheck(plname, value, reason) {
     const pl = mc.getPlayer(plname);
     if (!pl) return false;
     const isLLMoney = economyCfg.isLLMoney;
@@ -2929,7 +2973,16 @@ function smartMoneyCheck(plname, value) {
         balance = 0;
     }
     if (balance < value) return false;
-    return isLLMoney ? pl.reduceMoney(value) : pl.reduceScore(scoreboard, value);
+    const ok = isLLMoney ? pl.reduceMoney(value) : pl.reduceScore(scoreboard, value);
+    // 扣款成功：记账（时间为变动时刻，余额为变动后的值）+ 通知玩家
+    if (ok && value > 0) {
+        const bal = Economy.get(pl);
+        try { Logger.change(plname, -value, reason || "消费", bal); }
+        catch (e) { logger.error(`[Economy] 记账失败: ${e.message}`); }
+        try { EconomyNotify.send(pl, EconomyNotify.fmt.system("reduce", value, economyCfg.coinName, `${reason || "消费"} | 余额: ${bal}`)); }
+        catch (e) { logger.error(`[Economy] 通知失败: ${e.message}`); }
+    }
+    return ok;
 }
 // ======================
 // 红包系统已迁移至 modules/Redpacket.js

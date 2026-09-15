@@ -59,7 +59,7 @@ function initFcamModule() {
         // ── 进入灵魂出窍 ────────────────────────────────────
 
         // 费用检查（smartMoneyCheck 定义于主文件）
-        if (!smartMoneyCheck(pl.realName, FcamCost)) {
+        if (!smartMoneyCheck(pl.realName, FcamCost, "灵魂出窍(Fcam)")) {
             return pl.tell(info + CachePool.lang("money.no.enough"));
         }
 
