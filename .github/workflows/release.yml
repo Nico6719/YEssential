@@ -76,6 +76,9 @@ jobs:
           mkdir -p dist/YEssential
           cp YEssential.js manifest.json dist/YEssential/
           cp -r modules dist/YEssential/
+          # 已废弃模块：不打进发布包
+          rm -f dist/YEssential/modules/YEssentialAPI.js
+          rm -f dist/YEssential/modules/TeleportSystemMigrator.js
           (cd dist && zip -r ../YEssential.zip YEssential)
           echo "--- 打包内容 ---"
           unzip -l YEssential.zip
