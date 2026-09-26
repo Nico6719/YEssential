@@ -13,8 +13,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件`;
-const version = "2.12.14";
-const regversion =[2,12,14];
+const version = "2.12.15";
+const regversion =[2,12,15];
 const info = "§l§d[-YEST-] §r§l> ";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
@@ -458,7 +458,7 @@ function printGradientLogo() {
     randomGradientLog("-".repeat(50));
 }
 function initializePlugin() {
-    // 第一步：获取并创建计分板
+    // 第1步：获取并创建计分板
     const scoreboardName = economyCfg.scoreboard;
     
     // 检查计分板是否存在，不存在则创建
@@ -474,35 +474,26 @@ function initializePlugin() {
         // 尝试强制创建
         mc.runcmdEx(`scoreboard objectives add ${scoreboardName} dummy`);
     }
-    
-    // 第二步：异步合并语言文件（由 modules/I18n.js 在加载时自动处理）
-    
-    // 第三步：提示维护功能是否开启
+    // 第2步：提示维护功能是否开启
     if (Maintenance.isActive) {
         setTimeout(() => {
             randomGradientLog(CachePool.lang("wh.warn"));
         }, 1000);
     }
     
-    // 第四步：启用死亡不掉落
+    // 第3步：启用死亡不掉落
     if (CachePool.conf("KeepInventory")) {
         mc.runcmdEx("gamerule KeepInventory true");
         randomGradientLog(CachePool.lang("gamerule.KeepInventory.true"));
     }
-    
-    // 第五步（公告更新检测）已移至 Notice.js 模块
+    // 第3步：清理残留的身体标记（原先清理 _sp 模拟玩家，已不再产生）
+    if (typeof globalThis.fcamCleanupOrphans === "function") {
+        globalThis.fcamCleanupOrphans();
+    }
 
-    // 第六步：清理残留的灵魂出窍模拟玩家
-    const allPlayers = CachePool.getOnlinePlayers();
-    allPlayers.forEach(p => {
-        // FCAM 创建的模拟玩家通常以 _sp 结尾
-        if (p.isSimulatedPlayer() && p.name.endsWith("_sp")) {
-            p.simulateDisconnect();
-        }
-    });
     if(CachePool.conf("Update", globalThis.updateConf)?.EnableModule==0) {return;}
      else{
-    // 第七步：异步初始化更新检查器并检查更新
+    // 第4步：异步初始化更新检查器并检查更新
     setTimeout(() => {
         (async () => {
             try {
@@ -648,11 +639,7 @@ function ranking(plname) {
     }
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////
 // 金币排行榜更新优化 - 使用内存缓存减少文件I/O
-// [fix] moneyCache 改为普通 Object，避免与 for...in / Object.keys 等 API 混用
-// 原来声明为 new Map() 但到处用 obj[key] / for...in / Object.keys 访问，
-// 导致 ranking() 合并缓存时完全读不到数据（Map 不可被 for...in 枚举）
 let moneyCache = {};
 let moneyDirty = false;
 function updateSinglePlayerCache(pl) {
@@ -667,8 +654,7 @@ function updateSinglePlayerCache(pl) {
     }
 }
 
-// [fix] 加 __YEST_FIRST_LOAD__ 保护：这两个定时器之前没加，
-// 每次 /reload 都会重新执行到这里，导致定时器越叠越多（旧的从未 clearInterval）
+// [fix] 加 __YEST_FIRST_LOAD__ 保护
 if (__YEST_FIRST_LOAD__) {
 setInterval(() => {
     CachePool.getOnlinePlayers().forEach(pl => updateSinglePlayerCache(pl));
@@ -961,7 +947,7 @@ whcmd.setCallback((cmd, ori, out, res) => {
         const whConfig = CachePool.conf("wh");
         mc.setMotd(whConfig.whmotdmsg);
         CachePool.getOnlinePlayers().forEach((player) => {
-            if (!player.isSimulatedPlayer() && !player.isOP()) {
+            if (!player.isOP()) {
                 player.kick(whConfig.whmotdmsg);
             }
         });
@@ -977,7 +963,6 @@ mc.listen("onPreJoin", (pl) => {
     // 检查模块是否启用
     let currentConfig = CachePool.conf("wh") || { EnableModule: true, status: 0 , whmotdmsg: "服务器维护中，请勿进入！", whgamemsg: "服务器正在维护中，请您稍后再来!"};
     if (!currentConfig.EnableModule) return;
-    if (pl.isSimulatedPlayer()) return;
     if (pl.isOP()) return;
     if (Maintenance.isActive) {
         pl.kick(currentConfig.whgamemsg);            
@@ -1549,14 +1534,6 @@ mc.listen("onJoin", (pl) => {
             if (!score) pl.setScore(economyCfg.scoreboard, 0);
         }
 
-        if (!pl.isOP()) {
-            const xuid = pl.realName;
-            if (pvpConfig.get(xuid) === undefined) pvpConfig.set(xuid, false);
-            const plname = pl.realName;
-            pl.setGameMode(0);
-            setTimeout(() => { mc.runcmdEx(`tp ${plname} ${plname + "_sp"}`); }, 1000);
-        }
-
         // ── 3. 离线货币 & 经济通知投递 ──
         OfflineMoneyCache.apply(pl);
         EconomyNotify.apply(pl);
@@ -1797,7 +1774,7 @@ function MoneyTransferGui(plname) {
 
         // [fix] 原条件 !x===false 双重否定导致 null target 时直接 TypeError；
         //       拆为三段：target不存在 | 是模拟玩家 | 转给自己
-        if (!target || target.isSimulatedPlayer() || player.realName === target.realName) {
+        if (!target || player.realName === target.realName) {
             return player.tell(info + (player.realName === target?.realName
                 ? CachePool.lang("money.tr.error2")
                 : CachePool.lang("money.tr.error1")));
