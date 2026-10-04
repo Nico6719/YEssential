@@ -13,8 +13,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件`;
-const version = "2.12.15";
-const regversion =[2,12,15];
+const version = "2.12.16";
+const regversion =[2,12,16];
 const info = "§l§d[-YEST-] §r§l> ";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
@@ -486,11 +486,6 @@ function initializePlugin() {
         mc.runcmdEx("gamerule KeepInventory true");
         randomGradientLog(CachePool.lang("gamerule.KeepInventory.true"));
     }
-    // 第3步：清理残留的身体标记（原先清理 _sp 模拟玩家，已不再产生）
-    if (typeof globalThis.fcamCleanupOrphans === "function") {
-        globalThis.fcamCleanupOrphans();
-    }
-
     if(CachePool.conf("Update", globalThis.updateConf)?.EnableModule==0) {return;}
      else{
     // 第4步：异步初始化更新检查器并检查更新
