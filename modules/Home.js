@@ -200,6 +200,7 @@ function HomeSeetings(plname) {
             const newName     = (data[2] && data[2].trim()) ? data[2].trim() : null;
 
             if (newName && newName !== homeName) {
+                if (!_isValidHomeName(newName)) return pl.tell(info + CachePool.lang("home.name.invalid"));
                 if (Object.keys(pldata2).includes(newName)) return pl.tell(info + CachePool.lang("home.name.repetitive"));
                 pldata2[newName] = pldata2[homeName];
                 delete pldata2[homeName];
@@ -256,6 +257,14 @@ function DelHome(plname) {
 }
 
 // ─────────────────────────────────────────────────────────
+// 家名合法性校验（长度 + 字符白名单，防止注入/格式化代码）
+// ─────────────────────────────────────────────────────────
+
+function _isValidHomeName(name) {
+    return typeof name === "string" && /^[0-9A-Za-z一-龥_-]{1,16}$/.test(name);
+}
+
+// ─────────────────────────────────────────────────────────
 // 添加家
 // ─────────────────────────────────────────────────────────
 
@@ -282,6 +291,7 @@ function AddHome(plname) {
     pl.sendForm(fm, (pl, data) => {
         if (data == null) return pl.runcmd("home");
         if (data[3] == "" || !data[3]) return pl.tell(info + CachePool.lang("home.name.noinput"));
+        if (!_isValidHomeName(data[3])) return pl.tell(info + CachePool.lang("home.name.invalid"));
         const pldata2 = homeStore.get(pl.realName) || {};
         if (Object.keys(pldata2).includes(data[3])) return pl.tell(info + CachePool.lang("home.name.repetitive"));
         if (!EconomyManager.checkAndReduce(pl.realName, cost, "添加家")) return showInsufficientMoneyGui(pl, cost, "home");
