@@ -76,6 +76,32 @@ function initSignModule() {
         : null;
     var _SIGN_CFG_KEY = "sign_cfg_all";
 
+    // [perf-fix] 签到数据 / 奖励库 / 每日随机奖励此前每次读取都 reload() 重新读盘，
+    // 一次打开菜单会连续触发十几次。改为 TTL 内复用：
+    //  - 签到数据只由本模块写入（set 会同步写盘），所以跳过 reload 是安全的
+    //  - 奖励库 / 每日奖励在 write 之后主动失效缓存
+    // 代价：管理员手动改这些 JSON 文件，最多 SIGN_RELOAD_TTL_MS 后才生效。
+    var SIGN_RELOAD_TTL_MS = 3000;
+    var _reloadStamp = {};
+    var _rawCache = {};
+    function reloadIfStale(file, key) {
+        var now = Date.now();
+        if (_reloadStamp[key] === undefined || now - _reloadStamp[key] > SIGN_RELOAD_TTL_MS) {
+            file.reload();
+            _reloadStamp[key] = now;
+        }
+    }
+    function readRawCached(file, key) {
+        var now = Date.now();
+        var e = _rawCache[key];
+        if (e && now - e.ts <= SIGN_RELOAD_TTL_MS) return e.raw;
+        file.reload();
+        var raw = file.read();
+        _rawCache[key] = { raw: raw, ts: now };
+        return raw;
+    }
+    function invalidateRaw(key) { delete _rawCache[key]; }
+
     var Config = {
         get: function (key) {
             // 尝试从缓存取整个 config 对象
@@ -179,8 +205,7 @@ function initSignModule() {
 
     var Reward = {
         getItems: function () {
-            reward_data.reload();
-            return JSON.parse(reward_data.read());
+            return JSON.parse(readRawCached(reward_data, "reward"));
         },
         randomMoney: function () {
             var cfg = Config.getRandomMoney();
@@ -298,7 +323,7 @@ function initSignModule() {
     // ════════════════════════════════════════════════════════════
     var Sign = {
         get: function (player) {
-            sign_data.reload();
+            reloadIfStale(sign_data, "sign");
             if (player == null) return JSON.parse(sign_data.read());
             var name = (typeof player === "string") ? player : player.realName;
             return sign_data.get(name);
@@ -421,9 +446,8 @@ function initSignModule() {
         var mStr = ((now.getMonth() + 1) < 10 ? "0" : "") + (now.getMonth() + 1);
         var prefix = y + "-" + mStr + "-";
 
-        dailyroll_data.reload();
         var all;
-        try { all = JSON.parse(dailyroll_data.read() || "{}"); } catch (e) { all = {}; }
+        try { all = JSON.parse(readRawCached(dailyroll_data, "dailyroll") || "{}"); } catch (e) { all = {}; }
 
         var list = [];
         var changed = false;
@@ -443,6 +467,7 @@ function initSignModule() {
             var cleaned = {};
             Object.keys(all).forEach(function (k) { if (k.indexOf(prefix) === 0) cleaned[k] = all[k]; });
             dailyroll_data.write(JSON.stringify(cleaned));
+            invalidateRaw("dailyroll");
         }
         return list;
     }
@@ -716,6 +741,7 @@ function initSignModule() {
                 itemLib.splice(id[2], 1, makeSnbt());
             }
             reward_data.write(JSON.stringify(itemLib, null, 4));
+            invalidateRaw("reward");
             openItemLibSet(pl, "§a✔ 操作成功", mode);
         });
     }

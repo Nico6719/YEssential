@@ -98,7 +98,8 @@ var CleanMgr = (function () {
     lowTpsCleanCount: 0,      
     lowTpsRetryTime: 0,       
     tpsBeforeClean: 20,       
-    isLowTpsTrigger: false    
+    isLowTpsTrigger: false,
+    cleanGen: 0               // [fix] 取消令牌：QuickJS 版 LSE 没有 clearTimeout
   };
 
   var config = null;
@@ -243,8 +244,10 @@ var CleanMgr = (function () {
       }
     } catch (ex) {}
 
+    var isItem = false;
     try {
       if (typeof e.isItemEntity === "function" && e.isItemEntity()) {
+        isItem = true;
         var it = e.toItem();
         if (it && it.type) {
           for (var i = 0; i < whitelistRegex.length; i++) {
@@ -253,6 +256,9 @@ var CleanMgr = (function () {
         }
       }
     } catch (ex) {}
+
+    // [perf-fix] NBT 读取很重；掉落物不需要检查 CustomName/IsTamed，直接跳过
+    if (isItem) return false;
 
     try {
       var nbt = e.getNbt();
@@ -277,46 +283,43 @@ var CleanMgr = (function () {
   }
 
   /* ================= 执行清理 ================= */
-  function executeClean() {
-    state.phase = "cleaning";
-    var removed = 0, kept = 0, total = 0;
-    
-    mc.broadcast(info + t("messages.cleanup_start"));
-    var all = mc.getAllEntities();
-    total = all.length;
-    
-    for (var i = 0; i < all.length; i++) {
-      var entity = all[i];
-      if (shouldKeep(entity)) {
-        kept++;
-      } else {
-        try { entity.despawn(); removed++; } catch (e) {}
-      }
-    }
-    
-    mc.broadcast(info+ t("messages.cleanup_complete", removed));
+  // [fix] QuickJS 版 LSE 里没有全局 clearTimeout（原代码 /clean cancel 会报
+  // "clearTimeout is not defined"）。改用"代际令牌"：取消时 cleanGen+1，
+  // 之前安排的定时回调醒来后发现代际不匹配就直接作废。
+  function cancelScheduledClean() {
+    state.cleanGen++;
+    state.scheduledTimeouts = [];
+  }
+
+  // [perf-fix] 分片清理：每片最多占用 CLEAN_SLICE_MS 毫秒，片与片之间让出一个 tick，
+  // 避免实体很多时在单个 tick 内同步遍历（含 NBT 读取）造成瞬时卡顿。
+  var CLEAN_SLICE_MS = 4;
+  var CLEAN_SLICE_GAP_MS = 50;
+
+  function finishClean(removed) {
+    mc.broadcast(info + t("messages.cleanup_complete", removed));
     sendToastToAll(info, t("messages.cleanup_complete", removed));
 
     if (state.isLowTpsTrigger) {
       setTimeout(function() {
         var currentTps = getTps();
         var improved = currentTps > (state.tpsBeforeClean + 2.0);
-        
+
         debug("TPS清理评估: 前=" + state.tpsBeforeClean.toFixed(2) + " 后=" + currentTps.toFixed(2));
 
         if (improved) {
-          state.lowTpsCleanCount = 0; 
+          state.lowTpsCleanCount = 0;
           debug("TPS已改善，重置连续清理计数");
         } else {
           state.lowTpsCleanCount++;
           debug("TPS未明显改善，连续无效计数: " + state.lowTpsCleanCount);
-          
+
           if (state.lowTpsCleanCount >= config.LowTpsClean.maxConsecutiveCleans) {
             var coolMin = Math.round(config.LowTpsClean.longCooldown / 60);
             mc.broadcast(info + t("messages.low_tps_ineffective", coolMin));
-            
+
             state.lowTpsRetryTime = Date.now() + (config.LowTpsClean.longCooldown * 1000);
-            state.lowTpsCleanCount = 0; 
+            state.lowTpsCleanCount = 0;
             logger.warn("[清理系统] 低TPS清理连续无效，进入长冷却模式：" + coolMin + "分钟");
           }
         }
@@ -326,6 +329,35 @@ var CleanMgr = (function () {
 
     state.phase = "idle";
     state.scheduledTimeouts = [];
+  }
+
+  function executeClean() {
+    state.phase = "cleaning";
+    var removed = 0;
+
+    mc.broadcast(info + t("messages.cleanup_start"));
+    var all;
+    try { all = mc.getAllEntities(); } catch (e) { all = []; }
+    var idx = 0;
+
+    function slice() {
+      try {
+        var t0 = Date.now();
+        while (idx < all.length) {
+          var entity = all[idx++];
+          try {
+            if (!shouldKeep(entity)) { entity.despawn(); removed++; }
+          } catch (e) {}
+          if (Date.now() - t0 >= CLEAN_SLICE_MS) break;
+        }
+      } catch (e) {
+        logger.error("[清理系统] 分片清理异常: " + e);
+        idx = all.length;
+      }
+      if (idx < all.length) setTimeout(slice, CLEAN_SLICE_GAP_MS);
+      else finishClean(removed);
+    }
+    slice();
   }
 
   function scheduleClean(isManual, playerName, isLowTps) {
@@ -350,22 +382,27 @@ var CleanMgr = (function () {
     var n2 = config.notice.notice2;
     var n3 = config.notice.notice3;
 
+    var gen = state.cleanGen;
+    function alive(fn) {
+      return function () { if (gen !== state.cleanGen) return; fn(); };
+    }
+
     mc.broadcast(info + t("messages.cleanup_notice", n1));
     sendToastToAll(t("toast_title"), t("messages.cleanup_notice", n1));
 
     if (n2 > 0 && n2 < n1) {
-      state.scheduledTimeouts.push(setTimeout(function () {
+      state.scheduledTimeouts.push(setTimeout(alive(function () {
         mc.broadcast(info + t("messages.cleanup_notice2", n2));
         sendToastToAll(t("toast_title"), t("messages.cleanup_notice2", n2));
-      }, (n1 - n2) * 1000));
+      }), (n1 - n2) * 1000));
     }
     if (n3 > 0 && n3 < n2) {
-      state.scheduledTimeouts.push(setTimeout(function () {
+      state.scheduledTimeouts.push(setTimeout(alive(function () {
         mc.broadcast(info + t("messages.cleanup_notice3", n3));
         sendToastToAll(t("toast_title"), t("messages.cleanup_notice3", n3));
-      }, (n1 - n3) * 1000));  // 修复：延迟基准为n1，而非n2
+      }), (n1 - n3) * 1000));  // 修复：延迟基准为n1，而非n2
     }
-    state.scheduledTimeouts.push(setTimeout(executeClean, n1 * 1000));
+    state.scheduledTimeouts.push(setTimeout(alive(executeClean), n1 * 1000));
   }
 
   /* ================= 命令处理 ================= */
@@ -378,12 +415,9 @@ var CleanMgr = (function () {
       return true;
     }
     if (action === "tps") {
-      var cur = getTps();
-      player.tell(info + t("messages.tps_info", cur.toFixed(2)));
-      setInterval(function() {
-        var currentTps = getTps();
-        player.tell(info + t("messages.tps_info", currentTps.toFixed(2)));
-      }, 100);
+      // [perf-fix] 原实现每执行一次就创建一个永不清除的 100ms setInterval，
+      // 会持续刷屏并无限累积定时器。改为只回复一次当前 TPS。
+      player.tell(info + t("messages.tps_info", getTps().toFixed(2)));
       return true;
     }
     if (action === "status") {
@@ -392,7 +426,7 @@ var CleanMgr = (function () {
     }
     if (action === "cancel") {
       if (state.phase === "scheduled") {
-        state.scheduledTimeouts.forEach(clearTimeout);
+        cancelScheduledClean();
         state.scheduledTimeouts = [];
         state.phase = "idle";
         mc.broadcast(info + t("messages.cancel_success"));
@@ -448,7 +482,7 @@ var CleanMgr = (function () {
                 logger.info("状态: " + state.phase + (state.lowTpsRetryTime > Date.now() ? " (TPS清理长冷却中)" : ""));
             } else if (act === "cancel") {
                 if (state.phase === "scheduled") {
-                    state.scheduledTimeouts.forEach(clearTimeout);
+                    cancelScheduledClean();
                     state.scheduledTimeouts = [];
                     state.phase = "idle";
                     mc.broadcast(info + t("messages.cancel_success"));

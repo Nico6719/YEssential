@@ -13,8 +13,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件`;
-const version = "2.12.16";
-const regversion =[2,12,16];
+const version = "2.12.17";
+const regversion =[2,12,17];
 const info = "§l§d[-YEST-] §r§l> ";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
@@ -66,6 +66,14 @@ ll.registerPlugin(NAME, PluginInfo,regversion, {
 
 // [fix] 插件卸载/reload 兜底落盘
 ll.onUnload(() => {
+    try {
+        // [perf-fix] 红包数据改为防抖写盘，卸载前强制落盘
+        if (globalThis.redpacketData && typeof globalThis.redpacketData.flush === "function") {
+            globalThis.redpacketData.flush();
+        }
+    } catch (e) {
+        logger.error(`onUnload 保存红包数据失败: ${e.message}`);
+    }
     try {
         if (globalThis.WriteBackStore) {
             const n = globalThis.WriteBackStore.flushAll();
@@ -1245,15 +1253,22 @@ function OPMoneyGui(plname){
 // --- v2.7.2 添加离线货币缓存管理 ---
 const OfflineMoneyCache = {
     // 读取离线缓存
+    // [perf-fix] 内存缓存：只在首次使用时读盘，之后 load() 直接返回内存对象；
+    // save() 仍然同步写盘（写入很少，保证不丢数据）。
+    _mem: null,
     load: () => {
-        if (!File.exists(offlineMoneyPath)) {
-            File.writeTo(offlineMoneyPath, JSON.stringify({}));
+        if (OfflineMoneyCache._mem === null) {
+            if (!File.exists(offlineMoneyPath)) {
+                File.writeTo(offlineMoneyPath, JSON.stringify({}));
+            }
+            OfflineMoneyCache._mem = JSON.parse(File.readFrom(offlineMoneyPath));
         }
-        return JSON.parse(File.readFrom(offlineMoneyPath));
+        return OfflineMoneyCache._mem;
     },
     
     // 保存离线缓存
     save: (data) => {
+        OfflineMoneyCache._mem = data;
         File.writeTo(offlineMoneyPath, JSON.stringify(data, null, 2));
     },
     
@@ -1423,12 +1438,20 @@ const EconomyManager = {
 const EconomyNotify = {
 
     // ── 磁盘读写 ─────────────────────────────────────────────
+    // [perf-fix] 内存缓存：玩家每次进服都会调用 apply()，不再每次都读盘
+    _mem: null,
     _load: () => {
-        if (!File.exists(offlineNotifyPath)) File.writeTo(offlineNotifyPath, "{}");
-        try { return JSON.parse(File.readFrom(offlineNotifyPath)) || {}; }
-        catch(e) { return {}; }
+        if (EconomyNotify._mem === null) {
+            if (!File.exists(offlineNotifyPath)) File.writeTo(offlineNotifyPath, "{}");
+            try { EconomyNotify._mem = JSON.parse(File.readFrom(offlineNotifyPath)) || {}; }
+            catch(e) { EconomyNotify._mem = {}; }
+        }
+        return EconomyNotify._mem;
     },
-    _save: (data) => { File.writeTo(offlineNotifyPath, JSON.stringify(data, null, 2)); },
+    _save: (data) => {
+        EconomyNotify._mem = data;
+        File.writeTo(offlineNotifyPath, JSON.stringify(data, null, 2));
+    },
 
     // ── 将消息存入离线队列 ────────────────────────────────────
     addOffline: (playerName, msg) => {

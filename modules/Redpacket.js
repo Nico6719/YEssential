@@ -63,9 +63,30 @@ module.exports = {
                 }
             },
 
+            // [perf-fix] 防抖写盘：同一时刻的多次修改（setPacket / nextId 等）
+            // 合并为一次文件写入；卸载/重载时由 flush() 兜底落盘。
+            // 注意：QuickJS 版 LSE 没有 clearTimeout，所以用序号让已安排的回调作废。
+            _dirty: false,
+            _saveSeq: 0,
+            _savePending: false,
             save() {
+                this._dirty = true;
+                if (this._savePending) return;
+                this._savePending = true;
+                const seq = this._saveSeq;
+                setTimeout(() => {
+                    if (seq !== this._saveSeq) return;   // 已被 flush() 作废
+                    this._savePending = false;
+                    this.flush();
+                }, 500);
+            },
+            flush() {
+                this._saveSeq++;            // 作废尚未触发的定时回调
+                this._savePending = false;
+                if (!this._dirty) return;
                 try {
                     file.writeTo(this.path, JSON.stringify(this.data, null, 2));
+                    this._dirty = false;
                 } catch (e) {
                     logger.error("[红包] 数据保存失败: " + e);
                 }

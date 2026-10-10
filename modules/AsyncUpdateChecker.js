@@ -28,7 +28,7 @@ class AsyncNetworkManager {
             }, timeout);
 
             network.httpPost(url, data, contentType, (status, result) => {
-                clearTimeout(timer);
+                clearInterval(timer);   // LSE 没有 clearTimeout；clearInterval 可取消延迟任务
                 if (status === 200) {
                     resolve(result);
                 } else {
