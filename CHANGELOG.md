@@ -1,4 +1,10 @@
 # 更新日志
+## v2.12.17 (2026-10-11)
+- 修复CleanMgr定时器泄露问题   By @Nico6719
+- 优化Cleanmgr清理性能，不扫实体   By @Nico6719
+- 优化Redpacket性能，使其经过缓存并减少频繁I/O   By @Nico6719
+- 优化离线经济和通知队列和Sign ，使其经过缓存   By @Nico6719
+- 修复AsyncUpdateChecker内的死代码   @Nico6719
 ## v2.12.16 (2026-10-04)
 - 修复Fcam能刷盔甲架的问题，改为发假人包替代原位置   By @Nico6719
 ## v2.12.15 (2026-09-26)
