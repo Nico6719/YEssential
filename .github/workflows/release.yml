@@ -18,6 +18,7 @@ jobs:
         with:
           fetch-depth: 2   # 需要对比前一个 commit
 
+      # ---------- 检测版本号 ----------
       - name: 检测版本号是否变化
         id: ver
         run: |
@@ -32,13 +33,42 @@ jobs:
             echo "版本变化: $OLD → $NEW，准备发布"
           fi
 
+      # ---------- 解密 MineBBS Token ----------
+      - name: 解密 MineBBS Token
+        if: steps.ver.outputs.changed == 'true'
+        env:
+          ENC_PASS: ${{ secrets.MINEBBS_TOKEN_PASSPHRASE }}
+        run: |
+          TOKEN=$(openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -base64 -A \
+            -pass pass:"$ENC_PASS" -in .secrets/minebbs_token.enc)
+          if [ -z "$TOKEN" ]; then
+            echo "::error::Token 解密失败，请检查密码与 .secrets/minebbs_token.enc"; exit 1
+          fi
+          echo "::add-mask::$TOKEN"
+          echo "MB_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+
+      # ---------- 防重复发布 ----------
+      - name: 检查 Release 是否已存在
+        id: relexists
+        if: steps.ver.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.ver.outputs.new }}"
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Release $VERSION 已存在，跳过发布与同步"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ---------- 校验版本一致 ----------
       - name: 校验 manifest.json 与 tooth.json 版本一致
         if: steps.ver.outputs.changed == 'true'
         run: |
           TOOTH_VER="${{ steps.ver.outputs.new }}"
           MANIFEST_VER=$(jq -r '.version' manifest.json)
 
-          # tooth.json 带 v 前缀，manifest.json 不带，统一去掉 v 再对比
           echo "tooth.json    版本: $TOOTH_VER"
           echo "manifest.json 版本: $MANIFEST_VER"
 
@@ -48,18 +78,17 @@ jobs:
           fi
           echo "版本号一致: $TOOTH_VER"
 
+      # ---------- 提取更新日志 ----------
       - name: 提取本次版本的更新日志
         if: steps.ver.outputs.changed == 'true'
         run: |
           VERSION="${{ steps.ver.outputs.new }}"
-          # 取 "## <版本号>" 到下一个 "## " 之间的内容，用字面量匹配避免版本号里的点被当通配符
           awk -v head="## $VERSION" '
             !found && index($0, head) == 1 { found = 1; next }
             found && /^## / { exit }
             found { print }
           ' CHANGELOG.md > release_notes.md
 
-          # 去掉开头的空行
           sed -i -e '/./,$!d' release_notes.md
 
           if [ ! -s release_notes.md ]; then
@@ -70,21 +99,22 @@ jobs:
           echo "--- Release 说明 ---"
           cat release_notes.md
 
+      # ---------- 打包 ----------
       - name: 打包 YEssential.zip
         if: steps.ver.outputs.changed == 'true'
         run: |
           mkdir -p dist/YEssential
           cp YEssential.js manifest.json dist/YEssential/
           cp -r modules dist/YEssential/
-          # 已废弃模块：不打进发布包
           rm -f dist/YEssential/modules/YEssentialAPI.js
           rm -f dist/YEssential/modules/TeleportSystemMigrator.js
           (cd dist && zip -r ../YEssential.zip YEssential)
           echo "--- 打包内容 ---"
           unzip -l YEssential.zip
 
+      # ---------- 创建 GitHub Release ----------
       - name: 创建 Release 并上传
-        if: steps.ver.outputs.changed == 'true'
+        if: steps.ver.outputs.changed == 'true' && steps.relexists.outputs.exists == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -92,3 +122,50 @@ jobs:
           gh release create "$VERSION" YEssential.zip \
             --title "$VERSION" \
             --notes-file release_notes.md
+
+      # ---------- 同步到 MineBBS ----------
+      - name: 同步到 MineBBS
+        if: steps.ver.outputs.changed == 'true' && steps.relexists.outputs.exists == 'false'
+        env:
+          MB_RESOURCE_ID: ${{ secrets.MINEBBS_RESOURCE_ID }}
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.ver.outputs.new }}"
+
+          # ① 上传文件，拿 file_key
+          UPLOAD_RESP=$(curl -fsSL -X POST \
+            "https://api.minebbs.com/api/openapi/v1/upload/" \
+            -H "Authorization: Bearer $MB_TOKEN" \
+            -F "upload[]=@YEssential.zip")
+
+          echo "$UPLOAD_RESP"
+          FILE_KEY=$(echo "$UPLOAD_RESP" | jq -r '.data[0]')
+          if [ -z "$FILE_KEY" ] || [ "$FILE_KEY" = "null" ]; then
+            echo "::error::MineBBS 文件上传失败"; exit 1
+          fi
+          echo "file_key = $FILE_KEY"
+
+          # ② MineBBS 需要 [MD] 标签包裹才会按 Markdown 渲染
+          DESC=$(printf '[MD]\n%s\n[/MD]' "$(cat release_notes.md)")
+
+          # ③ 发布资源更新
+          jq -n \
+            --arg title "$VERSION" \
+            --arg desc "$DESC" \
+            --arg ver "${VERSION#v}" \
+            --arg key "$FILE_KEY" \
+            '{title:$title, description:$desc, new_version:$ver, file_key:$key, file_url:""}' \
+            > mb_payload.json
+
+          UPDATE_RESP=$(curl -fsSL -X POST \
+            "https://api.minebbs.com/api/openapi/v1/resources/${MB_RESOURCE_ID}/update" \
+            -H "Authorization: Bearer $MB_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d @mb_payload.json)
+
+          echo "$UPDATE_RESP"
+          STATUS=$(echo "$UPDATE_RESP" | jq -r '.status')
+          if [ "$STATUS" != "2000" ]; then
+            echo "::error::MineBBS 更新失败, status=$STATUS"; exit 1
+          fi
+          echo "已同步到 MineBBS: $VERSION"
