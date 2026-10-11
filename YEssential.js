@@ -237,6 +237,7 @@ function globalLerpColor(t) {
     ];
 }
 function randomGradientLog(text) {
+      text = String(text).replace(/§[0-9a-fk-or]/gi, "");
       const len = text.length;
       let out = '';
       for (let i = 0; i < len; i++) {
@@ -288,6 +289,7 @@ Object.assign(globalThis, {
 
   // ── 渐变日志工具 ──────────────────────────────────────────
   function gradientLog(text, r1, g1, b1, r2, g2, b2) {
+      text = String(text).replace(/§[0-9a-fk-or]/gi, "");
       const len = text.length;
       let out = '';
       for (let i = 0; i < len; i++) {
@@ -302,6 +304,8 @@ Object.assign(globalThis, {
   const logInfo  = text => randomGradientLog(text);
   const logError = text => gradientLog(text, 255,  80,   0, 200,   0,   0);
   const logWarn  = text => gradientLog(text, 255, 240,   0, 255, 140,   0);
+  // 暴露给模块使用（Cleanmgr / AsyncUpdateChecker 等需要按级别输出日志）
+  Object.assign(globalThis, { logInfo, logWarn, logError });
   // ─────────────────────────────────────────────────────────
 
   var modules = [];
@@ -693,7 +697,7 @@ Sercmd.overload([]);
 Sercmd.setCallback((cmd, ori, out, res) => {
     const pl = ori.player;
     if (!pl || typeof pl.sendText !== "function") {
-        logger.error(info+CachePool.lang("player.isnull"));
+        logError(info+CachePool.lang("player.isnull"));
         return;
     }
     let config = CachePool.conf("CrossServerTransfer");
@@ -701,13 +705,13 @@ Sercmd.setCallback((cmd, ori, out, res) => {
     try {
         serverList = config.servers || [];
     } catch (e) {
-        logger.error(CachePool.lang("server.config.loaderror"), e);
+        logError(CachePool.lang("server.config.loaderror") + " " + (e && e.message ? e.message : e));
         pl.tell(info + CachePool.lang("server.load.error"));
         return;
     }
 
     if (serverList.length === 0) {
-        logger.error(CachePool.lang("no.server.cantpto"));
+        logError(CachePool.lang("no.server.cantpto"));
         pl.tell(info + CachePool.lang("no.server.can.tp"));
         return;
     }
@@ -732,7 +736,7 @@ Sercmd.setCallback((cmd, ori, out, res) => {
             pl.transServer(targetServer.server_ip, targetServer.server_port);
             mc.broadcast(info+`§a${pl.realName} 前往了 ${targetServer.server_name}`);
         } catch (e) {
-            logger.error(CachePool.lang("tpa.fail"), e);
+            logError(CachePool.lang("tpa.fail") + " " + (e && e.message ? e.message : e));
             pl.tell(info + CachePool.lang("server.tp.fail"));
         }
     });
@@ -904,7 +908,7 @@ function Motd(){
     
     let motds = CachePool.conf("Motd").message;
     if (!motds || motds.length === 0) {
-        logger.warn(CachePool.lang("Motd.config.isemp"));
+        logWarn(CachePool.lang("Motd.config.isemp"));
         return;
     }
     

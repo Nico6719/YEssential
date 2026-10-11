@@ -477,24 +477,24 @@ var CleanMgr = (function () {
         if (!p) {
             var cur = getTps();
             if (act === "tps") {
-                logger.info(t("messages.tps_info", cur.toFixed(2)));
+                logInfo(t("messages.tps_info", cur.toFixed(2)));
             } else if (act === "status") {
-                logger.info("状态: " + state.phase + (state.lowTpsRetryTime > Date.now() ? " (TPS清理长冷却中)" : ""));
+                logger.info("状态: " + state.phase + (state.lowTpsRetryTime > Date.now() ? " (TPS清理冷却中)" : ""));
             } else if (act === "cancel") {
                 if (state.phase === "scheduled") {
                     cancelScheduledClean();
                     state.scheduledTimeouts = [];
                     state.phase = "idle";
                     mc.broadcast(info + t("messages.cancel_success"));
-                    logger.info(t("messages.cancel_success"));
+                    logInfo(t("messages.cancel_success"));
                 } else {
-                    logger.info(t("messages.no_scheduled_clean"));
+                    logInfo(t("messages.no_scheduled_clean"));
                 }
             } else if (act === "now") {
                 scheduleClean(false, null, false);
-                logger.info(t("messages.scheduled_clean", config.notice.notice1));
+                logInfo(t("messages.scheduled_clean", config.notice.notice1));
             } else if (!act || act === "help") {
-                logger.info(t("messages.help_message"));
+                logInfo(t("messages.help_message"));
             }
             return true;
         }

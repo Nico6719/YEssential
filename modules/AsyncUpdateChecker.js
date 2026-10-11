@@ -328,9 +328,9 @@ class AsyncUpdateChecker {
             return jsonData;
         } catch (error) {
             if (error.message.includes('timeout')) {
-                logger.error(lang.get('Upd.timeout'));
+                logError(lang.get('Upd.timeout'));
             } else if (error.message.includes('parse')) {
-                logger.error(lang.get('Upd.json.error'));
+                logError(lang.get('Upd.json.error'));
             }
             throw error;
         }
@@ -368,7 +368,7 @@ class AsyncUpdateChecker {
             await this.reloadPlugin();
             
         } catch (error) {
-            logger.error(`${lang.get("Upd.fail")}: ${error.message}`);
+            logError(`${lang.get("Upd.fail")}: ${error.message}`);
             
             // 尝试恢复备份
             await this.restoreBackup();
@@ -478,12 +478,12 @@ class AsyncUpdateChecker {
         const config = this.getConfig();
         
         if (!this._lastBackupPath) {
-            logger.warn(lang.get("No.backup.canuse"));
+            logWarn(lang.get("No.backup.canuse"));
             return false;
         }
 
         try {
-            logger.warn(lang.get("Upd.fail.backing"));
+            logWarn(lang.get("Upd.fail.backing"));
             
             for (const file of config.files) {
                 const backupPath = this._lastBackupPath + file.path;
@@ -541,11 +541,11 @@ class AsyncUpdateChecker {
      */
     static handleUpdateError(error) {
         if (error.message.includes('network') || error.message.includes('timeout')) {
-            logger.warn(lang.get('network.error.1'));
+            logWarn(lang.get('network.error.1'));
         } else if (error.message.includes('permission')) {
-            logger.warn(lang.get('file.permission.error'));
+            logWarn(lang.get('file.permission.error'));
         } else if (error.message.includes('parse')) {
-            logger.warn(lang.get('file.parse.error'));
+            logWarn(lang.get('file.parse.error'));
         }
     }
 
