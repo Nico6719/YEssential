@@ -33,20 +33,6 @@ jobs:
             echo "版本变化: $OLD → $NEW，准备发布"
           fi
 
-      # ---------- 解密 MineBBS Token ----------
-      - name: 解密 MineBBS Token
-        if: steps.ver.outputs.changed == 'true'
-        env:
-          ENC_PASS: ${{ secrets.MINEBBS_TOKEN_PASSPHRASE }}
-        run: |
-          TOKEN=$(openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -base64 -A \
-            -pass pass:"$ENC_PASS" -in .secrets/minebbs_token.enc)
-          if [ -z "$TOKEN" ]; then
-            echo "::error::Token 解密失败，请检查密码与 .secrets/minebbs_token.enc"; exit 1
-          fi
-          echo "::add-mask::$TOKEN"
-          echo "MB_TOKEN=$TOKEN" >> "$GITHUB_ENV"
-
       # ---------- 防重复发布 ----------
       - name: 检查 Release 是否已存在
         id: relexists
@@ -127,6 +113,7 @@ jobs:
       - name: 同步到 MineBBS
         if: steps.ver.outputs.changed == 'true' && steps.relexists.outputs.exists == 'false'
         env:
+          MB_TOKEN: ${{ secrets.MINEBBS_TOKEN }}
           MB_RESOURCE_ID: ${{ secrets.MINEBBS_RESOURCE_ID }}
         run: |
           set -euo pipefail
