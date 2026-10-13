@@ -109,7 +109,7 @@ jobs:
             --title "$VERSION" \
             --notes-file release_notes.md
 
-      # ---------- 同步到 MineBBS ----------
+      # ---------- 同步到 MineBBS（新版 OpenAPI：versions + updates 两步）----------
       - name: 同步到 MineBBS
         if: steps.ver.outputs.changed == 'true' && steps.relexists.outputs.exists == 'false'
         env:
@@ -118,10 +118,12 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="${{ steps.ver.outputs.new }}"
+          VER_PLAIN="${VERSION#v}"
+          API="https://api.minebbs.com/api/openapi/v1"
 
-          # ① 上传文件，拿 file_key
+          # ① 上传文件，拿 file_key（限速 8 次/小时）
           UPLOAD_RESP=$(curl -fsSL -X POST \
-            "https://api.minebbs.com/api/openapi/v1/upload/" \
+            "${API}/upload" \
             -H "Authorization: Bearer $MB_TOKEN" \
             -F "upload[]=@YEssential.zip")
 
@@ -132,27 +134,47 @@ jobs:
           fi
           echo "file_key = $FILE_KEY"
 
-          # ② MineBBS 需要 [MD] 标签包裹才会按 Markdown 渲染
-          DESC=$(printf '[MD]\n%s\n[/MD]' "$(cat release_notes.md)")
+          # ② 查已有版本，MineBBS 侧去重（已存在则直接跳过）
+          EXISTING=$(curl -fsSL \
+            "${API}/resources/${MB_RESOURCE_ID}/versions" \
+            -H "Authorization: Bearer $MB_TOKEN")
+          if echo "$EXISTING" | jq -e --arg v "$VER_PLAIN" \
+               '.data[]? | select(.version_string == $v)' >/dev/null 2>&1; then
+            echo "::notice::MineBBS 上已存在 $VER_PLAIN，跳过同步"
+            exit 0
+          fi
 
-          # ③ 发布资源更新
-          jq -n \
-            --arg title "$VERSION" \
-            --arg desc "$DESC" \
-            --arg ver "${VERSION#v}" \
-            --arg key "$FILE_KEY" \
-            '{title:$title, description:$desc, new_version:$ver, file_key:$key, file_url:""}' \
-            > mb_payload.json
-
-          UPDATE_RESP=$(curl -fsSL -X POST \
-            "https://api.minebbs.com/api/openapi/v1/resources/${MB_RESOURCE_ID}/update" \
+          # ③ 创建版本（file_key 与 file_url 二选一；Idempotency-Key 防重跑）
+          CREATE_RESP=$(curl -fsSL -X POST \
+            "${API}/resources/${MB_RESOURCE_ID}/versions" \
             -H "Authorization: Bearer $MB_TOKEN" \
             -H "Content-Type: application/json" \
+            -H "Idempotency-Key: ye-release-${VER_PLAIN}" \
+            -d "{\"version_string\":\"${VER_PLAIN}\",\"file_key\":\"$FILE_KEY\"}")
+
+          echo "$CREATE_RESP"
+          CREATE_STATUS=$(echo "$CREATE_RESP" | jq -r '.status')
+          if [ "$CREATE_STATUS" != "2000" ]; then
+            echo "::error::MineBBS 创建版本失败, status=$CREATE_STATUS"; exit 1
+          fi
+
+          # ④ 发布更新日志（title 带 v；message 用 [MD] 包裹才会渲染 Markdown）
+          DESC=$(printf '[MD]\n%s\n[/MD]' "$(cat release_notes.md)")
+
+          jq -n --arg title "$VERSION" --arg msg "$DESC" \
+            '{title:$title, message:$msg}' > mb_payload.json
+
+          UPDATE_RESP=$(curl -fsSL -X POST \
+            "${API}/resources/${MB_RESOURCE_ID}/updates" \
+            -H "Authorization: Bearer $MB_TOKEN" \
+            -H "Content-Type: application/json" \
+            -H "Idempotency-Key: ye-release-${VER_PLAIN}-log" \
             -d @mb_payload.json)
 
           echo "$UPDATE_RESP"
-          STATUS=$(echo "$UPDATE_RESP" | jq -r '.status')
-          if [ "$STATUS" != "2000" ]; then
-            echo "::error::MineBBS 更新失败, status=$STATUS"; exit 1
+          UPDATE_STATUS=$(echo "$UPDATE_RESP" | jq -r '.status')
+          if [ "$UPDATE_STATUS" != "2000" ]; then
+            echo "::error::MineBBS 更新日志发布失败, status=$UPDATE_STATUS"; exit 1
           fi
+
           echo "已同步到 MineBBS: $VERSION"
