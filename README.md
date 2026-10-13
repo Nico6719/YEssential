@@ -36,7 +36,6 @@
 
 1. 前往 [MineBBS](https://www.minebbs.com/resources/yessential-lse.10332/) & [Releases](https://github.com/Nico6719/YEssential/releases) & [Y系列插件下载站](http://dl.mcmcc.cc)下载本插件
 2. 将插件文件解压后放入服务器的 `./plugins/` 目录即可运行。
----
 
 ## ⚙️ 插件亮点
 
