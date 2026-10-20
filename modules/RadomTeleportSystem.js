@@ -252,7 +252,7 @@ const rtpScheduler = {
                 try {
                     result = s.step();
                 } catch (err) {
-                    logger.error(`[RTP] 会话异常中断: ${err}`);
+                    logError(`[RTP] 会话异常中断: ${err}`);
                     s.abort(err);
                     result = true;
                 }
@@ -310,7 +310,7 @@ class RtpSession {
                 mc.runcmdEx(`camera "${player.realName}" set minecraft:free ease 3 in_out_sine pos ${pp.x} ${pp.y + 75} ${pp.z} rot 90 ${player.direction.yaw}`);
                 mc.runcmdEx(`hud "${player.realName}" hide all`);
                 mc.runcmdEx(`effect "${player.realName}" resistance 30 255 true`);
-            } catch (e) { logger.warn(`[RTP] 相机动画启动失败: ${e.message}`); }
+            } catch (e) { logWarn(`[RTP] 相机动画启动失败: ${e.message}`); }
             // 关键：等 3 秒镜头 ease 到位后再传送悬停。
             // 同一 tick 传送会把 free 相机瞬间拽到 799 悬停点（"闪现到最顶上"）
             this.state = "ANIM_INTRO";
@@ -378,7 +378,7 @@ class RtpSession {
                 p.setTitle("§c传送异常", 4);
                 p.teleport(this.originPos);
             }
-        } catch (e) { logger.error(`[RTP] 异常中止清理失败: ${e}`); }
+        } catch (e) { logError(`[RTP] 异常中止清理失败: ${e}`); }
         this._clearCamera(this.player);
         this._finish(false, null);
     }
@@ -577,7 +577,7 @@ class RtpSession {
                 } catch (e) {}
             }, 7000);
         } catch (e) {
-            logger.warn(`[RTP] 落点动画失败: ${e.message}`);
+            logWarn(`[RTP] 落点动画失败: ${e.message}`);
             this._clearCamera(p);
         }
     }
@@ -590,7 +590,7 @@ class RtpSession {
     _finish(success, spot) {
         if (this.finished) return true;
         this.finished = true;
-        try { this.onFinish(success, spot); } catch (e) { logger.error(`[RTP] onFinish 回调异常: ${e}`); }
+        try { this.onFinish(success, spot); } catch (e) { logError(`[RTP] onFinish 回调异常: ${e}`); }
         return true;
     }
 }
@@ -678,7 +678,7 @@ class RadomTeleportSystem {
                         if (!success) self.refundPlayer(player, cost, cooldown);
                     }
                     if (cfg.debug) {
-                        logger.info(`[RTP] ${playerName} 传送结束: ${success ? `成功(${Math.floor(spot.x)},${spot.y},${Math.floor(spot.z)})` : "失败已退款"}`);
+                        logInfo(`[RTP] ${playerName} 传送结束: ${success ? `成功(${Math.floor(spot.x)},${spot.y},${Math.floor(spot.z)})` : "失败已退款"}`);
                     }
                 }
             });
@@ -686,7 +686,7 @@ class RadomTeleportSystem {
             return true;
 
         } catch (error) {
-            logger.error(`[RTP] RTP传送异常: ${error.message}`);
+            logError(`[RTP] RTP传送异常: ${error.message}`);
             player.sendText(info + "§4传送发生未知错误，费用已退还。");
             this._busy.delete(player.xuid);
             try {
@@ -705,7 +705,7 @@ class RadomTeleportSystem {
                 Economy.execute(player, "add", cost, "RTP退款");
                 player.sendText(info + `§a已退还 ${cost}${CachePool.lang("CoinName")}`);
             } catch (e) {
-                logger.error(`退还费用失败: ${e.message}`);
+                logError(`退还费用失败: ${e.message}`);
             }
         }
         if (cooldown > 0) {

@@ -113,7 +113,7 @@ class AsyncUpdateChecker {
                 };
             }
         } catch (error) {
-            logger.warn(`读取更新配置失败: ${error.message}，使用默认配置`);
+            logWarn(`读取更新配置失败: ${error.message}，使用默认配置`);
         }
 
         // config.json 完全不存在时的后备方案
@@ -140,18 +140,18 @@ class AsyncUpdateChecker {
                 const missingFiles = await this.checkMissingFiles();
                 
                 if (missingFiles.length > 0) {
-                    logger.warn(`检测到 ${missingFiles.length} 个核心文件缺失:`);
+                    logWarn(`检测到 ${missingFiles.length} 个核心文件缺失:`);
                     missingFiles.forEach(file => {
-                        logger.warn(`  - ${file.path}`);
+                        logWarn(`  - ${file.path}`);
                     });
                     
                     // 自动触发更新以修复缺失文件
-                    logger.warn("正在尝试自动修复缺失文件...");
+                    logWarn("正在尝试自动修复缺失文件...");
                     await this.repairMissingFiles(missingFiles);
                 }
             }
         } catch (error) {
-            logger.error(`初始化更新检查器失败: ${error.message}`);
+            logError(`初始化更新检查器失败: ${error.message}`);
         }
     }
 
@@ -179,10 +179,10 @@ class AsyncUpdateChecker {
         try {
             if (!File.exists(fullPath)) {
                 missingFiles.push(file);
-                logger.warn(`文件缺失 [config]: ${file.path}`);
+                logWarn(`文件缺失 [config]: ${file.path}`);
             }
         } catch (error) {
-            logger.error(`检查文件 ${file.path} 时出错: ${error.message}`);
+            logError(`检查文件 ${file.path} 时出错: ${error.message}`);
         }
     }
     return missingFiles;
@@ -202,9 +202,9 @@ class AsyncUpdateChecker {
             // 检查下载结果
             const failedDownloads = downloadResults.filter(r => !r.success);
             if (failedDownloads.length > 0) {
-                logger.error(`${failedDownloads.length} 个文件下载失败:`);
+                logError(`${failedDownloads.length} 个文件下载失败:`);
                 failedDownloads.forEach(r => {
-                    logger.error(`  - ${r.file.path}: ${r.error}`);
+                    logError(`  - ${r.file.path}: ${r.error}`);
                 });
                 throw new Error(`${failedDownloads.length} 个文件下载失败`);
             }
@@ -219,8 +219,8 @@ class AsyncUpdateChecker {
             await this.reloadPlugin();
             
         } catch (error) {
-            logger.error(`修复缺失文件失败: ${error.message}`);
-            logger.warn("请手动重新下载插件或联系开发者");
+            logError(`修复缺失文件失败: ${error.message}`);
+            logWarn("请手动重新下载插件或联系开发者");
         }
     }
 
@@ -249,7 +249,7 @@ class AsyncUpdateChecker {
                     data: processedData
                 };
             } catch (error) {
-                logger.error(`下载 ${file.url} 失败: ${error.message}`);
+                logError(`下载 ${file.url} 失败: ${error.message}`);
                 return {
                     success: false,
                     file: file,
@@ -281,14 +281,14 @@ class AsyncUpdateChecker {
             
             if (comparison > 0) {
                 // 有新版本
-                logger.warn(`发现新版本! ${currentVersion} → ${remoteVersion}`);
+                logWarn(`发现新版本! ${currentVersion} → ${remoteVersion}`);
                 if (changelog) {
-                    logger.info(`更新内容: ${changelog}`);
+                    logInfo(`更新内容: ${changelog}`);
                 }
                 await this.downloadUpdate(remoteVersion);
             } else if (comparison < 0) {
                 // 本地版本更新
-                logger.warn(`您的本地版本比远程版本更新! (${currentVersion} > ${remoteVersion})`);
+                logWarn(`您的本地版本比远程版本更新! (${currentVersion} > ${remoteVersion})`);
             } else {
                 // 已是最新版本
                 randomGradientLog(`您已是最新版本 (${currentVersion})`);
@@ -296,12 +296,12 @@ class AsyncUpdateChecker {
                 // 即使是最新版本,也检查文件完整性
                 const missingFiles = await this.checkMissingFiles();
                 if (missingFiles.length > 0) {
-                    logger.warn("检测到文件缺失,正在修复...");
+                    logWarn("检测到文件缺失,正在修复...");
                     await this.repairMissingFiles(missingFiles);
                 }
             }
         } catch (error) {
-            logger.error(`更新检查失败: ${error.message}`);
+            logError(`更新检查失败: ${error.message}`);
             this.handleUpdateError(error);
         }
     }
@@ -341,12 +341,12 @@ class AsyncUpdateChecker {
      */
     static async downloadUpdate(version) {
         try {
-            logger.warn(`正在更新到 ${version} 中.....`);
+            logWarn(`正在更新到 ${version} 中.....`);
             
             // 创建备份
             const backupSuccess = await this.createBackup();
             if (!backupSuccess) {
-                logger.warn('备份失败,但继续更新...');
+                logWarn('备份失败,但继续更新...');
             }
 
             // 下载所有文件
@@ -405,7 +405,7 @@ class AsyncUpdateChecker {
                     randomGradientLog(`写入文件成功: ${result.file.path}`);
                     return true;
                 } catch (error) {
-                    logger.error(`写入 ${result.file.path} 失败: ${error.message}`);
+                    logError(`写入 ${result.file.path} 失败: ${error.message}`);
                     throw error;
                 }
             });
@@ -438,7 +438,7 @@ class AsyncUpdateChecker {
                 try {
                     // 检查源文件是否存在
                     if (!File.exists(sourcePath)) {
-                        logger.warn(`源文件不存在: ${file.path}`);
+                        logWarn(`源文件不存在: ${file.path}`);
                         continue;
                     }
                     
@@ -455,18 +455,18 @@ class AsyncUpdateChecker {
                         randomGradientLog(`备份文件: ${file.path}`);
                     }
                 } catch (error) {
-                    logger.warn(`备份 ${file.path} 失败: ${error.message}`);
+                    logWarn(`备份 ${file.path} 失败: ${error.message}`);
                 }
             }
             
-            logger.info(`备份完成: ${backupDir}`);
+            logInfo(`备份完成: ${backupDir}`);
             
             // 保存备份路径以便恢复
             this._lastBackupPath = backupDir;
             
             return true;
         } catch (error) {
-            logger.error(`创建备份失败: ${error.message}`);
+            logError(`创建备份失败: ${error.message}`);
             return false;
         }
     }
@@ -492,7 +492,7 @@ class AsyncUpdateChecker {
                 try {
                     // 检查备份文件是否存在
                     if (!File.exists(backupPath)) {
-                        logger.warn(`备份文件不存在: ${file.path}`);
+                        logWarn(`备份文件不存在: ${file.path}`);
                         continue;
                     }
                     
@@ -502,14 +502,14 @@ class AsyncUpdateChecker {
                         randomGradientLog(`恢复文件: ${file.path}`);
                     }
                 } catch (error) {
-                    logger.error(`恢复 ${file.path} 失败: ${error.message}`);
+                    logError(`恢复 ${file.path} 失败: ${error.message}`);
                 }
             }
             
             colorLog("yellow", lang.get("Upd.back.success"));
             return true;
         } catch (error) {
-            logger.error(`恢复备份失败: ${error.message}`);
+            logError(`恢复备份失败: ${error.message}`);
             return false;
         }
     }
@@ -521,15 +521,15 @@ class AsyncUpdateChecker {
         const config = this.getConfig();
         
         return new Promise((resolve) => {
-            logger.info(`${config.reloadDelay / 1000} 秒后重载插件...`);
+            logInfo(`${config.reloadDelay / 1000} 秒后重载插件...`);
             
             setTimeout(() => {
                 try {
                     mc.runcmdEx("ll reload YEssential");
                     resolve(true);
                 } catch (error) {
-                    logger.error(`重载插件失败: ${error.message}`);
-                    logger.warn('请手动执行: ll reload YEssential');
+                    logError(`重载插件失败: ${error.message}`);
+                    logWarn('请手动执行: ll reload YEssential');
                     resolve(false);
                 }
             }, config.reloadDelay);
@@ -573,13 +573,13 @@ class AsyncUpdateChecker {
             for (const backup of toDelete) {
                 try {
                     File.delete(backupDir + backup);
-                    logger.info(`删除旧备份: ${backup}`);
+                    logInfo(`删除旧备份: ${backup}`);
                 } catch (error) {
-                    logger.warn(`删除备份 ${backup} 失败: ${error.message}`);
+                    logWarn(`删除备份 ${backup} 失败: ${error.message}`);
                 }
             }
         } catch (error) {
-            logger.warn(`清理备份失败: ${error.message}`);
+            logWarn(`清理备份失败: ${error.message}`);
         }
     }
 
@@ -616,7 +616,7 @@ class AsyncUpdateChecker {
      * 手动触发文件完整性检查
      */
     static async checkIntegrity() {
-        logger.info("开始检查文件完整性...");
+        logInfo("开始检查文件完整性...");
         
         const missingFiles = await this.checkMissingFiles();
         
@@ -624,7 +624,7 @@ class AsyncUpdateChecker {
             colorLog("green", "所有核心文件完整!");
             return true;
         } else {
-            logger.warn(`发现 ${missingFiles.length} 个文件缺失`);
+            logWarn(`发现 ${missingFiles.length} 个文件缺失`);
             const answer = await this.promptRepair(missingFiles);
             
             if (answer) {

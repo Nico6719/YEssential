@@ -66,7 +66,7 @@ function initPvpModule() {
                     try {
                         player.sendToast(info, "检测到多人聚集且您处于 PVP 保护，已拦截爆炸");
                     } catch (e) {
-                        logger.error("发送提示失败: " + e);
+                        logError("发送提示失败: " + e);
                     }
                     return false;
                 }

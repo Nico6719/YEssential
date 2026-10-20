@@ -295,7 +295,7 @@ Object.assign(globalThis, {
   var BASE_PATH = "plugins/YEssential/modules/";
 
   // ── 渐变日志工具 ──────────────────────────────────────────
-  function gradientLog(text, r1, g1, b1, r2, g2, b2) {
+  function gradientLog(text, r1, g1, b1, r2, g2, b2, level) {
       text = String(text).replace(/§[0-9a-fk-or]/gi, "");
       const len = text.length;
       if (len === 0) { logger.log('\x1b[0m'); return; }
@@ -308,11 +308,16 @@ Object.assign(globalThis, {
                  Math.round(g1 + (g2 - g1) * t) + ";" +
                  Math.round(b1 + (b2 - b1) * t) + "m" + text[i];
       }
-      logger.log(out + '\x1b[0m');
+      // [fix] info/warn/error 走对应级别，保留 INF/WRN/ERR 前缀；level 缺省按普通 log
+      const line = out + '\x1b[0m';
+      if (level === 'info') logger.info(line);
+      else if (level === 'warn') logger.warn(line);
+      else if (level === 'error') logger.error(line);
+      else logger.log(line);
   }
-  const logInfo  = text => randomGradientLog(text);
-  const logError = text => gradientLog(text, 255,  80,   0, 200,   0,   0);
-  const logWarn  = text => gradientLog(text, 255, 240,   0, 255, 140,   0);
+  const logInfo  = text => gradientLog(text, GLOBAL_C1[0], GLOBAL_C1[1], GLOBAL_C1[2], GLOBAL_C2[0], GLOBAL_C2[1], GLOBAL_C2[2], 'info');
+  const logError = text => gradientLog(text, 255,  80,   0, 200,   0,   0, 'error');
+  const logWarn  = text => gradientLog(text, 255, 240,   0, 255, 140,   0, 'warn');
   // 暴露给模块使用（Cleanmgr / AsyncUpdateChecker 等需要按级别输出日志）
   Object.assign(globalThis, { logInfo, logWarn, logError });
   // ─────────────────────────────────────────────────────────

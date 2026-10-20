@@ -129,11 +129,11 @@ function _checkUpdate(pl) {
             pl.sendForm(fm, (pl, _id) => { 
                 
                 if(isLatest)
-                    {_showMainGui(pl);logger.info(_id); return;}
+                    {_showMainGui(pl);logInfo(_id); return;}
                 else{
                     if(_id === 0){
                     globalThis.checkForUpdates;
-                    logger.info(_id)
+                    logInfo(_id)
                     }}
             });
         });

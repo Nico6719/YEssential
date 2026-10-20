@@ -62,7 +62,7 @@ function initCrashModule() {
             pl.tell(info + lang.get("crash.player.ok"));
             // 操作日志
             if (conf.get("Crash").  LogCrashInfo) {
-                logger.warn(`[Crash] ${pl.realName} 对 ${target.realName} 执行了 crash 操作`);
+                logWarn(`[Crash] ${pl.realName} 对 ${target.realName} 执行了 crash 操作`);
             }
         });
 

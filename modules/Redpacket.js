@@ -59,7 +59,7 @@ module.exports = {
                     if (!this.data.packets) this.data.packets = {};
                     if (!this.data.nextId)  this.data.nextId  = 1;
                 } catch (e) {
-                    logger.error("[红包] 数据加载失败: " + e);
+                    logError("[红包] 数据加载失败: " + e);
                 }
             },
 
@@ -88,7 +88,7 @@ module.exports = {
                     file.writeTo(this.path, JSON.stringify(this.data, null, 2));
                     this._dirty = false;
                 } catch (e) {
-                    logger.error("[红包] 数据保存失败: " + e);
+                    logError("[红包] 数据保存失败: " + e);
                 }
             },
 

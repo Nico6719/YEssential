@@ -27,7 +27,7 @@ function loadOrCreateUUID() {
             }
         }
     } catch (e) {
-        logger.error("读取 UUID 文件失败: " + e.message);
+        logError("读取 UUID 文件失败: " + e.message);
     }
 
     const newUUID = generateUUID();
@@ -35,7 +35,7 @@ function loadOrCreateUUID() {
         File.writeTo(BSTATS_UUID_PATH, JSON.stringify({ uuid: newUUID }, null, 2));
         randomGradientLog("首次生成 UUID 并写入: " + BSTATS_UUID_PATH);
     } catch (e) {
-        logger.error("写入 UUID 文件失败: " + e.message);
+        logError("写入 UUID 文件失败: " + e.message);
     }
     return newUUID;
 }
@@ -54,13 +54,13 @@ function postWithRetry(url, body, retryLeft, debugMode) {
                 return;
             }
             if (retryLeft > 1) {
-                logger.warn(
+                logWarn(
                     "上报失败(第 " + attemptNo + " 次 / 状态码: " + status + ")," +
                     "10 秒后发起第 " + (attemptNo + 1) + " 次重试..."
                 );
                 setTimeout(function () { postWithRetry(url, body, retryLeft - 1, debugMode); }, 10000);
             } else {
-                logger.warn(
+                logWarn(
                     "上报失败(第 " + attemptNo + " 次 / 状态码: " + status + ")," +
                     "已达最大重试次数 (" + BSTATS_MAX_RETRY + ")，本轮放弃。" 
                 );
@@ -68,13 +68,13 @@ function postWithRetry(url, body, retryLeft, debugMode) {
         });
     } catch (e) {
         if (retryLeft > 1) {
-            logger.warn(
+            logWarn(
                 "网络请求异常(第 " + attemptNo + " 次: " + e.message + ")," +
                 "10 秒后发起第 " + (attemptNo + 1) + " 次重试..."
             );
             setTimeout(function () { postWithRetry(url, body, retryLeft - 1, debugMode); }, 10000);
         } else {
-            logger.warn(
+            logWarn(
                 "网络请求异常(第 " + attemptNo + " 次: " + e.message + ")," +
                 "已达最大重试次数 (" + BSTATS_MAX_RETRY + ")，本轮放弃。"
             );
@@ -119,7 +119,7 @@ class BStatsImpl {
                 }
             }
         } catch (e) {
-            logger.error("读取 manifest.json 失败: " + e.message);
+            logError("读取 manifest.json 失败: " + e.message);
         }
         return "2.12.18";
     }
@@ -172,7 +172,7 @@ class BStatsImpl {
             }
         } catch (e) {
             if (this.debugMode)
-                logger.error("读取 server.properties 失败: " + e.message);
+                logError("读取 server.properties 失败: " + e.message);
         }
         return 1;
     }
@@ -186,7 +186,7 @@ class BStatsImpl {
                 this.debugMode   = bstatsConf.logSentData  != null ? bstatsConf.logSentData  : true;
             }
         } catch (e) {
-            logger.error("同步配置失败: " + e.message);
+            logError("同步配置失败: " + e.message);
         }
     }
 
