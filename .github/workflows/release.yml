@@ -111,7 +111,7 @@ jobs:
 
       # ---------- 同步到 MineBBS（新版 OpenAPI：versions + updates 两步）----------
       - name: 同步到 MineBBS
-        if: steps.ver.outputs.changed == 'true' && steps.relexists.outputs.exists == 'false'
+        if: steps.ver.outputs.changed == 'true'
         env:
           MB_TOKEN: ${{ secrets.MINEBBS_TOKEN }}
           MB_RESOURCE_ID: ${{ secrets.MINEBBS_RESOURCE_ID }}
@@ -121,7 +121,17 @@ jobs:
           VER_PLAIN="${VERSION#v}"
           API="https://api.minebbs.com/api/openapi/v1"
 
-          # ① 上传文件，拿 file_key（限速 8 次/小时）
+          # ① 查已有版本，MineBBS 侧去重（已存在则直接跳过，不消耗上传配额）
+          EXISTING=$(curl -fsSL \
+            "${API}/resources/${MB_RESOURCE_ID}/versions" \
+            -H "Authorization: Bearer $MB_TOKEN")
+          if echo "$EXISTING" | jq -e --arg v "$VER_PLAIN" \
+               '.data[]? | select(.version_string == $v)' >/dev/null 2>&1; then
+            echo "::notice::MineBBS 上已存在 $VER_PLAIN，跳过同步"
+            exit 0
+          fi
+
+          # ② 上传文件，拿 file_key（限速 8 次/小时，去重放前面可避免重跑浪费配额）
           UPLOAD_RESP=$(curl -fsSL -X POST \
             "${API}/upload" \
             -H "Authorization: Bearer $MB_TOKEN" \
@@ -133,16 +143,6 @@ jobs:
             echo "::error::MineBBS 文件上传失败"; exit 1
           fi
           echo "file_key = $FILE_KEY"
-
-          # ② 查已有版本，MineBBS 侧去重（已存在则直接跳过）
-          EXISTING=$(curl -fsSL \
-            "${API}/resources/${MB_RESOURCE_ID}/versions" \
-            -H "Authorization: Bearer $MB_TOKEN")
-          if echo "$EXISTING" | jq -e --arg v "$VER_PLAIN" \
-               '.data[]? | select(.version_string == $v)' >/dev/null 2>&1; then
-            echo "::notice::MineBBS 上已存在 $VER_PLAIN，跳过同步"
-            exit 0
-          fi
 
           # ③ 创建版本（file_key 与 file_url 二选一；Idempotency-Key 防重跑）
           CREATE_RESP=$(curl -fsSL -X POST \
