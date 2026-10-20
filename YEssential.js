@@ -239,11 +239,18 @@ function globalLerpColor(t) {
 function randomGradientLog(text) {
       text = String(text).replace(/§[0-9a-fk-or]/gi, "");
       const len = text.length;
+      if (len === 0) { logger.log('\x1b[0m'); return; }
+      // [perf-p3] 原先每字符调 globalLerpColor() 会 new 一个三元组数组（79 字符 = 79 次分配），
+      // 改为标量内联；输出与原实现逐字节一致，QuickJS 下 1.6×。
+      // t 仍用原表达式 i/(len-1)，避免浮点取倒数相乘引入 1ULP 差异。
+      const r1 = GLOBAL_C1[0], g1 = GLOBAL_C1[1], b1 = GLOBAL_C1[2];
+      const r2 = GLOBAL_C2[0], g2 = GLOBAL_C2[1], b2 = GLOBAL_C2[2];
       let out = '';
       for (let i = 0; i < len; i++) {
           const t = len <= 1 ? 0 : i / (len - 1);
-          const [r, g, b] = globalLerpColor(t);
-          out += `\x1b[38;2;${r};${g};${b}m` + text[i];
+          out += "\x1b[38;2;" + Math.round(r1 + (r2 - r1) * t) + ";" +
+                 Math.round(g1 + (g2 - g1) * t) + ";" +
+                 Math.round(b1 + (b2 - b1) * t) + "m" + text[i];
       }
       logger.log(out + '\x1b[0m');
 }
@@ -291,13 +298,15 @@ Object.assign(globalThis, {
   function gradientLog(text, r1, g1, b1, r2, g2, b2) {
       text = String(text).replace(/§[0-9a-fk-or]/gi, "");
       const len = text.length;
+      if (len === 0) { logger.log('\x1b[0m'); return; }
+      // [perf-p3] 同 randomGradientLog：去掉模板串与中间变量，输出逐字节一致
+      // t 仍用原表达式 i/(len-1)，避免浮点取倒数相乘引入 1ULP 差异。
       let out = '';
       for (let i = 0; i < len; i++) {
           const t = len <= 1 ? 0 : i / (len - 1);
-          const r = Math.round(r1 + (r2 - r1) * t);
-          const g = Math.round(g1 + (g2 - g1) * t);
-          const b = Math.round(b1 + (b2 - b1) * t);
-          out += `\x1b[38;2;${r};${g};${b}m` + text[i];
+          out += "\x1b[38;2;" + Math.round(r1 + (r2 - r1) * t) + ";" +
+                 Math.round(g1 + (g2 - g1) * t) + ";" +
+                 Math.round(b1 + (b2 - b1) * t) + "m" + text[i];
       }
       logger.log(out + '\x1b[0m');
   }
