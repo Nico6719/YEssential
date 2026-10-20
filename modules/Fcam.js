@@ -741,7 +741,9 @@ function restoreMode(pl, st) {
 function enterFcam(pl, plname, anchor) {
     const rot = pl.direction;
     const st = {
-        pos: pl.pos, rot: rot, gameMode: safeMode(pl.gameMode), anchor: anchor,
+        // [fix-p4] 还原位置用 pl.feetPos（与 specBody 的 anchor 同源）：
+        // pl.pos 在此 BDS 上比脚底高 1 格，用它还原会让玩家退出 fcam 后悬空一格
+        pos: pl.feetPos, rot: rot, gameMode: safeMode(pl.gameMode), anchor: anchor,
         timer: null, bossId: null, remain: 0, total: 0
     };
     state.set(plname, st);
