@@ -121,7 +121,7 @@ class BStatsImpl {
         } catch (e) {
             logError("读取 manifest.json 失败: " + e.message);
         }
-        return "2.12.18";
+        return "2.12.19";
     }
 
     // 将 Economy.PayTaxRate（数字 或 阶梯数组）转换为 Disabled/Enabled 两种分类
