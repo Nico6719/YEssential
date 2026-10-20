@@ -1,6 +1,12 @@
 name: Release
 
 on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: '版本未变化时也强制重跑发布与同步（用于补发/重试）'
+        required: false
+        default: 'false'
   push:
     branches:
       - main
@@ -25,7 +31,10 @@ jobs:
           NEW=$(jq -r '.version' tooth.json)
           OLD=$(git show HEAD~1:tooth.json 2>/dev/null | jq -r '.version' 2>/dev/null || echo "")
           echo "new=$NEW" >> "$GITHUB_OUTPUT"
-          if [ "$NEW" = "$OLD" ]; then
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "手动强制运行，忽略版本未变化检查 ($NEW)"
+          elif [ "$NEW" = "$OLD" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "版本未变化 ($NEW)，跳过发布"
           else
