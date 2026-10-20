@@ -119,7 +119,7 @@ jobs:
           set -euo pipefail
           VERSION="${{ steps.ver.outputs.new }}"
           VER_PLAIN="${VERSION#v}"
-          API="https://api.minebbs.com/api/openapi/v1"
+          API="https://open.minebbs.com/api/openapi/v1"
 
           # ① 查已有版本，MineBBS 侧去重（已存在则直接跳过，不消耗上传配额）
           EXISTING=$(curl -fsSL \
