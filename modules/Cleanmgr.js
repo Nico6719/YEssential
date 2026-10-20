@@ -106,6 +106,10 @@ var CleanMgr = (function () {
   var lang = null;
   var playerSettings = {}; 
   var whitelistRegex = [];
+  // [perf-p1] 白名单分流：精确集合 / 前缀数组 / 剩余正则。
+  // 原先每条实体都要跑 28 条正则（500 实体 ≈ 3.2ms），分流后主流路径只是一次 Set 查表。
+  var whitelistExact = new Set();
+  var whitelistPrefix = [];
   var timers = [];
   var getTps = function () { return 20; };
 
@@ -228,9 +232,32 @@ var CleanMgr = (function () {
   /* ================= 白名单 ================= */
   function compileWhitelist() {
     whitelistRegex = [];
+    whitelistExact = new Set();
+    whitelistPrefix = [];
     for (var i = 0; i < config.whitelist.length; i++) {
-      try { whitelistRegex.push(new RegExp(config.whitelist[i])); } catch (e) {}
+      var pat = String(config.whitelist[i]);
+      // ^xxx$ → 精确匹配（与正则等价，但走 Set 查表）
+      var m = /^\^([A-Za-z0-9_:\-]+)\$$/.exec(pat);
+      if (m) { whitelistExact.add(m[1]); continue; }
+      // ^xxx  → 前缀匹配（与正则语义等价）
+      m = /^\^([A-Za-z0-9_:\-]+)$/.exec(pat);
+      if (m) { whitelistPrefix.push(m[1]); continue; }
+      // 其它写法（分组、通配、转义等）原样编译成正则，行为不变
+      try { whitelistRegex.push(new RegExp(pat)); } catch (e) {}
     }
+  }
+
+  // [perf-p1] 先查表，再跑剩下的正则；结果与「逐条 test 全部正则」完全一致
+  function matchWhitelist(type) {
+    if (typeof type !== "string") return false;
+    if (whitelistExact.has(type)) return true;
+    for (var i = 0; i < whitelistPrefix.length; i++) {
+      if (type.indexOf(whitelistPrefix[i]) === 0) return true;
+    }
+    for (var i = 0; i < whitelistRegex.length; i++) {
+      if (whitelistRegex[i].test(type)) return true;
+    }
+    return false;
   }
 
   function shouldKeep(e) {
@@ -238,10 +265,7 @@ var CleanMgr = (function () {
     try { if (e.type === "minecraft:player") return true; } catch (ex) {}
     
     try {
-      var type = e.type;
-      for (var i = 0; i < whitelistRegex.length; i++) {
-        if (whitelistRegex[i].test(type)) return true;
-      }
+      if (matchWhitelist(e.type)) return true;
     } catch (ex) {}
 
     var isItem = false;
@@ -250,9 +274,7 @@ var CleanMgr = (function () {
         isItem = true;
         var it = e.toItem();
         if (it && it.type) {
-          for (var i = 0; i < whitelistRegex.length; i++) {
-            if (whitelistRegex[i].test(it.type)) return true;
-          }
+          if (matchWhitelist(it.type)) return true;
         }
       }
     } catch (ex) {}
