@@ -573,6 +573,7 @@ const Bodies = {
 
         const npc = this.make(name, pos);
         this.npcs[name] = npc;
+        startTicking();   // [perf-p2] 有身体才跑定时器（function 声明会提升，此处可直接调用）
 
         for (const pl of mc.getOnlinePlayers()) {
             if (this.inRange(pl, npc)) this.spawnTo(pl, npc);
@@ -685,12 +686,19 @@ function initFakePlayerLayer() {
 }
 
 function startTicking() {
-    if (tickTimer) clearInterval(tickTimer);
+    if (tickTimer) return;                      // [perf-p2] 幂等：已有表就不重建
     tickTimer = setInterval(function () {
+        // [perf-p2] 没有身体就停表：Bodies.tick() 每次都会 getOnlinePlayers()，
+        // 空转也是真实开销；下次 Bodies.create() 会重新启动
+        if (!ready || Object.keys(Bodies.npcs).length === 0) { stopTicking(); return; }
         try {
-            if (ready) Bodies.tick();
+            Bodies.tick();
         } catch (e) {}
     }, 500);
+}
+
+function stopTicking() {
+    if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -719,7 +727,7 @@ function stopTimer(pl, plname, st) {
     if (st.timer) { try { clearInterval(st.timer); } catch (e) {} st.timer = null; }
     const p = pl || mc.getPlayer(plname);
     if (p && st.bossId) {
-        try { p.removeBossBar(st.bossId); } catch (e) { logger.error(K("fc.error.log5") + e); }
+        try { p.removeBossBar(st.bossId); } catch (e) { logError(K("fc.error.log5") + e); }
     }
     st.bossId = null;
 }
@@ -727,7 +735,7 @@ function stopTimer(pl, plname, st) {
 // 只在玩家当前仍是旁观者时才还原模式：期间被管理员改过就说明有人接管了，不抢
 function restoreMode(pl, st) {
     if (!pl || !isSpec(pl.gameMode)) return;
-    try { pl.setGameMode(st.gameMode); } catch (e) { logger.error(K("fc.error.log1") + e); }
+    try { pl.setGameMode(st.gameMode); } catch (e) { logError(K("fc.error.log1") + e); }
 }
 
 function enterFcam(pl, plname, anchor) {
@@ -738,7 +746,7 @@ function enterFcam(pl, plname, anchor) {
     };
     state.set(plname, st);
     // 先切模式再放标记：旁观者不会被标记实体推挤
-    try { pl.setGameMode(6); } catch (e) { logger.error(K("fc.error.log1") + e); }
+    try { pl.setGameMode(6); } catch (e) { logError(K("fc.error.log1") + e); }
     specBody(plname, anchor, rot.yaw);
     startTimer(pl, plname, st);
     return st;
@@ -750,7 +758,7 @@ function exitFcam(pl, plname) {
     stopTimer(pl, plname, st);
     clearBody(plname);
     restoreMode(pl, st);
-    try { pl.teleport(st.pos, st.rot); } catch (e) { logger.error(K("fc.error.log2") + e); }
+    try { pl.teleport(st.pos, st.rot); } catch (e) { logError(K("fc.error.log2") + e); }
     // 删状态放在最后：中途抛错则状态仍在，玩家可再执行一次 /fcam 重试退出
     state.delete(plname);
     return true;
@@ -777,9 +785,9 @@ function exitAllFcam() {
                 if (state.has(list[i].realName)) exitFcam(list[i], list[i].realName);
             } catch (e) {}
         }
-    } catch (e) { logger.error("FCAM: 卸载清理失败: " + e); }
+    } catch (e) { logError("FCAM: 卸载清理失败: " + e); }
     try { Bodies.removeAll(); } catch (e) {}
-    if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
+    stopTicking();
     ready = false;
 }
 
@@ -803,7 +811,7 @@ function startTimer(pl, plname, st) {
         try {
             pl.setBossBar(st.bossId, barText(st.remain), 100, 3);
         } catch (e) {
-            logger.error("FCAM: 创建 BossBar 失败: " + e);
+            logError("FCAM: 创建 BossBar 失败: " + e);
             st.bossId = null;
         }
     }
@@ -826,7 +834,7 @@ function startTimer(pl, plname, st) {
                 exitFcam(p, plname);
                 p.tell(info + K("fc.timeout"));
             } catch (e) {
-                logger.error(K("fc.error.log4") + e);
+                logError(K("fc.error.log4") + e);
             }
             return;
         }
@@ -836,7 +844,7 @@ function startTimer(pl, plname, st) {
                 p.setBossBar(cur.bossId, barText(cur.remain), cur.remain / cur.total * 100,
                              cur.remain <= 5 ? 2 : (cur.remain <= 10 ? 4 : 3));
             } catch (e) {
-                logger.error("FCAM: 更新 BossBar 失败: " + e);
+                logError("FCAM: 更新 BossBar 失败: " + e);
                 cur.bossId = null;
             }
         }
@@ -845,7 +853,7 @@ function startTimer(pl, plname, st) {
 
 function initFcamModule() {
     initFakePlayerLayer();
-    startTicking();
+    // [perf-p2] 不再无条件起定时器；由 Bodies.create() 在真有身体时启动
 
     const cmd = mc.newCommand("fcam", "灵魂出窍", PermType.Any);
     cmd.overload([]);
@@ -875,7 +883,7 @@ function initFcamModule() {
             enterFcam(pl, plname, pl.feetPos);
             return out.success(info + K("fc.success.getin").replace("${Fcam}", cost));
         } catch (e) {
-            logger.error("FCAM: 执行 /fcam 异常: " + e);
+            logError("FCAM: 执行 /fcam 异常: " + e);
             try { out.error(info + "灵魂出窍执行失败，请查看控制台日志。"); } catch (e2) {}
         }
     });
@@ -888,7 +896,7 @@ function initFcamModule() {
     mc.listen("onLeft", function (p) {
         // 必须在玩家数据落盘前还原模式，否则下次进服会以旁观者身份出现
         try { if (state.has(p.realName)) exitFcam(p, p.realName); }
-        catch (e) { logger.error("FCAM: onLeft 清理失败: " + e); }
+        catch (e) { logError("FCAM: onLeft 清理失败: " + e); }
         Bodies.forgetViewer(p);
     });
 
@@ -905,6 +913,6 @@ function initFcamModule() {
     // 死亡兜底（/suicide、/kill 通用）：否则玩家重生后 /fcam 会被误判成"已在旁观者"
     mc.listen("onPlayerDie", function (p) {
         try { if (state.has(p.realName)) abortFcam(p, p.realName); }
-        catch (e) { logger.error("FCAM: onPlayerDie 清理失败: " + e); }
+        catch (e) { logError("FCAM: onPlayerDie 清理失败: " + e); }
     });
 }
