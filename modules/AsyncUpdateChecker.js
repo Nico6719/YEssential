@@ -15,7 +15,7 @@
 
 // 信任锚：ed25519 公钥（32 字节 hex）。只能在这里硬编码，绝不从网络取。
 // 由发布流程生成，私钥存放在发布机，永不进入仓库。
-const UPDATE_PUBKEY_HEX = "c07291aa11fc56791c4559f7b18f33d5a595400bf680929fcb481f4ca234f07b";
+const UPDATE_PUBKEY_HEX = "682febeec922090e2ce76cee17d31b97e62795401950c9dddbc5b2b5f03fc2a6";
 
 function _utf8Encode(str) {
     const out = [];
