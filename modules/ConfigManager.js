@@ -195,6 +195,10 @@ class ConfigManager {
                 "path": "Cd.js",
                 "name": "Cd"
             },
+            {
+                "path": "Notice.js",
+                "name": "Notice"
+            },
         ];
 
         // 废弃的配置项列表(需要删除的旧配置)

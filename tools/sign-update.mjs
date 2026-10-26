@@ -35,6 +35,7 @@ const FILES = [
     "modules/PVP.js",
     "modules/Fcam.js",
     "modules/Redpacket.js",
+    "modules/Notice.js",
     "modules/Home.js",
     "modules/Warp.js",
     "modules/Sign.js",
