@@ -5,7 +5,6 @@
 - 修复TPA三处问题：空目标导致的 TypeError、方向提示词写反、换行符转义缺失   By @Nico6719
 - 全面改用脚底坐标（feetPos）记录家/传送点/死亡点，坐标显示改用 Number 转换   By @Nico6719
 - Fcam 退出时发送 PlayerList(Remove)，清理暂停菜单与 /tp 列表里的幽灵玩家名   By @Nico6719
-- 移除 TeleportSystemMigrator 与 YEssentialAPI 两个废弃模块   By @Nico6719
 ## v2.12.19 (2026-10-20)
 - 优化Cleanmgr白名单匹配：规则分流为精确匹配/前缀匹配/正则，单次清理匹配耗时由 3.2ms 降至 0.2ms   By @Nico6719
 - 优化Fcam定时器：无身体时自动停表，不再每 500ms 空转   By @Nico6719
