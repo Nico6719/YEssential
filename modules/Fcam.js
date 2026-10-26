@@ -21,7 +21,8 @@ function conf() { return CachePool.conf("Fcam") || {}; }
 function K(key) { return CachePool.lang(key); }
 function barText(remain) { return "§e灵魂出窍剩余 §c" + remain + " §e秒"; }
 
-// 实测（jsdebug）旁观者返回 6；Player.md 属性表写的「3 = 旁观者」是文档错误
+// LSE Player.gameMode / setGameMode：0 生存、1 创造、2 冒险、6 旁观。
+// 这是脚本 API 的枚举，和下面 AddPlayer 里的网络包 GameType 不是同一套。
 function isSpec(gm) { return gm === 6; }
 // 只保留 0/1/2 三种真实模式，异常值一律按生存，杜绝把普通玩家还原成创造
 function safeMode(gm) { return (gm === 1 || gm === 2) ? gm : 0; }
@@ -374,8 +375,8 @@ function writeSkin(w, skin) {
     w.bool(false);                                   // isPersonaCapeOnClassicSkin
     w.bool(false);                                   // isPrimaryUser
     w.bool(false);                                   // overridesPlayerAppearance
-    w.str('true');                                   // 可信标记：26.40 起是皮肤内的三态字符串
-    w.str(skin.profileHash || '');                   // 26.40 新增 profileHash
+    w.str('true');                                   // 可信标记：与 MeowFakePlayer 一致，26.40 起是皮肤内的三态字符串
+    w.str(skin.profileHash || '');                   // profileHash
 }
 
 // PlayerList(Add) —— 必须早于 AddPlayer，客户端要先有皮肤条目才能渲染
@@ -415,7 +416,7 @@ function buildAddPlayer(w, npc) {
     w.uvi(0);                       // blockRuntimeId
     w.str('');                      // userData
 
-    w.vi(0);                        // 游戏模式：Survival = 0（zigzag 后仍是 0）
+    w.vi(0);                        // 游戏模式：与 MeowFakePlayer 一致，Survival 写 0
 
     // 元数据
     w.uvi(6);
@@ -446,11 +447,36 @@ function buildAddPlayer(w, npc) {
     w.u32(1);                       // buildPlatform
 }
 
-// RemoveActor —— 只按 uniqueId 移除。
-// 刻意**不发** PlayerList(Remove)：26.40 客户端在皮肤条目还活跃时移除玩家列表条目会崩，
-// 实体照常消失（HologramLib 的实测结论）。
+// RemoveActor —— 只按 uniqueId 删世界里的实体。
 function buildRemoveActor(w, npc) {
     w.vi64(npc.uniqueId);
+}
+
+// PlayerList(Remove)。
+// 条目是 std::variant<RemoveEntry, AddEntry>：下标 0 = Remove，1 = Add。
+// 动作字节是另一套枚举：Add = 0，Remove = 1。
+// 之前写成动作 0，客户端按 Add 去读后面的皮肤，缓冲区对不上就弹出「出错了」。
+function buildPlayerListRemove(w, uuid) {
+    w.uvi(1);                       // 条目数
+    w.uvi(0);                       // 变体下标：Remove = 0
+    w.u8(1);                        // 动作：Remove = 1
+    w.uuid(uuid);
+}
+
+function sendPlayerListRemove(player, uuid) {
+    const id = PacketIds.get('PlayerList');
+    if (id < 0 || !uuid) return false;
+    try {
+        const bs = new BinaryStream();
+        buildPlayerListRemove(new W(bs), uuid);
+        bs.setReadPointer(0);
+        const pkt = bs.createPacket(id, true);
+        if (!pkt) return false;
+        pkt.sendTo(player);
+        return true;
+    } catch (e) {
+        return false;
+    }
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -462,7 +488,7 @@ function buildRemoveActor(w, npc) {
 //
 // 只走原始包通道：createPacket(id, true) = BDS 的 NetworkPacket，我们写的包体原样带着，
 // 包头/压缩/加密仍由 BDS 出，脚本一个协议字节都不写。
-// fcam 只用 PlayerList / AddPlayer，两者都是纯服务端→客户端的包，BDS 自己从不 read()
+// fcam 只用 PlayerList / AddPlayer / RemoveActor，都是纯服务端→客户端的包，BDS 自己从不 read()
 // 它们（它只负责写），所以"先让 BDS 读一遍再发"这条路对它们没有收益 —— 整条分级通道省掉。
 // ══════════════════════════════════════════════════════════════════════════
 
@@ -592,12 +618,12 @@ const Bodies = {
         return true;
     },
 
-    // 卸载/热重载：把还在线客户端里的身体收掉。
-    // 本方案刻意不发 PlayerList(Remove)，不主动收就会留下"幽灵玩家"。
+    // 卸载/热重载：实体和列表条目都收掉。
     removeAll() {
         for (const pl of mc.getOnlinePlayers()) {
             for (const npc of this.list()) {
                 try { sendTo(pl, npc, 'RemoveActor'); } catch (e) {}
+                try { sendPlayerListRemove(pl, npc.uuid); } catch (e) {}
             }
             try { delete this.viewers[playerName(pl)]; } catch (e) {}
         }
@@ -620,9 +646,12 @@ const Bodies = {
         return true;
     },
 
+    // 先删实体，再按 UUID 把暂停菜单和 /tp 里的名字清掉。
     despawnFrom(player, npc) {
         if (!this.isShown(player, npc)) return false;
+        const uuid = npc.uuid;
         sendTo(player, npc, 'RemoveActor');
+        sendPlayerListRemove(player, uuid);
         delete this.viewers[playerName(player)][npc.name];
         return true;
     },

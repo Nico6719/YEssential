@@ -127,7 +127,7 @@ function WarpAddGui(plname) {
     const pl = mc.getPlayer(plname);
     if (!pl) return;
 
-    const pos = pl.pos;
+    const pos = pl.feetPos;
     const fm  = mc.newCustomForm();
     fm.setTitle(CachePool.lang("warp.add.point"));
     fm.addLabel(CachePool.lang("warp.add.point.xyz"));

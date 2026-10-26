@@ -129,9 +129,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="${{ steps.ver.outputs.new }}"
+          # 版本号带 -（如 -beta.1）→ 自动标记为 pre-release（Beta）
+          PRERELEASE=""
+          case "$VERSION" in *-*) PRERELEASE="--prerelease" ;; esac
           gh release create "$VERSION" YEssential.zip update-manifest.json manifest.sig \
             --title "$VERSION" \
-            --notes-file release_notes.md
+            --notes-file release_notes.md $PRERELEASE
 
       # ---------- 同步到 MineBBS（新版 OpenAPI：versions + updates 两步）----------
       - name: 同步到 MineBBS

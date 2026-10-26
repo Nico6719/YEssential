@@ -273,7 +273,7 @@ function AddHome(plname) {
 
     const fm = mc.newCustomForm();
     fm.setTitle(CachePool.lang("home.add"));
-    fm.addLabel("当前坐标：" + String(pl.pos));
+    fm.addLabel("当前坐标：" + String(pl.feetPos));
     fm.addLabel("您的" + coinName + "：" + String(Economy.get(pl)));
     fm.addLabel("添加花费：" + String(cost) + coinName);
     fm.addInput(CachePool.lang("home.add.input"), "home1", "home1", lang.get("home.add.input.tip") || ""); // data[3]
@@ -285,11 +285,12 @@ function AddHome(plname) {
         const pldata2 = homeStore.get(pl.realName) || {};
         if (Object.keys(pldata2).includes(data[3])) return pl.tell(info + CachePool.lang("home.name.repetitive"));
         if (!EconomyManager.checkAndReduce(pl.realName, cost, "添加家")) return showInsufficientMoneyGui(pl, cost, "home");
+        const feet = pl.feetPos;
         pldata2[data[3]] = {
-            x:       JSON.parse(pl.pos.x).toFixed(1),
-            y:       JSON.parse(pl.pos.y).toFixed(1),
-            z:       JSON.parse(pl.pos.z).toFixed(1),
-            dimid:   JSON.parse(pl.pos.dimid),
+            x:       Number(feet.x).toFixed(1),
+            y:       Number(feet.y).toFixed(1),
+            z:       Number(feet.z).toFixed(1),
+            dimid:   Number(feet.dimid),
             isPublic: data[4]
         };
         homeStore.set(pl.realName, pldata2);

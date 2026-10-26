@@ -13,8 +13,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件`;
-const version = "2.12.19";
-const regversion =[2,12,19];
+const version = "2.13.0-beta.1";
+const regversion =[2,13,0];
 const info = "§l§d[-YEST-] §r§l> ";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
@@ -792,21 +792,22 @@ sethubcmd.setCallback((cmd, ori, out, res) => {
         pl.tell(info + CachePool.lang("player.not.op"));
         return;
     }
+    const feet = pl.feetPos;
     const Hubdata = {
-        "x": pl.pos.x.toFixed(1) * 1,
-        "y": pl.pos.y.toFixed(1) * 1,
-        "z": pl.pos.z.toFixed(1) * 1,
-        "dimid": pl.pos.dimid,
+        "x": Number(feet.x).toFixed(1) * 1,
+        "y": Number(feet.y).toFixed(1) * 1,
+        "z": Number(feet.z).toFixed(1) * 1,
+        "dimid": feet.dimid,
         isSet: true,
         EnabledModule: true
     };
     CachePool.setConf("Hub", Hubdata);
     pl.tell([
         '§a回城点已设置为：',
-        `§eX: §f${pl.pos.x.toFixed(1)}`,
-        `§eY: §f${pl.pos.y.toFixed(1)}`,
-        `§eZ: §f${pl.pos.z.toFixed(1)}`,
-        `§e维度: §f${getDimensionName(pl.pos.dimid)}`
+        `§eX: §f${Number(feet.x).toFixed(1)}`,
+        `§eY: §f${Number(feet.y).toFixed(1)}`,
+        `§eZ: §f${Number(feet.z).toFixed(1)}`,
+        `§e维度: §f${getDimensionName(feet.dimid)}`
     ].join('\n'));
 });
 sethubcmd.setup();
@@ -1790,7 +1791,6 @@ function MoneyTransferGui(plname) {
     const playerNames = CachePool.getOnlinePlayers().map(p => p.realName);
     const myBalance = Economy.get(pl);
     const coinName = economyCfg.coinName;
-    // 用 calcTax(0, myBalance) 只为取 taxTip 展示当前档位
     const { taxTip } = calcTax(0, myBalance);
     const fm = mc.newCustomForm();
     fm.setTitle(CachePool.lang("money.transfer.title") + coinName);
@@ -1808,8 +1808,6 @@ function MoneyTransferGui(plname) {
         const [, targetIdx, inputAmount, note] = data;
         const target = mc.getPlayer(playerNames[targetIdx]);
 
-        // [fix] 原条件 !x===false 双重否定导致 null target 时直接 TypeError；
-        //       拆为三段：target不存在 | 是模拟玩家 | 转给自己
         if (!target || player.realName === target.realName) {
             return player.tell(info + (player.realName === target?.realName
                 ? CachePool.lang("money.tr.error2")
@@ -2138,7 +2136,7 @@ mc.listen("onPlayerDie", function(pl, src) {
     }
     
     // 修复：使用玩家当前位置作为死亡位置，而不是lastDeathPos
-    let deathPos = pl.pos;
+    let deathPos = pl.feetPos;
     if (!deathPos) return;
     
     // 创建死亡点记录
@@ -2615,6 +2613,10 @@ function sendTpaRequest(fromPlayer, toPlayerName, direction, delaySec) {
         fromPlayer.tell(info + CachePool.lang("tpa.send.blocked"));
         return;
     }
+    if (pendingTpaRequests[toPlayerName]) {
+        fromPlayer.tell(info + CachePool.lang("tpa.no.callback"));
+        return;
+    }
     
     let uid = Math.floor(Math.random() * 1e8);
     let req = {
@@ -2650,14 +2652,14 @@ function sendTpaRequest(fromPlayer, toPlayerName, direction, delaySec) {
 function showTpaConfirmForm(req, timeoutSec) {
     let toPlayer = req.to;
     let fromName = req.fromName;
-    let dirText = (req.direction === "to" ? CachePool.lang("tpa.to.here"): CachePool.lang("tpa.to.here"));
+    let dirText = (req.direction === "to" ? CachePool.lang("tpa.to.here") : CachePool.lang("tpa.to.he.she"));
     let delayStr = (req.delay > 0 ? (CachePool.lang("tpa.delay.info") || "(延迟${delay}秒)").replace("${delay}", req.delay) + "\n" : "");
     
     let form = mc.newSimpleForm();
     form.setTitle(CachePool.lang("tpa.request"));
     form.setContent(`${info}§b[${fromName}] 请求${dirText}\n` +
                    `${delayStr}` +
-                   `${CachePool.lang("tpa.a.and.d")}n` +
+                   `${CachePool.lang("tpa.a.and.d")}\n` +
                    `§e剩余时间: ${timeoutSec}s`);
     form.addButton(CachePool.lang("tpa.a"));
     form.addButton(CachePool.lang("tpa.d"));
@@ -2696,6 +2698,10 @@ function startTpaRequestCountdown(req, timeoutSec, bossbarMode) {
 
     let timerId = setInterval(() => {
         try {
+            if (pendingTpaRequests[toName] !== req) {
+                clearInterval(timerId);
+                return;
+            }
             remain--;
 
             // 用字符串查玩家，避免持有失效对象导致 "Wrong type of argument"
@@ -2754,6 +2760,16 @@ tpanocmd.setup();
 } // end if (CachePool.conf("tpa")?.EnabledModule) — tpayes/tpano
 // v2.10.5: /crash 命令已迁移至 modules/Crash.js
 
+function refundTpaCost(playerOrName, cost) {
+    const amount = Number(cost) || 0;
+    if (amount < 1 || !playerOrName) return;
+    try {
+        Economy.execute(playerOrName, "add", amount, "tpa传送中断退回");
+    } catch (e) {
+        logger.error(`[TPA] 退回传送费失败: ${e}`);
+    }
+}
+
 function acceptTpaRequest(targetName) {
     let cost = CachePool.conf("tpa").cost;
     let req = pendingTpaRequests[targetName];
@@ -2768,18 +2784,22 @@ function acceptTpaRequest(targetName) {
     let from = req.from, to = req.to;
     let delay = req.delay;
     let dir = req.direction;
-    
+    let charged = false;
+
+    if (cost >= 1) {
+        if (!EconomyManager.checkAndReduce(from.realName, cost, "tpa传送")) {
+            showInsufficientMoneyGui(from, cost);
+            delete pendingTpaRequests[targetName];
+            return false;
+        }
+        charged = true;
+        from.sendText(info + `§e传送花费 ${cost}${CachePool.conf("Economy").CoinName}`);
+    }
+
     to.tell(info +CachePool.lang("tpa.accpet.request"));
     from.tell(info + (delay > 0
         ? (CachePool.lang("tpa.accept.delay") || "§a对方已同意请求，将在${delay}秒后传送...").replace("${delay}", delay)
         : CachePool.lang("tpa.accept.now")));
-        if (cost >= 1) {
-        if (!EconomyManager.checkAndReduce(from.realName, cost, "tpa传送")) {
-            showInsufficientMoneyGui(from, cost);
-            return false;
-        }
-        from.sendText(info + `§e传送花费 ${cost}${CachePool.conf("Economy").CoinName}`);
-    }
     if (delay > 0) {
         let secondBarId = Math.floor(Math.random() * 1e9);
         let remain = delay;
@@ -2798,7 +2818,11 @@ function acceptTpaRequest(targetName) {
                     clearInterval(secondTid);
                     try { from.removeBossBar(secondBarId); } catch(_) {}
                     try { to.removeBossBar(secondBarId); } catch(_) {}
-                    try { from.tell(info + CachePool.lang("tpa.request.cut")); } catch(_) {}
+                    if (charged) refundTpaCost(fromPlayer2 || fromName2, cost);
+                    try {
+                        const who = fromPlayer2 || toPlayer2;
+                        if (who) who.tell(info + CachePool.lang("tpa.request.cut"));
+                    } catch(_) {}
                     return;
                 }
 
@@ -2811,83 +2835,59 @@ function acceptTpaRequest(targetName) {
                     clearInterval(secondTid);
                     fromPlayer2.removeBossBar(secondBarId);
                     toPlayer2.removeBossBar(secondBarId);
-                
-                if (dir === "to") {
-                    let targetPlayer = mc.getPlayer(to.name);
-                    if (!targetPlayer) {
-                        fromPlayer2.tell(info + CachePool.lang("tpa.tp.fail.noonline"));
-                        return;
-                    }
-                    let footPos = new FloatPos(
-                        targetPlayer.pos.x,
-                        targetPlayer.pos.y - 1.62,
-                        targetPlayer.pos.z,
-                        targetPlayer.pos.dimid
-                    );
-                    fromPlayer2.teleport(footPos);
-                } else {
-                    let targetPlayer = mc.getPlayer(fromName2);
-                    if (!targetPlayer) {
-                        toPlayer2.tell(info + CachePool.lang("tpa.tp.fail.noonline"));
-                        return;
-                    }
-                    let footPos = new FloatPos(
-                        targetPlayer.pos.x,
-                        targetPlayer.pos.y - 1.62,
-                        targetPlayer.pos.z,
-                        targetPlayer.pos.dimid
-                    );
-                    toPlayer2.teleport(footPos);
+
+                const mover = dir === "to" ? fromPlayer2 : toPlayer2;
+                const dest = dir === "to" ? toPlayer2 : fromPlayer2;
+                try {
+                    mover.teleport(dest.feetPos);
+                    fromPlayer2.tell(info + CachePool.lang("tpa.tp.okey"));
+                    toPlayer2.tell(info + CachePool.lang("tpa.tp.okey"));
+                } catch (e) {
+                    if (charged) refundTpaCost(fromPlayer2, cost);
+                    fromPlayer2.tell(info + CachePool.lang("tpa.tp.fail.noonline"));
+                    logger.warn(`[TPA] 延迟传送失败 (${fromName2} → ${toName2}): ${e}`);
                 }
-                fromPlayer2.tell(info + CachePool.lang("tpa.tp.okey"));
-                toPlayer2.tell(info + CachePool.lang("tpa.tp.okey"));
             }
         } catch (e) {
             clearInterval(secondTid);
+            if (charged) refundTpaCost(fromName2, cost);
             logger.warn(`[TPA] 延迟传送异常已清理 (${fromName2} → ${toName2}): ${e}`);
         }
         }, 1000);
     } else {
-        if (!mc.getPlayer(from.name) || !mc.getPlayer(to.name)) {
-            from.tell(info +CachePool.lang("tpa.tp.fail.noonline"));
+        const fromNow = mc.getPlayer(from.name);
+        const toNow = mc.getPlayer(to.name);
+        if (!fromNow || !toNow) {
+            if (charged) refundTpaCost(fromNow || from.realName, cost);
+            const who = fromNow || toNow || from;
+            try { who.tell(info + CachePool.lang("tpa.tp.fail.noonline")); } catch (e) {}
+            delete pendingTpaRequests[targetName];
             return;
         }
-        
-        if (dir === "to") {
-            let targetPlayer = mc.getPlayer(to.name);
-            if (!targetPlayer) {
-                from.tell(info +CachePool.lang("tpa.player.offline"));
+
+        const moverName = dir === "to" ? from.name : to.name;
+        const destName = dir === "to" ? to.name : from.name;
+        setTimeout(() => {
+            const mover = mc.getPlayer(moverName);
+            const dest = mc.getPlayer(destName);
+            const payer = mc.getPlayer(from.name);
+            if (!mover || !dest) {
+                if (charged) refundTpaCost(payer || from.realName, cost);
+                try { (payer || mover || dest).tell(info + CachePool.lang("tpa.tp.fail.noonline")); } catch (e) {}
                 return;
             }
-            let footPos = new FloatPos(
-                targetPlayer.pos.x,
-                targetPlayer.pos.y - 1.62, 
-                targetPlayer.pos.z,
-                targetPlayer.pos.dimid
-            );
-            setTimeout(() => {
-            from.teleport(footPos);
-            },500)
-            mc.runcmdEx(`camera ${from.realName} fade time 0.15 0.5 0.35 color 0 0 0`);
-        } else {
-            let targetPlayer = mc.getPlayer(from.name);
-            if (!targetPlayer) {
-                to.tell(info +CachePool.lang("tpa.tp.fail.noonline"));
-                return;
+            try {
+                mover.teleport(dest.feetPos);
+                mover.tell(info + CachePool.lang("tpa.tp.okey"));
+                dest.tell(info + CachePool.lang("tpa.tp.okey"));
+            } catch (e) {
+                if (charged) refundTpaCost(payer || from.realName, cost);
+                try { mover.tell(info + CachePool.lang("tpa.tp.fail.noonline")); } catch (e2) {}
+                logger.warn(`[TPA] 传送失败: ${e}`);
             }
-            let footPos = new FloatPos(
-                targetPlayer.pos.x,
-                targetPlayer.pos.y - 1.62, 
-                targetPlayer.pos.z,
-                targetPlayer.pos.dimid
-            );
-            setTimeout(() => {
-            to.teleport(footPos);
-            },500)
-            mc.runcmdEx(`camera ${to.realName} fade time 0.15 0.5 0.35 color 0 0 0`);
-        }
-        from.tell(info +CachePool.lang("tpa.tp.okey"));
-        to.tell(info +CachePool.lang("tpa.tp.okey"));
+        }, 500);
+        const fadeName = dir === "to" ? from.realName : to.realName;
+        mc.runcmdEx(`camera ${fadeName} fade time 0.15 0.5 0.35 color 0 0 0`);
     }
     
     delete pendingTpaRequests[targetName];
