@@ -107,6 +107,21 @@ jobs:
           echo "--- 打包内容 ---"
           unzip -l YEssential.zip
 
+      # ---------- 生成并签名更新清单（防篡改）----------
+      - name: 生成签名更新清单
+        if: steps.ver.outputs.changed == 'true'
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: |
+          if [ -z "$UPDATE_SIGNING_KEY" ]; then
+            echo "::error::缺少 Secret UPDATE_SIGNING_KEY（ed25519 私钥，base64 PKCS8）——拒绝发布未签名的更新清单"
+            exit 1
+          fi
+          node tools/sign-update.mjs --dir .
+          test -s update-manifest.json || { echo "::error::update-manifest.json 生成失败"; exit 1; }
+          test -s manifest.sig        || { echo "::error::manifest.sig 生成失败"; exit 1; }
+          ls -l update-manifest.json manifest.sig
+
       # ---------- 创建 GitHub Release ----------
       - name: 创建 Release 并上传
         if: steps.ver.outputs.changed == 'true' && steps.relexists.outputs.exists == 'false'
@@ -114,7 +129,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="${{ steps.ver.outputs.new }}"
-          gh release create "$VERSION" YEssential.zip \
+          gh release create "$VERSION" YEssential.zip update-manifest.json manifest.sig \
             --title "$VERSION" \
             --notes-file release_notes.md
 
