@@ -101,6 +101,7 @@ jobs:
           mkdir -p dist/YEssential
           cp YEssential.js manifest.json dist/YEssential/
           cp -r modules dist/YEssential/
+          cp -r web dist/YEssential/
           rm -f dist/YEssential/modules/YEssentialAPI.js
           rm -f dist/YEssential/modules/TeleportSystemMigrator.js
           (cd dist && zip -r ../YEssential.zip YEssential)

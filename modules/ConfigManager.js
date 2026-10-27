@@ -2,7 +2,7 @@
 // randomGradientLog 由主文件通过 globalThis 注入，此处无需重复定义
 class ConfigManager {
     constructor() {
-        this.currentVersion = 295;
+        this.currentVersion = 296;
         this.pluginPath = pluginpath || "./plugins/YEssential";
         this.moduleListPath = `${this.pluginPath}/modules/modulelist.json`;
         // Update 配置独立文件路径（与 config.json 同级，均在 Config/ 目录下）
@@ -128,7 +128,13 @@ class ConfigManager {
                 "tipAfterDeath": false   // 死亡复活后是否自动弹出返回GUI
             },
             "Warp": 0,
-            "KeepInventory": false,
+            "WebConsole": {
+                "EnableModule": true,
+                "Port": 8787,
+                "BindAddress": "127.0.0.1",
+                "Token": "",
+                "AllowWrite": true
+            },
         };
 
         // Update 模块的默认配置（独立存放于 Updateconfig.json）
@@ -158,7 +164,12 @@ class ConfigManager {
                     { "url": "modules/PluginInfo.js",            "path": "./modules/PluginInfo.js" },
                     { "url": "modules/Home.js",                  "path": "./modules/Home.js" },
                     { "url": "modules/CachePool.js",             "path": "./modules/CachePool.js" },
-                    { "url": "modules/WriteBackStore.js",        "path": "./modules/WriteBackStore.js" }
+                    { "url": "modules/WriteBackStore.js",        "path": "./modules/WriteBackStore.js" },
+                    { "url": "modules/WebConsole.js", "path": "./modules/WebConsole.js" },
+                    { "url": "web/index.html", "path": "./web/index.html" },
+                    { "url": "web/assets/app.js", "path": "./web/assets/app.js" },
+                    { "url": "web/assets/index.js", "path": "./web/assets/index.js" },
+                    { "url": "web/assets/index.css", "path": "./web/assets/index.css" }
                 ],
                 "reloadDelay": 1000,
                 "timeout": 30000,
@@ -512,7 +523,8 @@ class ConfigManager {
         const migrations = [
             { version: 293, handler: () => this.migrateTo293() },
             { version: 294, handler: () => this.migrateTo294() },
-            { version: 295, handler: () => this.migrateTo295() }
+            { version: 295, handler: () => this.migrateTo295() },
+            { version: 296, handler: () => this.migrateTo296() }
         ];
 
         migrations.forEach(migration => {
@@ -693,6 +705,73 @@ class ConfigManager {
         }
 
         randomGradientLog("Suicide/Back 配置迁移完成，今后请通过 Suicide.EnabledModule / Suicide.cooldown / Back.EnabledModule / Back.cooldown / Back.tipAfterDeath 等字段配置");
+    }
+
+    /**
+     * 迁移到 296：把 WebConsole 模块的文件补进 Updateconfig.json 的 files
+     *
+     * 只补「默认列表有、当前列表没有、且磁盘上也不存在」的条目：
+     *   - 老用户从没装过 → 磁盘没有 → 补上，随更新一起下载
+     *   - 服主主动删了条目但留着文件 → 磁盘有 → 跳过，尊重他的选择
+     */
+    migrateTo296() {
+        randomGradientLog("更新配置版本到296：WebConsole 配置并入 config.json");
+
+        // 旧的独立配置文件 → 合并进 config.json 的 WebConsole 块，然后删掉
+        const oldPath = this.pluginPath + "/Config/WebConsole.json";
+        try {
+            if (File.exists(oldPath)) {
+                const old = JSON.parse(File.readFrom(oldPath)) || {};
+                const def = this.configDefaults.WebConsole;
+                conf.set("WebConsole", {
+                    EnableModule: def.EnableModule,
+                    Port: Number(old.Port) > 0 && Number(old.Port) < 65536 ? Number(old.Port) : def.Port,
+                    BindAddress: typeof old.BindAddress === "string" && old.BindAddress ? old.BindAddress : def.BindAddress,
+                    Token: typeof old.Token === "string" ? old.Token : def.Token,
+                    AllowWrite: old.AllowWrite !== false
+                });
+                File.delete(oldPath);
+                randomGradientLog("已把 Config/WebConsole.json 并入 config.json（WebConsole 块），旧文件已删除");
+            }
+        } catch (e) {
+            logger.warn(`合并 WebConsole 配置失败，将使用默认值: ${e.message}`);
+        }
+
+        // v296 起废弃 KeepInventory：只是一条启动时执行的 gamerule，功能已整体移除
+        if (conf.get("KeepInventory") !== undefined) {
+            conf.delete("KeepInventory");
+            randomGradientLog("已移除废弃配置 KeepInventory（死亡不掉落）");
+        }
+
+        const upd = this.updateConf.get("Update");
+        if (!this.isValidObject(upd) || !Array.isArray(upd.files)) {
+            logger.warn("migrateTo296: Updateconfig.json 的 files 不是数组，跳过");
+            return;
+        }
+
+        const norm = f => String((f && (f.path || f.url)) || "").replace(/^\.\//, "");
+        const have = new Set(upd.files.map(norm));
+        const added = [];
+
+        for (const f of this.updateConfigDefaults.Update.files) {
+            const key = norm(f);
+            if (!key || have.has(key)) continue;
+            try {
+                const full = this.pluginPath + "/" + String(f.path || f.url).replace(/^\.\//, "");
+                if (File.exists(full)) continue;   // 磁盘上已有，说明服主有意保留，不碰
+            } catch (e) {
+                // 探测失败就按缺失处理
+            }
+            upd.files.push(f);
+            added.push(key);
+        }
+
+        if (added.length) {
+            this.updateConf.set("Update", upd);
+            randomGradientLog(`Updateconfig.json 新增更新条目: ${added.join(", ")}`);
+        } else {
+            randomGradientLog("Updateconfig.json 无需补全");
+        }
     }
 
     /**

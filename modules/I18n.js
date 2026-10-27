@@ -365,7 +365,6 @@ const defaultLangContent = {
     "crash.target.offline": "§c目标玩家已离线，操作取消。",
     "stop.msg": "服务器关闭\n请稍后再来",
     "pls.input.notice": "请输入公告内容，（换行用 \\n）",
-    "gamerule.KeepInventory.true": "死亡不掉落已启用",
     "cannot.create.newfile": "无法创建数据存储对象",
     "rtp.search.chunks": "§a正在寻找安全的传送位置，请稍候...",
     "rtp.search.chunks2": "§e未找到理想位置，使用备用传送方案...",

@@ -13,8 +13,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件`;
-const version = "2.13.1";
-const regversion =[2,13,1];
+const version = "2.13.2";
+const regversion =[2,13,2];
 const info = "§l§d[-YEST-] §r§l> ";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
@@ -507,11 +507,6 @@ function initializePlugin() {
         }, 1000);
     }
     
-    // 第3步：启用死亡不掉落
-    if (CachePool.conf("KeepInventory")) {
-        mc.runcmdEx("gamerule KeepInventory true");
-        randomGradientLog(CachePool.lang("gamerule.KeepInventory.true"));
-    }
     if(CachePool.conf("Update", globalThis.updateConf)?.EnableModule==0) {return;}
      else{
     // 第4步：异步初始化更新检查器并检查更新

@@ -71,6 +71,10 @@
         {
             "path": "WriteBackStore.js",
             "name": "WriteBackStore"
+        },
+        {
+            "path": "WebConsole.js",
+            "name": "WebConsole"
         }
     ]
 }

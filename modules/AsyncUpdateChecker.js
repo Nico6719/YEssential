@@ -349,7 +349,11 @@ class AsyncUpdateChecker {
             { url: 'modules/Warp.js',                  path: './modules/Warp.js'},
             { url: 'modules/CachePool.js',             path: './modules/CachePool.js'},
             { url: 'modules/WriteBackStore.js',        path: './modules/WriteBackStore.js'},
-            {url: 'modules/Crash.js',                  path: './modules/Crash.js'}  //20
+            { url: 'modules/WebConsole.js', path: './modules/WebConsole.js' },
+            { url: 'web/index.html', path: './web/index.html' },
+            { url: 'web/assets/app.js', path: './web/assets/app.js' },
+            { url: 'web/assets/index.js', path: './web/assets/index.js' },
+            { url: 'web/assets/index.css', path: './web/assets/index.css' }
         ];
     }
 
