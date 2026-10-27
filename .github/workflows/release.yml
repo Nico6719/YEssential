@@ -163,6 +163,7 @@ jobs:
           UPLOAD_RESP=$(curl -fsSL --http1.1 -X POST \
             "${API}/upload" \
             -H "Authorization: Bearer $MB_TOKEN" \
+            -H "Idempotency-Key: ye-upload-${VER_PLAIN}" \
             -F "upload[]=@YEssential.zip")
 
           echo "$UPLOAD_RESP"
