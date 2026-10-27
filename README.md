@@ -68,9 +68,9 @@
 |PVP	 |PVP自由开关功能，防止玩家恶意攻击。	 |✅|
 |AutoUpdate	 |自动更新插件本体并重载，2.13.0 起带签名校验防篡改。	 |✅|
 |Bstats统计	 |统计BDS信息和在线人数（可在Config内关闭）<br>开启统计可以帮助开发者了解插件运行状况，优化插件性能！ |	✅|
-|Web 配置台	 |浏览器可视化改配置，保存自动重载（默认仅本机）。 |	✅|
-|配置台个性化	 |强调色、动效、字号密度、磨砂玻璃、背景自定义。 |	✅|
-|经济变动记录	 |金币增减记录（MoneyHistory），含变动原因与余额。 |	✅|
+|WebConfigChange |浏览器可视化改配置，保存自动重载（默认仅本机）。 |	✅|
+|WebUICustomize |强调色、动效、字号密度、磨砂玻璃、背景自定义。 |	✅|
+|MoneyHistory	 |金币增减记录（MoneyHistory），含变动原因与余额。 |	✅|
 |Plugin for Endstone	|Endstone 版本的 YEssential。|	🚧 开发中|
 |SideBar|	支持自定义侧边栏以及支持 PAPI 变量。|	📅 计划中|
 ### 相关PAPI变量
