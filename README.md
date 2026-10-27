@@ -48,7 +48,7 @@
  |菜单	 |菜单功能，兼容[PMenu](https://www.minebbs.com/resources/pmenu.4277/)的配置文件！！|	✅|
  |Hub	 |一键回城，可通过指令设置传送点。 |	✅|
  |Rtp	 |随机传送，附带动画。	 |✅|
- |Tpa	 |传送系统，借鉴了子邪大佬写的 TeleportMaster。 |	✅|
+ |Tpa	 |传送系统，借鉴了子邪大佬写的 TeleportMaster，支持拉黑。 |	✅|
 |Home&Warp	 |家系统(公共家系统)和公共传送点系统。 |	✅|
 |Fcam	 |灵魂出窍（旁观者）。 |✅|
 |Back&DeathLog |回死亡点以及记录玩家死亡点。 |	✅|
@@ -69,6 +69,8 @@
 |AutoUpdate	 |自动更新插件本体并重载，2.13.0 起带签名校验防篡改。	 |✅|
 |Bstats统计	 |统计BDS信息和在线人数（可在Config内关闭）<br>开启统计可以帮助开发者了解插件运行状况，优化插件性能！ |	✅|
 |Web 配置台	 |浏览器可视化改配置，保存自动重载（默认仅本机）。 |	✅|
+|配置台个性化	 |强调色、动效、字号密度、磨砂玻璃、背景自定义。 |	✅|
+|经济变动记录	 |金币增减记录（MoneyHistory），含变动原因与余额。 |	✅|
 |Plugin for Endstone	|Endstone 版本的 YEssential。|	🚧 开发中|
 |SideBar|	支持自定义侧边栏以及支持 PAPI 变量。|	📅 计划中|
 ### 相关PAPI变量
@@ -128,17 +130,9 @@
 | 2.11.0 | 大量底层更改                | 2026/4/14   |
 | 2.12.11| 玩家互传新增拉黑功能         | 2026/7/17   |
 | 2.12.12| 自杀/死亡点传送冷却，签到修复 | 2026/7/31   |
-| 2.12.13| 修复签到随机经验报错            | 2026/8/4    |
 | 2.12.14| RTP 核心重写，新增经济变动记录   | 2026/9/16   |
-| 2.12.15| 修复灵魂出窍崩服问题            | 2026/9/26   |
-| 2.12.16| 修复灵魂出窍刷盔甲架问题        | 2026/10/4   |
-| 2.12.17| 清理定时器泄露修复，多项性能优化 | 2026/10/11  |
-| 2.12.18| 日志输出美化                    | 2026/10/11  |
-| 2.12.19| 清理/日志性能优化，灵魂出窍修复  | 2026/10/20  |
 | 2.13.0 | 自动更新防篡改（签名校验）       | 2026/10/26  |
-| 2.13.1 | 修复自动更新清单漏文件          | 2026/10/26  |
 | 2.13.2 | Web 配置台与个性化设置           | 2026/10/28  |
-| 2.13.3 | 启动提示与模块加载提速           | 2026/10/28  |
 | 3.0.0  | GitHub 下载新版             | 未注明      |
 
 ⚠️ *以上为部分版本信息，具体以最新资源页 / GitHub 为准。* 
@@ -306,8 +300,15 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
                 "cooldown": 0,   //冷却时间（单位：秒），0为不限制。冷却仅在传送成功后计入
                 "tipAfterDeath": false   //重生后是否自动弹出返回GUI
     },
+    "WebConsole": {  //Web 配置台设置
+                "EnableModule": true,  //是否开启 Web 配置台
+                "Port": 8787,  //监听端口
+                "BindAddress": "127.0.0.1",  //绑定地址，默认仅本机可访问
+                "Token": "",  //访问令牌（绑非回环地址时会自动生成）
+                "AllowWrite": true  //是否允许网页写入配置
+    },
     "Warp": 0 ,   //前往公共传送点花费的金钱
-    "Version": 295   //版本标识符，勿动！
+    "Version": 296   //版本标识符，勿动！
 }
 ```
 > 懒怎么办？？ 启动插件后打开内置 Web 配置台吧（默认地址 http://127.0.0.1:8787/ ，端口见启动日志）！
@@ -395,6 +396,26 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
             {
                 "url": "modules/WriteBackStore.js",
                 "path": "./modules/WriteBackStore.js"
+            },
+            {
+                "url": "modules/WebConsole.js",
+                "path": "./modules/WebConsole.js"
+            },
+            {
+                "url": "web/index.html",
+                "path": "./web/index.html"
+            },
+            {
+                "url": "web/assets/app.js",
+                "path": "./web/assets/app.js"
+            },
+            {
+                "url": "web/assets/index.js",
+                "path": "./web/assets/index.js"
+            },
+            {
+                "url": "web/assets/index.css",
+                "path": "./web/assets/index.css"
             }
         ],
         "reloadDelay": 1000,  //自动重载延迟
