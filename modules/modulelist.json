@@ -1,6 +1,10 @@
 {
     "modules": [
         {
+            "path": "WebConsole.js",
+            "name": "WebConsole"
+        },
+        {
             "path": "AsyncUpdateChecker.js",
             "name": "AsyncUpdateChecker"
         },
@@ -71,10 +75,6 @@
         {
             "path": "WriteBackStore.js",
             "name": "WriteBackStore"
-        },
-        {
-            "path": "WebConsole.js",
-            "name": "WebConsole"
         }
     ]
 }

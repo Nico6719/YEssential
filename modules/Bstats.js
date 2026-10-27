@@ -104,7 +104,6 @@ class BStatsImpl {
         this.serverUUID = loadOrCreateUUID();
 
         this.syncConfig();
-        this.probeSystemInfo();
     }
 
     readManifestVersion() {
@@ -121,7 +120,7 @@ class BStatsImpl {
         } catch (e) {
             logError("读取 manifest.json 失败: " + e.message);
         }
-        return "2.13.2";
+        return "2.13.3";
     }
 
     // 将 Economy.PayTaxRate（数字 或 阶梯数组）转换为 Disabled/Enabled 两种分类
@@ -317,6 +316,7 @@ class BStatsImpl {
     }, randRange(30, 60));
 
     setTimeout(function () {
+        self.probeSystemInfo();  // 7 个 system.cmd 进程 spawn ~200ms，放这不挡加载
         randomGradientLog("遥测模块已启动。首次上报将在 30~60 秒后发送，失败最多重试 " + BSTATS_MAX_RETRY + " 次。");
     }, 2000);
     }

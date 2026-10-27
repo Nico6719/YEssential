@@ -13,8 +13,8 @@ const pluginpath = "./plugins/YEssential/";
 const datapath = "./plugins/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件`;
-const version = "2.13.2";
-const regversion =[2,13,2];
+const version = "2.13.3";
+const regversion =[2,13,3];
 const info = "§l§d[-YEST-] §r§l> ";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
@@ -378,7 +378,11 @@ Object.assign(globalThis, {
                 logInfo("-".repeat(50));
                 logInfo((_l.get("Tip1")) || "");
                 logInfo((_l.get("Tip2")) || "");
-                logInfo((_l.get("Tip3")) || "");
+                if (conf.get("WebConsole.EnableModule", true) === false) {
+                    logInfo((_l.get("WebUIOffTip")) || "");
+                } else {
+                    logInfo(((_l.get("WebUITip")) || "").replace("{port}", String(conf.get("WebConsole.Port", 8787))));
+                }
                 logInfo("-".repeat(50));
                 }},100)
             }
@@ -429,7 +433,10 @@ Object.assign(globalThis, {
         failedCount++;
       }
 
-      setTimeout(loadNextModule, 10);
+      // 同步连跑：原先每模块 setTimeout(10) 让出一拍，LSE 定时器随游戏刻(50ms)泵送，
+      // 行距实测 46~63ms 全耗在等拍上；改直调后行与行之间只剩模块自身耗时。
+      // logo 前的 2000ms 首刷延迟保持不动。
+      loadNextModule();
     }
     setTimeout(() => {
         printGradientLogo();   

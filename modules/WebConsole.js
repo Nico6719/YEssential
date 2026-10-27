@@ -340,18 +340,17 @@ function init() {
         const url = `http://${ADDR === "0.0.0.0" ? "127.0.0.1" : ADDR}:${PORT}/`;
 
         // 延后一拍再报：init 是在模块加载循环里跑的，立刻打印会把 "正在加载模块"
-        // 的列表从中间截断，压在 "所有模块加载成功" 之前很难看
-        setTimeout(() => {
-            glog(`已启动: ${url}，您可在该页面修改配置。`);
-            if (NEED_TOKEN) {
+        // 的列表从中间截断，压在 "所有模块加载成功" 之前很难看。
+        // 常规启动不再打日志（横幅 WebUITip 已提示配置台）；只有绑非回环地址时
+        // 必须把带 token 的访问地址报出来，否则登不进去
+        if (NEED_TOKEN) {
+            setTimeout(() => {
                 glog(`已绑非回环地址，访问需带 token: ${url}?token=${TOKEN}`);
                 if (TOKEN_TEMP) {
                     glog("当前 token 为本次启动随机生成，重启会变；想固定就填到 config.json 的 WebConsole.Token");
                 }
-            } else {
-                glog(`仅本机可访问；要远程访问改 config.json 的 WebConsole.BindAddress 后 reload`);
-            }
-        }, 600);
+            }, 600);
+        }
 
         // 主线程轮询待重载标记：mc.runcmdEx 只能在游戏线程调用
         reloadTimer = setInterval(() => {

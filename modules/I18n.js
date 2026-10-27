@@ -268,9 +268,10 @@ const defaultLangContent = {
     "No.backup.canuse": "没有可用的备份",
 
     // Tip相关
-    "Tip1": "如有Bug请联系作者反馈！！！！",
-    "Tip2": "感谢伊希娅提供技术支持和指导！感谢ender罗小黑提供在线网页支持！",
-    "Tip3": "在线config编辑器：https://jzrxh.work/projects/yessential/index.html",
+    "Tip1": "如有Bug请前往Q群或Github反馈！！！！插件交流群：1045392458",
+    "Tip2": "感谢伊希娅提供技术支持和指导！感谢ender罗小黑提供的Web配置器！（旧）",
+    "WebUITip": "插件配置修改器：http://127.0.0.1:{port}/（默认端口可在 config.json 内调整）",
+    "WebUIOffTip": "插件配置修改器未启用，您可在config.json内开启此功能！",
     "Version.Chinese": "版本:",
 
     "wh.warn": "服务器启动时维护模式已启用，非OP玩家将无法加入!!!!!",
