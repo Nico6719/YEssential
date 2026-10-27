@@ -150,7 +150,7 @@ jobs:
           API="https://open.minebbs.com/api/openapi/v1"
 
           # ① 查已有版本，MineBBS 侧去重（已存在则直接跳过，不消耗上传配额）
-          EXISTING=$(curl -fsSL \
+          EXISTING=$(curl -fsSL --http1.1 \
             "${API}/resources/${MB_RESOURCE_ID}/versions" \
             -H "Authorization: Bearer $MB_TOKEN")
           if echo "$EXISTING" | jq -e --arg v "$VER_PLAIN" \
@@ -160,7 +160,7 @@ jobs:
           fi
 
           # ② 上传文件，拿 file_key（限速 8 次/小时，去重放前面可避免重跑浪费配额）
-          UPLOAD_RESP=$(curl -fsSL -X POST \
+          UPLOAD_RESP=$(curl -fsSL --http1.1 -X POST \
             "${API}/upload" \
             -H "Authorization: Bearer $MB_TOKEN" \
             -F "upload[]=@YEssential.zip")
@@ -173,7 +173,7 @@ jobs:
           echo "file_key = $FILE_KEY"
 
           # ③ 创建版本（file_key 与 file_url 二选一；Idempotency-Key 防重跑）
-          CREATE_RESP=$(curl -fsSL -X POST \
+          CREATE_RESP=$(curl -fsSL --http1.1 -X POST \
             "${API}/resources/${MB_RESOURCE_ID}/versions" \
             -H "Authorization: Bearer $MB_TOKEN" \
             -H "Content-Type: application/json" \
@@ -192,7 +192,7 @@ jobs:
           jq -n --arg title "$VERSION" --arg msg "$DESC" \
             '{title:$title, message:$msg}' > mb_payload.json
 
-          UPDATE_RESP=$(curl -fsSL -X POST \
+          UPDATE_RESP=$(curl -fsSL --http1.1 -X POST \
             "${API}/resources/${MB_RESOURCE_ID}/updates" \
             -H "Authorization: Bearer $MB_TOKEN" \
             -H "Content-Type: application/json" \
