@@ -38,7 +38,7 @@
 ### 📥 手动下载 / 安装
 
 1. 前往 [MineBBS](https://www.minebbs.com/resources/yessential-lse.10332/) & [Releases](https://github.com/Nico6719/YEssential/releases) & [Y系列插件下载站](http://dl.mcmcc.cc)下载本插件
-2. 将插件文件解压后放入服务器的 mod 目录即可运行。26.60 起为 `./mods/`，26.51 及更早为 `./plugins/`。
+2. 将插件文件解压后放入服务器的插件目录即可运行。26.60 起为 `./mods/`，26.51 及更早为 `./plugins/`。
 
 ## ⚙️ 插件亮点
 
