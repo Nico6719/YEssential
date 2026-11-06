@@ -4,8 +4,8 @@
 // ==================== 常量定义 ====================
 const info = globalThis.info || "§l§6[-YEST-] §r";
 const MENU_CONFIG = {
-    configPath: "./plugins/YEssential/Config/Cd/Config.json",
-    menusPath:  "./plugins/YEssential/data/Menus/",
+    configPath: pluginpath + "Config/Cd/Config.json",
+    menusPath:  pluginpath + "data/Menus/",
     prefix:     "§e§l[菜单] §r"
 };
 
@@ -26,7 +26,7 @@ class MenuConfigManager {
     }
 
     ensureDirectory() {
-        const dataDir  = "./plugins/YEssential/data/";
+        const dataDir  = pluginpath + "data/";
         const menusDir = MENU_CONFIG.menusPath;
         if (!File.exists(dataDir))  File.createDir(dataDir);
         if (!File.exists(menusDir)) File.createDir(menusDir);

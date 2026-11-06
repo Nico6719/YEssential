@@ -305,6 +305,28 @@ const PacketIds = {
 };
 
 // ══════════════════════════════════════════════════════════════════════════
+// §D0 协议版本 —— 决定包体要不要写新版字段
+//
+//   2193（BDS 1.26.51 及更早）：PlayerList 条目写到 xuid 就直接接 platformChatId
+//   2225（BDS 1.26.60 起）    ：<xuid> 之后多一条 skin.playFabId；
+//                               AddPlayer 的 ActorLink 之后多一个 passengerOfBlockArguments
+//
+// 直接问引擎要协议号，不解析版本字符串，也不猜包表。LSE 0.22.2 / 0.23.1 都绑了
+// mc.getServerProtocolVersion()（McAPI.cpp），更老的引擎没这个函数时按旧格式写。
+// ══════════════════════════════════════════════════════════════════════════
+// 惰性求值：插件加载时机可能早于服务端就绪，取不到就下次再问（不缓存失败值）
+let _proto = 0;
+function protocolVersion() {
+    if (_proto > 0) return _proto;
+    try {
+        const v = Number(mc.getServerProtocolVersion());
+        if (v > 0 && v < 100000) _proto = v;
+    } catch (e) { /* 老引擎无此 API，按旧的写 */ }
+    return _proto;
+}
+function isProto2225() { return protocolVersion() >= 2225; }
+
+// ══════════════════════════════════════════════════════════════════════════
 // §D ★ 唯一需要跟着版本看的代码：包体字段顺序
 //
 // 对齐 BDS 1.26.40 / 协议 2168 的 Packet::write() 顺序，
@@ -352,7 +374,10 @@ function writeSkin(w, skin) {
     const geomVer = skin.geometryVersion || GEOMETRY_MIN_ENGINE_VERSION;
 
     w.str(skin.id);                                  // skinId
-    w.str('');                                       // playFabId
+    // [协议 2225+] playFabId 从「皮肤内部」搬到了「PlayerList 条目层」（见 buildPlayerListAdd）。
+    // 2225 的 writeSkin 里明确写着 "playFabId removed"，这里必须不写；
+    // 2193 及更早仍在皮肤里，漏写/多写都会让皮肤之后的所有字段整体错位。
+    if (!isProto2225()) w.str('');                   // playFabId（2193 及更早）
     w.str(RESOURCE_PATCH);                           // 几何选择（原样 JSON，实测这样客户端能认）
     w.u32(skin.width);                               // 皮肤图宽
     w.u32(skin.height);                              // 皮肤图高
@@ -388,6 +413,10 @@ function buildPlayerListAdd(w, npc, skin) {
     w.vi64(npc.uniqueId);
     w.str(npc.name);
     w.str('0');                     // xuid 占位
+    // [协议 2225+] skin.playFabId，位置固定在 xuid 之后、platformChatId 之前。
+    // 2193 没有这条；漏写/多写都会让后面整段错位（platformChatId 被当成 playFabId，
+    // buildPlatform 的字节被读成字符串长度），客户端解到皮肤就崩 → 弹出「出错了」。
+    if (isProto2225()) w.str('');
     w.str('');                      // platformChatId
     w.i32(1);                       // buildPlatform
     writeSkin(w, skin);
@@ -443,6 +472,9 @@ function buildAddPlayer(w, npc) {
     w.f32(0.1);                     // 行走速度
 
     w.uvi(0);                       // ActorLink：0 条
+    // [协议 2225+] passengerOfBlockArguments：可选值，null 只写 1 字节 bool(false)。
+    // 2193 没有这个字段；漏写会把 deviceId 的长度字节读成 bool，其后全部错位。
+    if (isProto2225()) w.bool(false);
     w.str('');                      // deviceId
     w.u32(1);                       // buildPlatform
 }
@@ -740,9 +772,11 @@ function stopTicking() {
 // 别用 .x/.y —— 那是内部 Vec2，JS 侧只有 pitch/yaw）
 function specBody(plname, anchor, yaw) {
     try {
-        return Bodies.create(bodyName(plname), {
+        if (!anchor) return null;
+        const r = Bodies.create(bodyName(plname), {
             x: anchor.x, y: anchor.y, z: anchor.z, dimid: anchor.dimid, yaw: yaw
         });
+        return r;
     } catch (e) {
         return null;
     }

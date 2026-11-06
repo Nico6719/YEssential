@@ -12,7 +12,7 @@
 var CleanMgr = (function () {
 
   /* ================= 路径 ================= */
-  var BASE = "./plugins/YEssential/";
+  var BASE = pluginpath;
   
   // 配置文件路径
   var CONFIG_DIR = BASE + "config/Cleanmgr/";

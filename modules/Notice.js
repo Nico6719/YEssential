@@ -9,7 +9,7 @@
 
 // 注意：路径常量不能在模块顶层用 datapath 拼接（require 时 datapath 尚未注入 globalThis）
 // 改为在 init() 后通过函数延迟求值
-const NOTICE_DIR  = "./plugins/YEssential/data/NoticeSettingsData/";
+const NOTICE_DIR  = pluginpath + "data/NoticeSettingsData/";
 const NOTICE_FILE = NOTICE_DIR + "notice.txt";
 const NOTICE_BAK  = NOTICE_DIR + "notice.txt.bak";
 // _getNoticeSettingFile() 延迟到函数内获取，确保 datapath 已由 globalThis 注入

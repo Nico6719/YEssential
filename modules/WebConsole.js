@@ -17,7 +17,8 @@
 const VERSION = "0.1.2";
 module.exports = { init, version: VERSION };
 
-const BASE = typeof pluginpath !== "undefined" ? pluginpath : "plugins/YEssential";
+// 去掉尾部斜杠：pluginpath 自带结尾 "/"，再拼 "/Config" 会出现 // 双斜杠
+const BASE = String(typeof pluginpath !== "undefined" ? pluginpath : "plugins/YEssential").replace(/\/+$/, "");
 const WEB_DIR = BASE + "/web";
 const TARGETS = {
     main: BASE + "/Config/config.json",
@@ -77,7 +78,12 @@ function readAsset(rel) {
 }
 
 function sendAsset(res, rel) {
-    const body = readAsset(rel);
+    let body = readAsset(rel);
+    // 前端产物里把目录名硬编码成了 plugins/YEssential/（顶部副标题 + 文件布局面板），
+    // 在 26.60 的 mods/ 布局下会显示错。这里按实际 BASE 做一次文本替换，前端不用重打包。
+    if (body != null && /\.(js|html|css)$/i.test(rel)) {
+        body = String(body).split("plugins/YEssential/").join(BASE + "/");
+    }
     if (body == null) {
         res.status = 404;
         res.setHeader("Content-Type", "text/plain; charset=utf-8");

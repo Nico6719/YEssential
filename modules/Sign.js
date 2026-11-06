@@ -25,10 +25,10 @@ function initSignModule() {
     }
 
     // ── 路径常量 ──────────────────────────────────────────────
-    var SIGN_DIR        = "./plugins/YEssential/data/Sign/";
-    var CONFIG_PATH     = "./plugins/YEssential/config/Sign/config.json";
-    var SIGNDATA_PATH   = "./plugins/YEssential/data/Sign/signdata.json";
-    var REWARDDATA_PATH = "./plugins/YEssential/data/Sign/reward.json";
+    var SIGN_DIR        = pluginpath + "data/Sign/";
+    var CONFIG_PATH     = pluginpath + "config/Sign/config.json";
+    var SIGNDATA_PATH   = pluginpath + "data/Sign/signdata.json";
+    var REWARDDATA_PATH = pluginpath + "data/Sign/reward.json";
 
     var DEFAULT_REWARD_ITEMS = JSON.stringify([
         "{\"Count\":1b,\"Damage\":0s,\"Name\":\"minecraft:cooked_chicken\",\"WasPickedUp\":0b}",
@@ -410,7 +410,7 @@ function initSignModule() {
     // 跨月自动清理旧记录
     // （修复：旧版每次打开 GUI 都重新 Math.random()，可反复刷出好奖励）
     // ════════════════════════════════════════════════════════════
-    var DAILYROLL_PATH = "./plugins/YEssential/data/Sign/dailyroll.json";
+    var DAILYROLL_PATH = pluginpath + "data/Sign/dailyroll.json";
     var dailyroll_data = new JsonConfigFile(DAILYROLL_PATH, "{}");
 
     // 取某一天的随机奖励：有缓存重建，没有则摇一次存进 all（由调用方统一落盘）

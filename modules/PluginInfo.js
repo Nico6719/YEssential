@@ -71,7 +71,7 @@ function _showMainGui(pl) {
 // ─────────────────────────────────────────────────────────
 
 function _showModuleListGui(pl) {
-    const moduleListPath = "./plugins/YEssential/modules/modulelist.json";
+    const moduleListPath = pluginpath + "modules/modulelist.json";
     let modules = [];
     try {
         const raw = file.readFrom(moduleListPath);

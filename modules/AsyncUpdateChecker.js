@@ -632,10 +632,11 @@ class AsyncUpdateChecker {
         try {
             logWarn(`正在更新到 ${version} 中.....`);
             
-            // 创建备份
+            // 创建备份：失败即中止。没有备份就没有回滚能力，
+            // 这种情况下写盘等于裸奔，宁可这次不更新。
             const backupSuccess = await this.createBackup();
             if (!backupSuccess) {
-                logWarn('备份失败,但继续更新...');
+                throw new Error(lang.get("Upd.backup.abort"));
             }
 
             // 防篡改：先校验签名清单（失败则中止，不下载不写盘）
@@ -695,29 +696,27 @@ class AsyncUpdateChecker {
      * 写入所有文件
      */
     static async writeAllFiles(downloadResults) {
-        const writePromises = downloadResults
-            .filter(result => result.success)
-            .map(async (result) => {
-                try {
-                    const fullPath = pluginpath + result.file.path;
-                    
-                    // 确保目标目录存在
-                    const dirPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
-                    if (!File.exists(dirPath)) {
-                        File.createDir(dirPath);
-                    }
-                    
-                    // 写入文件(使用原生方法)
-                    File.writeTo(fullPath, result.data);
-                    randomGradientLog(`写入文件成功: ${result.file.path}`);
-                    return true;
-                } catch (error) {
-                    logError(`写入 ${result.file.path} 失败: ${error.message}`);
-                    throw error;
-                }
-            });
+        // 串行写入：并发写多个文件时，一旦某个失败，其余可能已经落盘，
+        // 备份再失败就是混装状态。串行 + 遇错即停，失败面最小。
+        const targets = downloadResults.filter(result => result.success);
+        for (const result of targets) {
+            try {
+                const fullPath = pluginpath + result.file.path;
 
-        await Promise.all(writePromises);
+                // 确保目标目录存在
+                const dirPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
+                if (!File.exists(dirPath)) {
+                    File.createDir(dirPath);
+                }
+
+                // 写入文件(使用原生方法)
+                File.writeTo(fullPath, result.data);
+                randomGradientLog(`写入文件成功: ${result.file.path}`);
+            } catch (error) {
+                logError(`写入 ${result.file.path} 失败: ${error.message}`);
+                throw error;   // 交给外层 catch → restoreBackup
+            }
+        }
     }
 
     /**
@@ -737,7 +736,9 @@ class AsyncUpdateChecker {
                 File.createDir(backupDir);
             }
             
-            // 备份所有文件
+            // 备份所有文件。任一文件备份失败都算整体失败 ——
+            // 半份备份在回滚时会把没备到的文件留成新版，等于混装。
+            let failedCount = 0;
             for (const file of config.files) {
                 const sourcePath = pluginpath + file.path;
                 const backupPath = backupDir + file.path;
@@ -760,17 +761,26 @@ class AsyncUpdateChecker {
                     if (content !== null) {
                         File.writeTo(backupPath, content);
                         randomGradientLog(`备份文件: ${file.path}`);
+                    } else {
+                        failedCount++;
+                        logWarn(lang.get("Upd.backup.readfail").replace("${path}", file.path));
                     }
                 } catch (error) {
+                    failedCount++;
                     logWarn(`备份 ${file.path} 失败: ${error.message}`);
                 }
             }
             
+            if (failedCount > 0) {
+                logError(lang.get("Upd.backup.incomplete").replace("${count}", failedCount));
+                return false;
+            }
+
             logInfo(`备份完成: ${backupDir}`);
-            
+
             // 保存备份路径以便恢复
             this._lastBackupPath = backupDir;
-            
+
             return true;
         } catch (error) {
             logError(`创建备份失败: ${error.message}`);

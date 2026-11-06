@@ -8,13 +8,22 @@ this plugin is distributed under the AGPLv3 License
 ----------------------------------*/
 // LiteLoader-AIDS automatic generated
 /// <reference path="c:\Users\Admin/dts/helperlib/src/index.d.ts"/> 
-const YEST_LangDir = "./plugins/YEssential/lang/";
-const pluginpath = "./plugins/YEssential/";
-const datapath = "./plugins/YEssential/data/";
+// [26.60] mod 根目录随 LeviLamina 走：26.51 是 plugins/，26.60 默认 mods/，
+// 由 PreLoaderConfig.json 的 modsPath 决定。ll.pluginsRoot 直接返回 getModsRoot()，
+// 硬编码目录名会让主文件与模块从两个不同目录读（实测过的坑）。
+const _modsRoot = String((typeof ll !== "undefined" && ll.pluginsRoot) ? ll.pluginsRoot : "./plugins")
+    .replace(/\\/g, "/")
+    // 关键：LSE 的 require 会把 "./" 开头的 id 再与 mod 根拼一次（BaseLib.resolveID），
+    // 带 ./ 会拼成 mods/mods/YEssential/...；不带 ./ 则按服务器根相对路径直接读。
+    .replace(/^\.\//, "")
+    .replace(/\/+$/, "");
+const YEST_LangDir = _modsRoot + "/YEssential/lang/";
+const pluginpath = _modsRoot + "/YEssential/";
+const datapath = _modsRoot + "/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件`;
-const version = "2.13.3";
-const regversion =[2,13,3];
+const version = "2.13.4";
+const regversion =[2,13,4];
 const info = "§l§d[-YEST-] §r§l> ";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
@@ -40,10 +49,10 @@ let warpdata = new JsonConfigFile(datapath +"warpdata.json",JSON.stringify({}));
         if (!globalThis.randomGradientLog) {
             globalThis.randomGradientLog = (text) => logger.info(text);
         }
-        require("plugins/YEssential/modules/ConfigManager.js");
-        require("plugins/YEssential/modules/I18n.js");
-        require("plugins/YEssential/modules/CachePool.js");
-        require("plugins/YEssential/modules/WriteBackStore.js");
+        require(pluginpath + "modules/ConfigManager.js");
+        require(pluginpath + "modules/I18n.js");
+        require(pluginpath + "modules/CachePool.js");
+        require(pluginpath + "modules/WriteBackStore.js");
         
         if (globalThis.WriteBackStore) {
             globalThis.homeStore = globalThis.WriteBackStore.create(homedata, "home");
@@ -292,7 +301,7 @@ Object.assign(globalThis, {
  */
 (function() {
 
-  var BASE_PATH = "plugins/YEssential/modules/";
+  var BASE_PATH = pluginpath + "modules/";
 
   // ── 渐变日志工具 ──────────────────────────────────────────
   function gradientLog(text, r1, g1, b1, r2, g2, b2, level) {

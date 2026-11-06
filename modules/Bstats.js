@@ -2,7 +2,7 @@
  * LeviLamina_LSE_YEssential - bStats 遥测模块
  */
 
-const BSTATS_UUID_PATH = "./plugins/YEssential/data/Bstats/uuid.json";
+const BSTATS_UUID_PATH = pluginpath + "data/Bstats/uuid.json";
 const BSTATS_MAX_RETRY = 2;
 
 // ─── UUID 工具 ────────────────────────────────────────────────────
@@ -107,7 +107,7 @@ class BStatsImpl {
     }
 
     readManifestVersion() {
-        const path = "./plugins/YEssential/manifest.json";
+        const path = pluginpath + "manifest.json";
         try {
             if (File.exists(path)) {
                 const content = File.readFrom(path);
@@ -120,7 +120,7 @@ class BStatsImpl {
         } catch (e) {
             logError("读取 manifest.json 失败: " + e.message);
         }
-        return "2.13.3";
+        return "2.13.4";
     }
 
     // 将 Economy.PayTaxRate（数字 或 阶梯数组）转换为 Disabled/Enabled 两种分类
@@ -219,7 +219,7 @@ class BStatsImpl {
 
         let moduleCount = 0;
         try {
-            const mlPath = "./plugins/YEssential/modules/modulelist.json";
+            const mlPath = pluginpath + "modules/modulelist.json";
             if (File.exists(mlPath)) {
                 const raw  = File.readFrom(mlPath);
                 const json = raw ? JSON.parse(raw) : null;
