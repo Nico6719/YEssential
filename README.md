@@ -33,12 +33,12 @@
 
 > **装到哪个目录？看 `PreLoaderConfig.json` 里的 `modsPath`**
 >
-> - **LeviLamina 26.60 起**原`./plugins/` 被改为 `./mods/` 文件夹，故从2.13.4之后新版本将不再兼容26.60以下的版本使用lip安装，需手动拖入对应的插件文件夹！
+> - **LeviLamina 26.60 起**原`./plugins/` 被改为 `./mods/` 文件夹，故从2.13.4之后的新版本将不再兼容26.60以下的版本使用lip安装，需手动拖入对应的插件文件夹！
 
 ### 📥 手动下载 / 安装
 
 1. 前往 [MineBBS](https://www.minebbs.com/resources/yessential-lse.10332/) & [Releases](https://github.com/Nico6719/YEssential/releases) & [Y系列插件下载站](http://dl.mcmcc.cc)下载本插件
-2. 将插件文件解压后放入服务器的 mod 目录即可运行：26.60 起为 `./mods/`，26.51 及更早为 `./plugins/`。
+2. 将插件文件解压后放入服务器的 mod 目录即可运行。26.60 起为 `./mods/`，26.51 及更早为 `./plugins/`。
 
 ## ⚙️ 插件亮点
 
