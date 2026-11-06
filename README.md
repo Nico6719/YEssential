@@ -33,10 +33,7 @@
 
 > **装到哪个目录？看 `PreLoaderConfig.json` 里的 `modsPath`**
 >
-> - **LeviLamina 26.60 起**默认 `./mods/` → 插件放 `mods/YEssential/`（lip 也会装到这里）
-> - **26.51 及更早**默认 `./plugins/` → 插件放 `plugins/YEssential/`
-> - 旧版本服务器用 lip 安装请固定版本：`lip install github.com/Nico6719/YEssential@2.13.3`（该版本的包仍指向 `plugins/`）
----
+> - **LeviLamina 26.60 起**原`./plugins/` 被改为 `./mods/` 文件夹，故从2.13.4之后新版本lip安装将不再兼容26.60以下的版本使用lip安装，需手动拖入对应的插件文件夹！
 
 ### 📥 手动下载 / 安装
 
