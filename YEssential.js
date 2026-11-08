@@ -1,8 +1,14 @@
 /*--------------------------------
-Produced by Nico6719 
-this plugin is distributed under the AGPLv3 License
-未经允许禁止擅自修改为付费插件发售！
-该插件仅在[Github,MineBBS,KlpBBS]发布，禁止二次发布插件
+Produced by Nico6719
+Copyright (C) 2026 Nico6719
+
+本插件以 GNU AGPL v3.0 授权发布，可自由使用、修改与再分发。
+依 AGPL-3.0 第 7(b)(c) 条附加以下条款：
+  · 再分发时须保留本署名段与项目地址，不得移除或篡改；
+  · 修改版须标注「已修改」，不得冒充原作者发布。
+项目地址：https://github.com/Nico6719/YEssential
+发布渠道：GitHub / MineBBS / KlpBBS
+许可证全文：https://www.gnu.org/licenses/agpl-3.0.html
 ----------------------------------*/
 // LiteLoader-AIDS automatic generated
 /// <reference path="c:\Users\Admin/dts/helperlib/src/index.d.ts"/> 
@@ -15,8 +21,8 @@ const pluginpath = _modsRoot + "/YEssential/";
 const datapath = _modsRoot + "/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件`;
-const version = "2.13.4";
-const regversion =[2,13,4];
+const version = "2.13.5";
+const regversion =[2,13,5];
 const info = "§l§d[-YEST-] §r§l> ";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
@@ -1713,13 +1719,12 @@ function handleAdminOp(pl, target, opType, actionText, inputLabel) {
     pl.sendForm(fm, (admin, data) => {
         if (data == null) return;
         
-        const inputVal = data[0];
-        if (!inputVal || inputVal.trim() === "") {
+        const inputVal = String(data[0] ?? "").trim();
+        if (!inputVal) {
             return admin.tell(info + CachePool.lang("money.setting.number")); // 使用原本的提示key
         }
-        
+        if (!/^\d+$/.test(inputVal)) return admin.tell(info + CachePool.lang("key.not.number"));
         const amount = parseInt(inputVal, 10);
-        if (isNaN(amount)) return admin.tell(info + CachePool.lang("key.not.number"));
         if (opType === 'set' && amount < 0) return admin.tell(info + CachePool.lang("money.must.biggerzero"));
         if ((opType === 'add' || opType === 'reduce') && amount <= 0) return admin.tell(info + CachePool.lang("money.must.biggerzero"));
 
@@ -2449,8 +2454,13 @@ function showTpaPrefsGui(player) {
             showTpaPrefsMenu(pl);
             return;
         }
-        const [, acceptSwitch, promptIdx, timeoutStr] = data;
-        const timeout = parseInt(timeoutStr);
+        const [, acceptSwitch, promptIdx, timeoutRaw] = data;
+        const timeoutStr = String(timeoutRaw ?? "").trim();
+        if (!/^\d+$/.test(timeoutStr)) {
+            pl.tell(info + CachePool.lang("tpa.input.must.number"));
+            return;
+        }
+        const timeout = parseInt(timeoutStr, 10);
         const newPrefs = {
             ...prefs,
             acceptTpaRequests: acceptSwitch,
@@ -2564,10 +2574,20 @@ function showTpaManageForm(player) {
             return;
         }
         
-        let newTimeout = parseInt(data[0]);
+        const timeoutStr = String(data[0] ?? "").trim();
+        const delayStr = String(data[3] ?? "").trim();
         let promptIndex = data[1];
         let enableDelay = data[2];
-        let newMaxDelay = parseInt(data[3]);
+        if (!/^\d+$/.test(timeoutStr)) {
+            pl.tell(info + CachePool.lang("tpa.input.must.number"));
+            return;
+        }
+        if (!/^\d+$/.test(delayStr)) {
+            pl.tell(info + CachePool.lang("tpa.must.biggerzero"));
+            return;
+        }
+        let newTimeout = parseInt(timeoutStr, 10);
+        let newMaxDelay = parseInt(delayStr, 10);
         
         if (isNaN(newTimeout) || newTimeout <= 0) {
             pl.tell(info +CachePool.lang("tpa.input.must.number"));
@@ -2950,31 +2970,6 @@ mc.listen("onLeft", (pl) => {
         }
     }
 });
-}
-// RTP已独立为模块
-if (CachePool.conf("RTP")?.EnabledModule) {
-const rtpResetCmd = mc.newCommand("rtpreset", "重置传送冷却", PermType.GameMasters);
-rtpResetCmd.overload([]);
-rtpResetCmd.mandatory("player", ParamType.Player);
-rtpResetCmd.setCallback((cmd, ori, out, res) => {
-    const pl = ori.player;
-    RadomTeleportSystem.cooltime.set(pl.realName, 0);
-    out.success(`已重置 ${pl.realName} 的传送冷却`);
-});
-rtpResetCmd.setup();
-const asyncRtpCmd = mc.newCommand("rtp", "异步随机传送", PermType.Any);
-asyncRtpCmd.overload([]);
-asyncRtpCmd.setCallback(async (cmd, ori, out, res) => {
-    const pl = ori.player;
-    if (!pl) return out.error(CachePool.lang("warp.only.player"));
-    try {
-        await RadomTeleportSystem.performRTPAsync(pl);
-    } catch (error) {
-        logger.error(`RTP命令执行失败: ${error.message}`);
-        pl.tell(info + "§c传送失败，请稍后重试");
-    }
-});
-asyncRtpCmd.setup();
 }
 //经济检查模块
 function smartMoneyCheck(plname, value, reason) {

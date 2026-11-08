@@ -629,19 +629,31 @@ class MenuAdminHandler {
             const fileIndex   = data[0], typeIndex  = data[1], enableImage = data[2],
                 imagePath   = data[3], buttonText = data[4], command     = data[5],
                 money       = data[6], position   = data[7];
+            const moneyStr = String(money ?? "").trim();
+            const posStr = String(position ?? "").trim();
             if (!buttonText || !command) {
                 self.showAddButton(player, "§c标题和指令必填",
+                    { fileIndex, buttonType: typeIndex, enableImage, imagePath, buttonText, command, money, position });
+                return;
+            }
+            if (moneyStr !== "" && !/^\d+$/.test(moneyStr)) {
+                self.showAddButton(player, "§c" + CachePool.lang("key.not.number"),
+                    { fileIndex, buttonType: typeIndex, enableImage, imagePath, buttonText, command, money, position });
+                return;
+            }
+            if (posStr !== "" && !/^\d+$/.test(posStr)) {
+                self.showAddButton(player, "§c" + CachePool.lang("key.not.number"),
                     { fileIndex, buttonType: typeIndex, enableImage, imagePath, buttonText, command, money, position });
                 return;
             }
             const typeMap   = ["form", "opfm", "comm", "opcm"];
             const newButton = {
                 images: enableImage, image: enableImage ? (imagePath || "textures/items/apple") : "",
-                money: parseInt(money) || 0, text: buttonText, command: command, type: typeMap[typeIndex]
+                money: moneyStr === "" ? 0 : parseInt(moneyStr, 10), text: buttonText, command: command, type: typeMap[typeIndex]
             };
             if (typeMap[typeIndex].includes("op")) newButton.oplist = [];
             MenuDataManager.addButton(menuFiles[fileIndex], newButton,
-                position !== "" ? parseInt(position) : null);
+                posStr === "" ? null : parseInt(posStr, 10));
             self.showAddMenu(player, "add_button");
             player.tell(MENU_CONFIG.prefix + "§2添加成功");
         });
@@ -865,12 +877,17 @@ class MenuAdminHandler {
             if (!data) { self.showEditButtonList(player, fileName); return; }
             const typeIndex   = data[0], enableImage = data[1], imagePath  = data[2],
                 buttonText  = data[3], command     = data[4], money      = data[5];
+            const moneyStr = String(money ?? "").trim();
             if (!buttonText || !command) {
                 self.showEditButtonForm(player, fileName, buttonIndex, "§c标题和指令不能为空"); return;
             }
+            if (moneyStr !== "" && !/^\d+$/.test(moneyStr)) {
+                self.showEditButtonForm(player, fileName, buttonIndex, "§c" + CachePool.lang("key.not.number"));
+                return;
+            }
             const newButton = {
                 images: enableImage, image: enableImage ? (imagePath || "textures/items/apple") : "",
-                money: parseInt(money) || 0, text: buttonText, command: command, type: typeMap[typeIndex]
+                money: moneyStr === "" ? 0 : parseInt(moneyStr, 10), text: buttonText, command: command, type: typeMap[typeIndex]
             };
             if (typeMap[typeIndex].includes("op")) newButton.oplist = button.oplist || [];
             if (MenuDataManager.updateButton(fileName, buttonIndex, newButton))

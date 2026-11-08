@@ -1,26 +1,6 @@
 /**
- * RadomTeleportSystem.js —— RTP 模块（A 方案架构合并版）
- * ============================================================
- * 内核替换为「RtpSession 状态机 + 单调度器分片推进」架构：
- *   - 两段式地表扫描（粗扫 8 格 + 精扫 7 格），hintY 链式提示
- *   - 未加载区块返回哨兵 {chunkNotLoaded}，绝不把未加载当空气
- *   - 近环 225 点 + 远射线 48 点，分片搜索（16 点/片）
- *   - 全局调度器 50ms/tick、6ms 预算，多人并发互不阻塞
- *   - 区块等待改为轮询探测（每 tick 1 次 getBlock），不再固定睡 3000ms
- *
- * 对外契约（YEssential.js 依赖，保持不变）：
- *   globalThis.RadomTeleportSystem
- *   RadomTeleportSystem.performRTPAsync(player)   —— /rtp 入口
- *   RadomTeleportSystem.cooltime                  —— /rtpreset 用
- *
- * 配置来源：CachePool.conf("RTP")（默认值由 ConfigManager.js 释放）
- * 仅使用已核对的 LSE API（lse.levimc.org）：
- *   mc.getBlock(x,y,z,dimid)→Block|null  bl.isAir/bl.type
- *   pl.teleport(pos)/pl.teleport(x,y,z,dimid)  pl.tell/pl.setTitle/pl.sendText
- *   pl.pos/pl.feetPos/pl.blockPos/pl.realName/pl.xuid/pl.direction/pl.getBiomeName()
- *   mc.runcmdEx  logger  setInterval/clearInterval/setTimeout
+ * RadomTeleportSystem.js
  */
-
 "use strict";
 
 // ── 维度常量 ──────────────────────────────────────────────────
@@ -698,6 +678,11 @@ class RadomTeleportSystem {
         }
     }
 
+    /** 模块加载时注册。主文件不注册，模块不在 modulelist 里命令就不存在。 */
+    static init() {
+        registerRtpCommands();
+    }
+
     /** 退还费用并重置冷却（走 Economy.execute 统一记账） */
     static refundPlayer(player, cost, cooldown) {
         if (cost > 0) {
@@ -720,6 +705,52 @@ if (typeof module !== "undefined" && module.exports) {
 }
 if (typeof globalThis !== "undefined") {
     globalThis.RadomTeleportSystem = RadomTeleportSystem;
+}
+
+function registerRtpCommands() {
+    if (!rtpConf().EnabledModule) return;
+
+    const rtpResetCmd = mc.newCommand("rtpreset", "重置传送冷却", PermType.GameMasters);
+    rtpResetCmd.mandatory("player", ParamType.Player);
+    rtpResetCmd.overload(["player"]);
+    rtpResetCmd.setCallback((cmd, ori, out, res) => {
+        const targets = res.player;
+        if (!Array.isArray(targets) || targets.length === 0) {
+            const msg = CachePool.lang("rtp.reset.empty");
+            logWarn("[RTP] " + msg);
+            return out.error(info + msg);
+        }
+        const names = [];
+        for (let i = 0; i < targets.length; i++) {
+            const target = targets[i];
+            if (!target || !target.realName) continue;
+            RadomTeleportSystem.cooltime.delete(target.realName);
+            names.push(target.realName);
+        }
+        if (names.length === 0) {
+            const msg = CachePool.lang("rtp.reset.empty");
+            logWarn("[RTP] " + msg);
+            return out.error(info + msg);
+        }
+        const msg = CachePool.lang("rtp.reset.success").replace("${player}", names.join(", "));
+        logInfo("[RTP] " + msg);
+        out.success(info + msg);
+    });
+    rtpResetCmd.setup();
+
+    const asyncRtpCmd = mc.newCommand("rtp", "异步随机传送", PermType.Any);
+    asyncRtpCmd.overload([]);
+    asyncRtpCmd.setCallback(async (cmd, ori, out, res) => {
+        const pl = ori.player;
+        if (!pl) return out.error(CachePool.lang("warp.only.player"));
+        try {
+            await RadomTeleportSystem.performRTPAsync(pl);
+        } catch (error) {
+            logError("[RTP] 命令执行失败: " + error.message);
+            pl.tell(info + CachePool.lang("rtp.cmd.fail"));
+        }
+    });
+    asyncRtpCmd.setup();
 }
 
 // 冷却倒计时，随模块加载启动（保持原逻辑）
