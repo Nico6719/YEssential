@@ -100,6 +100,8 @@ jobs:
         run: |
           mkdir -p dist/YEssential
           cp YEssential.js manifest.json dist/YEssential/
+          # LICENSE 随包分发：AGPL-3.0 第 5 条要求分发时附带许可证副本
+          cp LICENSE dist/YEssential/LICENSE
           cp -r modules dist/YEssential/
           cp -r web dist/YEssential/
           rm -f dist/YEssential/modules/YEssentialAPI.js
