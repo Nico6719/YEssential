@@ -1,20 +1,13 @@
 /*--------------------------------
 Produced by Nico6719 
 this plugin is distributed under the AGPLv3 License
-该插件由Nico6719,PHEyeji联合创作
-未经允许禁止擅自修改或者发售
+未经允许禁止擅自修改为付费插件发售！
 该插件仅在[Github,MineBBS,KlpBBS]发布，禁止二次发布插件
-调用示例： pl.tell(info + CachePool.lang("x.x"))
 ----------------------------------*/
 // LiteLoader-AIDS automatic generated
 /// <reference path="c:\Users\Admin/dts/helperlib/src/index.d.ts"/> 
-// [26.60] mod 根目录随 LeviLamina 走：26.51 是 plugins/，26.60 默认 mods/，
-// 由 PreLoaderConfig.json 的 modsPath 决定。ll.pluginsRoot 直接返回 getModsRoot()，
-// 硬编码目录名会让主文件与模块从两个不同目录读（实测过的坑）。
 const _modsRoot = String((typeof ll !== "undefined" && ll.pluginsRoot) ? ll.pluginsRoot : "./plugins")
     .replace(/\\/g, "/")
-    // 关键：LSE 的 require 会把 "./" 开头的 id 再与 mod 根拼一次（BaseLib.resolveID），
-    // 带 ./ 会拼成 mods/mods/YEssential/...；不带 ./ 则按服务器根相对路径直接读。
     .replace(/^\.\//, "")
     .replace(/\/+$/, "");
 const YEST_LangDir = _modsRoot + "/YEssential/lang/";
@@ -30,7 +23,6 @@ const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
 const langFilePath = YEST_LangDir + "zh_cn.json";
 
 // ── 核心配置文件初始化 ──
-// 必须在 Preinit 之前定义，因为 ConfigManager.js 和 Store 实例会用到它们
 let lang = new JsonConfigFile(langFilePath, JSON.stringify({}));
 let conf = new JsonConfigFile(pluginpath +"/Config/config.json",JSON.stringify({}));
 let homedata = new JsonConfigFile(datapath +"homedata.json",JSON.stringify({}));
