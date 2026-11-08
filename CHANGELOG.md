@@ -1,9 +1,7 @@
 # 更新日志
 ## v2.13.5 (2026-11-08)
 - 输入校验加固：金币、TPA 超时、菜单按钮金额与排序不再接受非法字符   By @Nico6719
-- /rtp 与 /rtpreset 注册迁入 RTP 模块，随模块加载一同生效   By @Nico6719
-- 版权声明改为符合 AGPL-3.0 第 7 条的署名保留条款   By @Nico6719
-- 发布包内附 LICENSE 许可证全文   By @Nico6719
+- 将主文件的/rtp 与 /rtpreset 遗留注册代码迁入 RTP 模块   By @Nico6719
 
 ## v2.13.4 (2026-11-06)
 - 适配 BDS 1.26.60 / LSE 0.23，兼容 mods 与 plugins 两种插件目录   By @Nico6719
