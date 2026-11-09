@@ -1,6 +1,6 @@
 <div align="center">
 
-![YEssential](https://socialify.git.ci/Nico6719/YEssential/image?custom_language=JavaScript&description=1&font=Inter&forks=1&issues=1&language=1&logo=https://zh.minecraft.wiki/images/Bookshelf_JE4_BE2.png?21f85&name=1&owner=1&pattern=Plus&pulls=1&stargazers=1&theme=Auto)
+![YEssential](https://socialify.git.ci/Nico6719/YEssential/image?custom_language=JavaScript&description=1&font=Inter&forks=1&issues=1&language=1&logo=https://zh.minecraft.wiki/images/Bookshelf_JE4_BE2.png?21f85&name=1&owner=1&pattern=Plus&pulls=1&stargazers=1&theme=dark)
 # 📦 YEssential
 **基于 LSE 的多功能基础插件**
 
