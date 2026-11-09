@@ -30,9 +30,6 @@
 ### 📦 安装方法
 - 方法1：使用lip安装，指令：`lip install github.com/Nico6719/YEssential`
 - 方法2：下载本插件解压到 mod 目录内即可
-
-> **装到哪个目录？看 `PreLoaderConfig.json` 里的 `modsPath`**
->
 > - **LeviLamina 26.60 起**原`./plugins/` 被改为 `./mods/` 文件夹，故从2.13.4之后的新版本将不再兼容26.60以下的版本使用lip安装，需手动拖入对应的插件文件夹！
 
 ### 📥 手动下载 / 安装
