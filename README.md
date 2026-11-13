@@ -24,12 +24,11 @@
 ### 📦 安装方法
 - 方法1：使用lip安装，指令：`lip install github.com/Nico6719/YEssential`
 - 方法2：下载本插件解压到插件目录内即可
-> - **LeviLamina 26.60 起**原`./plugins/` 被改为 `./mods/` 文件夹，故从2.13.4之后的新版本将不再兼容26.60以下的版本使用lip安装，需手动拖入对应的插件文件夹！
 
 ### 📥 手动下载 / 安装
 
 1. 前往 [MineBBS](https://www.minebbs.com/resources/yessential-lse.10332/) & [Releases](https://github.com/Nico6719/YEssential/releases) & [Y系列插件下载站](http://dl.mcmcc.cc)下载本插件
-2. 将插件文件解压后放入服务器的插件目录即可运行。26.60 起为 `./mods/`，26.51 及更早为 `./plugins/`。
+2. 将插件文件解压后放入服务器的插件目录即可运行。
 
 ## ⚙️ 插件亮点
 
