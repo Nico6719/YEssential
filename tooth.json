@@ -16,6 +16,9 @@
   "variants": [
     {
       "platform": "win-x64",
+      "dependencies": {
+        "github.com/LiteLDev/LegacyScriptEngine#quickjs": "*"
+      },
       "assets": [
         {
           "type": "zip",
