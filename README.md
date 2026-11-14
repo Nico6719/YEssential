@@ -9,6 +9,8 @@
 
 </div>
 
+> [English](./README.en.md) | **中文**
+
 ---
 > 一个多功能，模块化的基岩版基础插件，本插件支持迁移 TMEssential 的部分数据（ home 和 warp 的数据）以及 [PMenu](https://www.minebbs.com/resources/pmenu.4277/) 的菜单数据，导入配置文件/数据教程在文末。<br>
 > **如果您使用的是低于1.21.80的版本的服务端请使用（小于等于2.10.2）旧版本插件!**
