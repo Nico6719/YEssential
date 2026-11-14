@@ -20,7 +20,6 @@
   "variants": [
     {
       "label": "",
-      "platform": "win-x64",
       "dependencies": {
         "github.com/LiteLDev/LeviLamina": ">=26.60.0",
         "github.com/LiteLDev/LegacyScriptEngine#quickjs": ">=0.23.0"
