@@ -254,6 +254,7 @@ const defaultLangContent = {
     "notice.save.ok": "保存公告成功！",
 
     // 更新相关
+    "Upd.disabled": "您已关闭自动更新，新功能与 Bug 修复需手动更新才能获取；缺失文件的自动补齐功能同步停用！",
     "Upd.check": "正在检查新版本中.... 您可在config.json禁用自动更新！",
     "Upd.success": "更新成功！稍后将重载插件",
     "Upd.timeout": "获取版本信息超时，请检查网络连接",

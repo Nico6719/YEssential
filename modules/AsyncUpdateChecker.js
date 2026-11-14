@@ -372,6 +372,7 @@ class AsyncUpdateChecker {
 
             if (updateConfig && typeof updateConfig === 'object') {
                 return {
+                    enabled:    updateConfig.EnableModule !== false && updateConfig.EnableModule !== 0,
                     versionUrl: updateConfig.versionUrl || 'https://plugin.tobecraft.xyz/file/manifest.json',
                     baseUrl:    updateConfig.baseUrl    || 'https://plugin.tobecraft.xyz/file/',
                     files:      Array.isArray(updateConfig.files) ? updateConfig.files : [],
@@ -388,6 +389,7 @@ class AsyncUpdateChecker {
 
         // config.json 完全不存在时的后备方案
         return {
+            enabled:    true,
             versionUrl: 'https://plugin.tobecraft.xyz/file/manifest.json',
             baseUrl:    'https://plugin.tobecraft.xyz/file/',
             files:      this.KNOWN_FILES,
@@ -404,7 +406,12 @@ class AsyncUpdateChecker {
     static async init() {
         try {
             const config = this.getConfig();
-            
+
+            // 关闭自动更新时连带关掉缺失文件补齐，否则 EnableModule 形同虚设
+            if (!config.enabled) {
+                return;
+            }
+
             // 检查缺失文件
             if (config.checkMissingFilesOnStart) {
                 const missingFiles = await this.checkMissingFiles();

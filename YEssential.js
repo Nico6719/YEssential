@@ -21,8 +21,8 @@ const pluginpath = _modsRoot + "/YEssential/";
 const datapath = _modsRoot + "/YEssential/data/";
 const NAME = `YEssential`;
 const PluginInfo =`基岩版多功能基础插件`;
-const version = "2.13.5";
-const regversion =[2,13,5];
+const version = "2.13.6";
+const regversion = version.split(".").map(Number);
 const info = "§l§d[-YEST-] §r§l> ";
 const offlineMoneyPath = datapath+"/Money/offlineMoney.json";
 const offlineNotifyPath = datapath+"/Money/offlineNotify.json";
@@ -137,7 +137,7 @@ const economyCfg = (() => {
     function _load() {
         const e = CachePool.conf("Economy");
         return {
-            mode:       e ? (e.mode || "scoreboard") : (CachePool.conf("LLMoney") == 1 ? "llmoney" : "scoreboard"),
+            mode:       e ? (e.mode || "scoreboard") : "scoreboard",
             scoreboard: (e ? e.Scoreboard : CachePool.conf("Scoreboard")) || "money",
             coinName:   (e ? e.CoinName   : CachePool.conf("CoinName"))   || CachePool.lang("CoinName") || "金币",
         };
@@ -521,7 +521,15 @@ function initializePlugin() {
         }, 1000);
     }
     
-    if(CachePool.conf("Update", globalThis.updateConf)?.EnableModule==0) {return;}
+    const _updateSection = CachePool.conf("Update", globalThis.updateConf);
+    const _updateOff = !!_updateSection && (_updateSection.EnableModule === false || _updateSection.EnableModule === 0);
+    if (_updateOff) {
+        // 关掉自动更新后不再做任何联网检查/文件补齐，明确告知服主后果
+        setTimeout(() => {
+            logWarn(CachePool.lang("Upd.disabled"));
+        }, 3000);
+        return;
+    }
      else{
     // 第4步：异步初始化更新检查器并检查更新
     setTimeout(() => {

@@ -1,4 +1,11 @@
 # 更新日志
+## v2.13.6 (2026-11-14)
+- 修复关闭自动更新后仍会联网补齐缺失文件的问题，并增加提示告知服主后果   By @Nico6719
+- 移除已失效的 LLMoney 旧配置判断，经济模式统一由 Economy.mode 决定   By @Nico6719
+- 统一版本号来源，regversion 与 Bstats 上报均从 version 派生，避免发版漏改   By @Nico6719
+- 修复 lip 清单安装路径：26.60 起装到 mods/，旧版服务端改用 #old 变体装到 plugins/   By @Nico6719
+- 补充 lip 清单的 linux 变体，Docker 与 Wine 环境可正常安装（依赖需自行准备）   By @Nico6719
+
 ## v2.13.5 (2026-11-08)
 - 输入校验加固：金币、TPA 超时、菜单按钮金额与排序不再接受非法字符   By @Nico6719
 - 将主文件的/rtp 与 /rtpreset 遗留注册代码迁入 RTP 模块   By @Nico6719
@@ -42,7 +49,7 @@
 - 优化Cleanmgr清理性能，不扫实体   By @Nico6719
 - 优化Redpacket性能，使其经过缓存并减少频繁I/O   By @Nico6719
 - 优化离线经济和通知队列和Sign ，使其经过缓存   By @Nico6719
-- 修复AsyncUpdateChecker内的死代码   @Nico6719
+- 修复AsyncUpdateChecker内的死代码   By @Nico6719
 ## v2.12.16 (2026-10-04)
 - 修复Fcam能刷盔甲架的问题，改为发假人包替代原位置   By @Nico6719
 ## v2.12.15 (2026-09-26)
