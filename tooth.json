@@ -23,7 +23,7 @@
       "platform": "win-x64",
       "dependencies": {
         "github.com/LiteLDev/LeviLamina": ">=1.3.0",
-        "github.com/LiteLDev/LegacyScriptEngine#quickjs": "^0.12.0"
+        "github.com/LiteLDev/LegacyScriptEngine#quickjs": ">=0.12.0"
       },
       "assets": [
         {
