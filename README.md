@@ -23,6 +23,7 @@
 ---
 ### 📦 安装方法
 - 方法1：使用lip安装，指令：`lip install github.com/Nico6719/YEssential`
+> 小于等于26.51的LLBDS服务器需使用`lip install github.com/Nico6719/YEssential#old`安装！
 - 方法2：下载本插件解压到插件目录内即可
 
 ### 📥 手动下载 / 安装
