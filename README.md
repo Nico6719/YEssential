@@ -578,9 +578,13 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
 ---
 
 ## 贡献
+感谢每一位提交代码、反馈问题、完善插件的贡献者们！
 
-本项目的诞生离不开PHEyeji等人的帮助与支持！<br>
-如果您也想为YEssential做贡献欢迎提交 Issue，共同完善 YEssential。  
+<a href="https://github.com/Nico6719/YEssential/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=Nico6719/YEssential" alt="贡献者" />
+</a>
+<br>
+如果您也想为YEssential做贡献，欢迎提交 Issue 共同完善 YEssential！
 
 ## Star History
 
