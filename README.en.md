@@ -7,13 +7,13 @@
 ![](https://img.shields.io/github/last-commit/Nico6719/YEssential?style=flat-square&color=lightgrey)
 ![](https://komarev.com/ghpvc/?username=Nico6719-YEssential&color=green&style=flat-square&label=Views)
 
-> **English** | [中文](./README.md)
+**English** | [中文](./README.md)
 
 ---
 > A multi-functional, modular essentials plugin for Minecraft Bedrock. It can migrate part of TMEssential's data (home and warp) and the menu data of [PMenu](https://www.minebbs.com/resources/pmenu.4277/). Import instructions are at the bottom.<br>
 > **If your server runs a version below 1.21.80, use an old release (2.10.2 or lower)!**
 
-## 📌 Basic info
+## Basic info
 
 - **Name**: YEssential
 - **Type**: Essentials plugin / multi-functional modular plugin
@@ -22,16 +22,16 @@
 - **Data migration**: TMEssential home/warp data and more can be moved here
 
 ---
-### 📦 Installation
+### Installation
 - Option 1: install with lip: `lip install github.com/Nico6719/YEssential`
 - Option 2: download the archive and extract it into your plugin directory
 
-### 📥 Manual download / install
+### Manual download / install
 
 1. Get it from [MineBBS](https://www.minebbs.com/resources/yessential-lse.10332/), [Releases](https://github.com/Nico6719/YEssential/releases) or the [Y-series download site](http://dl.mcmcc.cc)
 2. Extract the files into your server's plugin directory and start the server
 
-## ⚙️ Highlights
+## Highlights
 
 ### Features
 
@@ -75,7 +75,7 @@ Note: these placeholders are deprecated since 2.8.7.
 | %player_money% | Player's scoreboard money |
 | %player_llmoney% | Player's LLMoney balance |
 
-### 🆕 Added / changed features
+### Added / changed features
 <details>
 <summary>Click to expand / collapse</summary>
 
@@ -112,7 +112,7 @@ Note: these placeholders are deprecated since 2.8.7.
 
 ---
 
-## 📈 Version history
+## Version history
 
 The plugin keeps up with LSE and LeviLamina releases. Sample history:
 | Version | Highlights | Date |
@@ -130,17 +130,17 @@ The plugin keeps up with LSE and LeviLamina releases. Sample history:
 | 2.13.2 | Web config console and customisation | 2026/10/28 |
 | 3.0.0 | New build downloaded from GitHub | not listed |
 
-⚠️ *This is only a partial list — the resource page and GitHub releases are authoritative.*
+*This is only a partial list — the resource page and GitHub releases are authoritative.*
 
 ---
 
-## 🛠 Requirements
+## Requirements
 
 - **LegacyScriptEngine** (LSE)
 
 ---
 
-## 💡 Where it fits
+## Where it fits
 
 Built for Minecraft Bedrock servers, especially when you:
 
@@ -149,7 +149,7 @@ Built for Minecraft Bedrock servers, especially when you:
 
 ---
 
-## 🧩 Relation with LeviLamina
+## Relation with LeviLamina
 
 YEssential has supported **LeviLamina** since 1.0.0. Together with LSE it runs in a stronger server modding environment.
 
@@ -157,7 +157,7 @@ YEssential has supported **LeviLamina** since 1.0.0. Together with LSE it runs i
 
 ---
 
-## 📦 Configuration
+## Configuration
 
 - ./Config/config.json
 Main config file
@@ -527,16 +527,16 @@ Menu config
 
 ```
 
-> 💡 Menu button commands: for `comm` buttons, if the command contains `@s` and the player is not OP, it runs from the console with `@s` replaced by the player name. Regular players can therefore trigger vanilla commands like `tag`, `effect`, `scoreboard` from the menu without being given OP. Commands without `@s` still run as the player, so plugin commands like `home` and `warp` work as usual.
+> Menu button commands: for `comm` buttons, if the command contains `@s` and the player is not OP, it runs from the console with `@s` replaced by the player name. Regular players can therefore trigger vanilla commands like `tag`, `effect`, `scoreboard` from the menu without being given OP. Commands without `@s` still run as the player, so plugin commands like `home` and `warp` work as usual.
 
 ---
 
-## 📥 API usage
+## API usage
 To be written
 
 ---
 
-## 📦 Example commands
+## Example commands
 
 A few common commands (subject to change between versions):
 
@@ -585,9 +585,13 @@ to `<server>\plugins\YEssential\data\menus`.
 ---
 
 ## Contributing
+Thanks to every contributor who has submitted code, reported issues and improved the plugin!
 
-This project would not exist without the help of PHEyeji and others!<br>
-Want to help? Open an issue and let's make YEssential better together.
+<a href="https://github.com/Nico6719/YEssential/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=Nico6719/YEssential" alt="Contributors" />
+</a>
+<br>
+Want to help YEssential? Open an issue and let's improve it together!
 
 ## Star History
 

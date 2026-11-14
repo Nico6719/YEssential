@@ -9,12 +9,12 @@
 
 </div>
 
-> [English](./README.en.md) | **中文**
+[English](./README.en.md) | **中文**
 
 ---
 > 一个多功能，模块化的基岩版基础插件，本插件支持迁移 TMEssential 的部分数据（ home 和 warp 的数据）以及 [PMenu](https://www.minebbs.com/resources/pmenu.4277/) 的菜单数据，导入配置文件/数据教程在文末。<br>
 > **如果您使用的是低于1.21.80的版本的服务端请使用（小于等于2.10.2）旧版本插件!**
-## 📌 基本信息
+## 基本信息
 
 - **名称**：YEssential  
 - **类型**：基础插件 / 多功能模块化插件
@@ -23,17 +23,17 @@
 - **支持迁移其他插件数据**：如 TMEssential 的 home 和 warp 数据可迁移到本插件等
 
 ---
-### 📦 安装方法
+### 安装方法
 - 方法1：使用lip安装，指令：`lip install github.com/Nico6719/YEssential`
 > 小于等于26.51的LLBDS服务器需使用`lip install github.com/Nico6719/YEssential#old`安装！
 - 方法2：下载本插件解压到插件目录内即可
 
-### 📥 手动下载 / 安装
+### 手动下载 / 安装
 
 1. 前往 [MineBBS](https://www.minebbs.com/resources/yessential-lse.10332/) & [Releases](https://github.com/Nico6719/YEssential/releases) & [Y系列插件下载站](http://dl.mcmcc.cc)下载本插件
 2. 将插件文件解压后放入服务器的插件目录即可运行。
 
-## ⚙️ 插件亮点
+## 插件亮点
 
 ### 功能
 
@@ -76,7 +76,7 @@
 |%player_money% |显示玩家的计分板经济|
 |%player_llmoney%|显示玩家的LLMoney经济|
 
-### 🆕 新增 / 修改过的功能  
+### 新增 / 修改过的功能  
 <details>
 <summary>点击这里展开/折叠</summary>
  
@@ -113,7 +113,7 @@
 
 ---
 
-## 📈 版本更新
+## 版本更新
 
 插件已持续迭代更新以适应不同 LSE 与 LeviLamina 版本。示例更新版本： 
 | 版本   | 更新内容                   | 日期        |
@@ -131,17 +131,17 @@
 | 2.13.2 | Web 配置台与个性化设置           | 2026/10/28  |
 | 3.0.0  | GitHub 下载新版             | 未注明      |
 
-⚠️ *以上为部分版本信息，具体以最新资源页 / GitHub 为准。* 
+*以上为部分版本信息，具体以最新资源页 / GitHub 为准。* 
 
 ---
 
-## 🛠 依赖要求
+## 依赖要求
 
 - 需要 **LegacyScriptEngine** 平台支持  
 
 ---
 
-## 💡 适用场景
+## 适用场景
 
 适合基岩版 Minecraft 服务器使用，特别是：
 
@@ -149,14 +149,14 @@
 - 需要还在维护的Menu插件
 ---
 
-## 🧩 与 LeviLamina 关系说明
+## 与 LeviLamina 关系说明
 
 YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE 平台配合可以用于更强的服务器模组环境支持。
 
 *LeviLamina 是一个轻量、模块化的 Minecraft Bedrock Edition 模组加载器，为插件/模组提供基础 API 和事件系统支持。* 
 
 ---
-## 📦 配置文件
+## 配置文件
 - ./Config/config.json
 主配置文件
 ```json
@@ -524,15 +524,15 @@ YEssential 在版本 1.0.0 起已开始兼容 **LeviLamina** 平台，与 LSE �
 
 ```
 
-> 💡 菜单按钮命令说明：`comm` 类型按钮中，若命令包含 `@s` 且玩家非 OP，将以控制台身份执行并把 `@s` 替换为玩家名，因此普通玩家也能通过菜单触发 `tag`、`effect`、`scoreboard` 等原版命令，无需给玩家发 OP。不含 `@s` 的命令仍以玩家身份执行，可正常触发 `home`、`warp` 等插件命令。
+> 菜单按钮命令说明：`comm` 类型按钮中，若命令包含 `@s` 且玩家非 OP，将以控制台身份执行并把 `@s` 替换为玩家名，因此普通玩家也能通过菜单触发 `tag`、`effect`、`scoreboard` 等原版命令，无需给玩家发 OP。不含 `@s` 的命令仍以玩家身份执行，可正常触发 `home`、`warp` 等插件命令。
 
 ---
 
-## 📥 API调用 / 使用
+## API调用 / 使用
 待补充
 ---
 
-## 📦 示例指令
+## 示例指令
 
 以下是部分常用指令示例（视插件版本可能会有所变动）：
 
