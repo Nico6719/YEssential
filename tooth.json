@@ -29,7 +29,7 @@
             {
               "type": "dir",
               "src": "YEssential",
-              "dest": "plugins/YEssential"
+              "dest": "mods/YEssential"
             }
           ]
         }
@@ -48,7 +48,7 @@
             {
               "type": "dir",
               "src": "YEssential",
-              "dest": "plugins/YEssential"
+              "dest": "mods/YEssential"
             }
           ]
         }
