@@ -24,6 +24,7 @@
 ---
 ### Installation
 - Option 1: install with lip: `lip install github.com/Nico6719/YEssential`
+> For LLBDS servers running version 26.51 or earlier, install with `lip install github.com/Nico6719/YEssential#old` instead!
 - Option 2: download the archive and extract it into your plugin directory
 
 ### Manual download / install
