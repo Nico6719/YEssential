@@ -1,16 +1,20 @@
-![YEssential](https://socialify.git.ci/Nico6719/YEssential/image?custom_language=JavaScript&description=1&font=Inter&forks=1&issues=1&language=1&logo=https://zh.minecraft.wiki/images/Bookshelf_JE4_BE2.png?21f85&name=1&owner=1&pattern=Plus&pulls=1&stargazers=1&theme=Auto)
+<p align="center">
+  <img src="https://socialify.git.ci/Nico6719/YEssential/image?custom_language=JavaScript&amp;description=1&amp;font=Inter&amp;forks=1&amp;issues=1&amp;language=1&amp;logo=https://zh.minecraft.wiki/images/Bookshelf_JE4_BE2.png?21f85&amp;name=1&amp;owner=1&amp;pattern=Plus&amp;pulls=1&amp;stargazers=1&amp;theme=Auto" alt="YEssential" />
+</p>
 
-![](https://img.shields.io/github/v/release/Nico6719/YEssential?style=flat-square&logo=github&color=orange&label=Version)
-![](https://img.shields.io/github/downloads/Nico6719/YEssential/total?style=flat-square&logo=github&color=33ccff&label=Downloads)
-![](https://img.shields.io/github/languages/top/Nico6719/YEssential?style=flat-square&logo=javascript&color=yellow)
+<p align="center">
+  <img src="https://img.shields.io/github/v/release/Nico6719/YEssential?style=flat-square&amp;logo=github&amp;color=orange&amp;label=Version" alt="Version" />
+  <img src="https://img.shields.io/github/downloads/Nico6719/YEssential/total?style=flat-square&amp;logo=github&amp;color=33ccff&amp;label=Downloads" alt="Downloads" />
+  <img src="https://img.shields.io/github/languages/top/Nico6719/YEssential?style=flat-square&amp;logo=javascript&amp;color=yellow" alt="Language" />
+  <br />
+  <img src="https://img.shields.io/github/stars/Nico6719/YEssential?style=flat-square&amp;logo=github&amp;color=yellow&amp;label=Stars" alt="Stars" />
+  <img src="https://img.shields.io/github/last-commit/Nico6719/YEssential?style=flat-square&amp;color=lightgrey" alt="Last commit" />
+  <img src="https://komarev.com/ghpvc/?username=Nico6719-YEssential&amp;color=green&amp;style=flat-square&amp;label=Views" alt="Views" />
+</p>
 
-![](https://img.shields.io/github/stars/Nico6719/YEssential?style=flat-square&logo=github&color=yellow&label=Stars)
-![](https://img.shields.io/github/last-commit/Nico6719/YEssential?style=flat-square&color=lightgrey)
-![](https://komarev.com/ghpvc/?username=Nico6719-YEssential&color=green&style=flat-square&label=Views)
-
-</div>
-
-[English](./README.en.md) | **中文**
+<p align="center">
+  <a href="./README.en.md">English</a> | <strong>中文</strong>
+</p>
 
 ---
 > 一个多功能，模块化的基岩版基础插件，本插件支持迁移 TMEssential 的部分数据（ home 和 warp 的数据）以及 [PMenu](https://www.minebbs.com/resources/pmenu.4277/) 的菜单数据，导入配置文件/数据教程在文末。<br>

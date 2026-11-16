@@ -1,13 +1,20 @@
-# YEssential
-![](https://img.shields.io/github/v/release/Nico6719/YEssential?style=flat-square&logo=github&color=orange&label=Version)
-![](https://img.shields.io/github/downloads/Nico6719/YEssential/total?style=flat-square&logo=github&color=33ccff&label=Downloads)
-![](https://img.shields.io/github/languages/top/Nico6719/YEssential?style=flat-square&logo=javascript&color=yellow)
+<p align="center">
+  <img src="https://socialify.git.ci/Nico6719/YEssential/image?custom_language=JavaScript&amp;description=1&amp;font=Inter&amp;forks=1&amp;issues=1&amp;language=1&amp;logo=https://zh.minecraft.wiki/images/Bookshelf_JE4_BE2.png?21f85&amp;name=1&amp;owner=1&amp;pattern=Plus&amp;pulls=1&amp;stargazers=1&amp;theme=Auto" alt="YEssential" />
+</p>
 
-![](https://img.shields.io/github/stars/Nico6719/YEssential?style=flat-square&logo=github&color=yellow&label=Stars)
-![](https://img.shields.io/github/last-commit/Nico6719/YEssential?style=flat-square&color=lightgrey)
-![](https://komarev.com/ghpvc/?username=Nico6719-YEssential&color=green&style=flat-square&label=Views)
+<p align="center">
+  <img src="https://img.shields.io/github/v/release/Nico6719/YEssential?style=flat-square&amp;logo=github&amp;color=orange&amp;label=Version" alt="Version" />
+  <img src="https://img.shields.io/github/downloads/Nico6719/YEssential/total?style=flat-square&amp;logo=github&amp;color=33ccff&amp;label=Downloads" alt="Downloads" />
+  <img src="https://img.shields.io/github/languages/top/Nico6719/YEssential?style=flat-square&amp;logo=javascript&amp;color=yellow" alt="Language" />
+  <br />
+  <img src="https://img.shields.io/github/stars/Nico6719/YEssential?style=flat-square&amp;logo=github&amp;color=yellow&amp;label=Stars" alt="Stars" />
+  <img src="https://img.shields.io/github/last-commit/Nico6719/YEssential?style=flat-square&amp;color=lightgrey" alt="Last commit" />
+  <img src="https://komarev.com/ghpvc/?username=Nico6719-YEssential&amp;color=green&amp;style=flat-square&amp;label=Views" alt="Views" />
+</p>
 
-**English** | [中文](./README.md)
+<p align="center">
+  <strong>English</strong> | <a href="./README.md">中文</a>
+</p>
 
 ---
 > A multi-functional, modular essentials plugin for Minecraft Bedrock. It can migrate part of TMEssential's data (home and warp) and the menu data of [PMenu](https://www.minebbs.com/resources/pmenu.4277/). Import instructions are at the bottom.<br>
