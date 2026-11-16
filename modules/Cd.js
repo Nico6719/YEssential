@@ -90,7 +90,10 @@ class MenuUtils {
 
     static getMenuFiles(excludeMain) {
         if (!File.exists(MENU_CONFIG.menusPath)) return [];
-        let files = File.getFilesList(MENU_CONFIG.menusPath);
+        // 菜单目录还包含领钟记录等子目录，只列出 JSON 文件。
+        let files = File.getFilesList(MENU_CONFIG.menusPath).filter(f =>
+            f.endsWith(".json") && !File.checkIsDir(MENU_CONFIG.menusPath + f)
+        );
         if (excludeMain === true) {
             const mainFile = menuConfig.getMain() + ".json";
             files = files.filter(f => f !== mainFile);
@@ -187,7 +190,7 @@ class MenuDataManager {
     static removeOrphanButtons(deletedFileName) {
         const target = deletedFileName.replace(".json", "");
         if (!File.exists(MENU_CONFIG.menusPath)) return;
-        let files = File.getFilesList(MENU_CONFIG.menusPath);
+        const files = MenuUtils.getMenuFiles();
         files.forEach(function(f) {
             const menuData = MenuDataManager.getMenu(f);
             if (!menuData || !menuData.buttons) return;
@@ -858,10 +861,11 @@ class MenuAdminHandler {
         const button   = menuData.buttons[buttonIndex];
         const typeMap     = ["form", "opfm", "comm", "opcm"];
         const buttonTypes = ["玩家二级菜单", "管理员二级菜单", "玩家执行指令", "管理员执行指令"];
-        const rawType = button.type;
+        // 已修改：旧类型归一化及未知类型回退需要允许重新赋值。
+        let rawType = button.type;
         if (rawType === "vipfm") rawType = "form";
         if (rawType === "vipcm") rawType = "comm";
-        const currentTypeIndex = typeMap.indexOf(rawType);
+        let currentTypeIndex = typeMap.indexOf(rawType);
         if (currentTypeIndex === -1) currentTypeIndex = 0;
         const form = mc.newCustomForm();
         form.setTitle("修改按钮: " + button.text);

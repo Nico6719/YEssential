@@ -1,6 +1,6 @@
 /**
- * YEssential - 插件信息（PluginInfo）模块  v2.11.4
- * 功能：/yest 指令 → SimpleForm GUI 展示版本、作者、模块状态，并提供更新检查入口
+ * YEssential - 插件信息（PluginInfo）模块（已修改）
+ * 功能：/il 指令 → SimpleForm GUI 展示版本、作者、模块状态，并提供更新检查入口
  *
  * 依赖全局变量（由主文件提供）：
  *   conf, lang, info, version, PluginInfo, NAME, regversion,
@@ -97,48 +97,50 @@ function _showModuleListGui(pl) {
 // 检查更新
 // ─────────────────────────────────────────────────────────
 
-function _checkUpdate(pl) {
+async function _checkUpdate(pl) {
+    if (!pl || !pl.isOP()) return;
+    const xuid = pl.xuid;
     pl.tell(info + "§e正在检查更新，请稍候...");
     try {
-        network.httpGet("https://plugin.tobecraft.xyz/file/manifest.json", (status, result) => {
-            if (status !== 200) {
-                pl.tell(info + "§c请求失败，状态码：" + status);
-                return;
-            }
-            let remoteVer;
-            try { remoteVer = JSON.parse(result); } catch (e) {
-                pl.tell(info + "§c解析版本信息失败");
-                return;
-            }
-            const remoteStr = remoteVer.version || remoteVer.Version || "未知";
-            const isLatest  = remoteStr < version;
+        const updater = globalThis.AsyncUpdateChecker;
+        if (!updater || typeof updater.fetchRemoteVersion !== "function" ||
+            typeof updater.compareVersions !== "function" || typeof updater.checkForUpdates !== "function") {
+            throw new Error("更新模块未加载");
+        }
+        // 复用更新模块的地址配置、超时处理和安装校验流程。
+        const remoteVer = await updater.fetchRemoteVersion();
+        if (!remoteVer || !remoteVer.version) throw new Error("版本信息缺少 version 字段");
+        const remoteStr = String(remoteVer.version);
+        const comparison = updater.compareVersions(remoteStr, version);
+        const hasUpdate = comparison > 0;
+        const online = mc.getPlayer(xuid);
+        if (!online || !online.isOP()) return;
 
-            const fm = mc.newSimpleForm();
-            fm.setTitle(info+"§r§l更新检查");
-            fm.setContent(
-                "§l当前版本：§r§e" + version + "§r\n" +
-                "§l最新版本：§r§a" + remoteStr + "§r\n\n" +
-                (isLatest ? "§a当前已是最新版本，无需更新。" : "§c检测到新版本，点击更新按钮即可更新！")
-            );
-            if (!isLatest) {
-                fm.addButton("§l更新", "textures/ui/new_offer_symbol");
+        const fm = mc.newSimpleForm();
+        fm.setTitle(info + "§r§l更新检查");
+        fm.setContent(
+            "§l当前版本：§r§e" + version + "§r\n" +
+            "§l最新版本：§r§a" + remoteStr + "§r\n\n" +
+            (hasUpdate ? "§c检测到新版本，点击更新按钮即可更新！" :
+                comparison < 0 ? "§a本地版本高于远程版本，无需更新。" : "§a当前已是最新版本，无需更新。")
+        );
+        if (hasUpdate) fm.addButton("§l更新", "textures/ui/new_offer_symbol");
+        fm.addButton("§l返回", "textures/ui/cancel");
+        online.sendForm(fm, async (player, id) => {
+            if (!player || id == null || !player.isOP()) return;
+            if (!hasUpdate || id === 1) return _showMainGui(player);
+            if (id !== 0) return;
+            player.tell(info + "§e已开始检查并更新，进度请查看服务器控制台。");
+            try {
+                await updater.checkForUpdates(version);
+            } catch (e) {
+                const current = mc.getPlayer(xuid);
+                if (current) current.tell(info + "§c更新异常：" + e.message);
             }
-            if (isLatest){
-            fm.addButton("§l返回", "textures/ui/cancel");
-            }
-            pl.sendForm(fm, (pl, _id) => { 
-                
-                if(isLatest)
-                    {_showMainGui(pl);logInfo(_id); return;}
-                else{
-                    if(_id === 0){
-                    globalThis.checkForUpdates;
-                    logInfo(_id)
-                    }}
-            });
         });
     } catch (e) {
-        pl.tell(info + "§c检查更新异常：" + e.message);
+        const current = mc.getPlayer(xuid);
+        if (current) current.tell(info + "§c检查更新异常：" + e.message);
     }
 }
 

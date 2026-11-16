@@ -1,5 +1,5 @@
 /**
- * 异步更新检查器
+ * 异步更新检查器（已修改：共享版本比较接口）
  * 负责检查插件更新并自动下载安装
  */
 
@@ -306,6 +306,11 @@ class AsyncNetworkManager {
 }
 
 function compareVersions(v1, v2) {
+    v1 = String(v1).trim();
+    v2 = String(v2).trim();
+    if (!/^\d+(\.\d+)*$/.test(v1) || !/^\d+(\.\d+)*$/.test(v2)) {
+        throw new Error("版本号格式错误");
+    }
     // 将版本号拆分成数字数组 ("2.3.9" => [2, 3, 9])
     const parts1 = v1.split('.').map(Number);
     const parts2 = v2.split('.').map(Number);
@@ -324,6 +329,11 @@ function compareVersions(v1, v2) {
 }
 
 class AsyncUpdateChecker {
+    // 自动更新和 PluginInfo 使用同一个版本比较实现。
+    static compareVersions(remoteVersion, currentVersion) {
+        return compareVersions(remoteVersion, currentVersion);
+    }
+
     /**
      * 所有已知模块的完整列表（硬编码兜底）
      * 用于在 config.json 尚未迁移时补全缺失条目
@@ -573,7 +583,7 @@ class AsyncUpdateChecker {
             const { version: remoteVersion, changelog } = versionInfo;
             
             // 比较版本
-            const comparison = compareVersions(remoteVersion, currentVersion);
+            const comparison = this.compareVersions(remoteVersion, currentVersion);
             
             if (comparison > 0) {
                 // 有新版本

@@ -1,5 +1,5 @@
 /*
- * Sign.js - 签到系统模块
+ * Sign.js - 签到系统模块（已修改：按 XUID 保存，不迁移旧名字数据）
  * YEssential 子模块
  */
 
@@ -325,11 +325,12 @@ function initSignModule() {
         get: function (player) {
             reloadIfStale(sign_data, "sign");
             if (player == null) return JSON.parse(sign_data.read());
-            var name = (typeof player === "string") ? player : player.realName;
-            return sign_data.get(name);
+            // 字符串参数也必须是 XUID，不再按名字查找。
+            var xuid = (typeof player === "string") ? player : player.xuid;
+            return sign_data.get(xuid);
         },
-        save: function (name, data) {
-            sign_data.set(name, data);
+        save: function (xuid, data) {
+            sign_data.set(xuid, data);
         },
         getCount:        function (player) { return Number((this.get(player) || {}).count         || 0); },
         getWeeklyCount:  function (player) { return Number((this.get(player) || {}).weekly_count  || 0); },
@@ -355,7 +356,7 @@ function initSignModule() {
         },
         // 打卡
         clockIn: function (player) {
-            var name  = (typeof player === "string") ? player : player.realName;
+            var xuid  = (typeof player === "string") ? player : player.xuid;
             var today = this.todayStr();
             var d     = this.get(player);
             if (d == null) {
@@ -370,7 +371,7 @@ function initSignModule() {
                 else                              d.cont_sign     = 1;
                 d.sign_date = today;
             }
-            this.save(name, d);
+            this.save(xuid, d);
         }
     };
 

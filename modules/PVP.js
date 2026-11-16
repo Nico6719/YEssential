@@ -1,5 +1,5 @@
 /**
- * YEssential - PVP 模块
+ * YEssential - PVP 模块（已修改：按 XUID 保存设置，不迁移旧名字数据）
  * 负责 /pvp 命令注册、伤害拦截和爆炸防护
  * 依赖全局变量: conf, pvpConfig, lang, info, mc, logger
  */
@@ -21,7 +21,7 @@ function initPvpModule() {
     pvp.setCallback(function (_cmd, ori, out, res) {
         if (!ori.player) return;
         const player = ori.player;
-        const xuid   = player.realName;
+        const xuid   = player.xuid;
 
         if (!CachePool.conf("PVP").EnabledModule) {
             player.tell(info + CachePool.lang("module.no.Enabled"));
@@ -62,7 +62,7 @@ function initPvpModule() {
 
         if (playersNearby.length >= 2) {
             for (const player of playersNearby) {
-                if (!pvpConfig.get(player.realName, false)) {
+                if (!pvpConfig.get(player.xuid, false)) {
                     try {
                         player.sendToast(info, "检测到多人聚集且您处于 PVP 保护，已拦截爆炸");
                     } catch (e) {
@@ -86,8 +86,8 @@ function initPvpModule() {
         // 情况 1：玩家互殴
         if (source && source.isPlayer()) {
             const attacker    = source.toPlayer();
-            const attackerPVP = pvpConfig.get(attacker.realName, false);
-            const victimPVP   = pvpConfig.get(victim.realName, false);
+            const attackerPVP = pvpConfig.get(attacker.xuid, false);
+            const victimPVP   = pvpConfig.get(victim.xuid, false);
 
             if (!attackerPVP) {
                 attacker.tell(info + CachePool.lang("your.pvp.isoff"), 6);
@@ -101,10 +101,10 @@ function initPvpModule() {
 
         // 情况 1附加：火焰附魔附加伤害
         const isFireDamage = (cause === 6 || cause === 7);
-        if (isFireDamage && !pvpConfig.get(victim.realName, false)) {
+        if (isFireDamage && !pvpConfig.get(victim.xuid, false)) {
             const p = victim.pos;
             const nearbyPlayers = CachePool.getOnlinePlayers().filter(other => {
-                if (other.realName === victim.realName) return false;
+                if (other.xuid === victim.xuid) return false;
                 const op = other.pos;
                 if (op.dimid !== p.dimid) return false;
                 return Math.sqrt(
@@ -118,7 +118,7 @@ function initPvpModule() {
 
         // 情况 2：爆炸伤害补充拦截
         const isExplosionDamage = (cause === 2 || cause === 3 || cause === 11);
-        if (isExplosionDamage && !pvpConfig.get(victim.realName, false)) {
+        if (isExplosionDamage && !pvpConfig.get(victim.xuid, false)) {
             const p = victim.pos;
             const nearbyPlayers = CachePool.getOnlinePlayers().filter(other => {
                 const op = other.pos;
